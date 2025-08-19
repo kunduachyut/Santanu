@@ -51,6 +51,9 @@ export default function RootLayout({
               <a href="/dashboard/publisher" className="text-gray-700">
                 Publisher
               </a>
+              <a href="/dashboard/superadmin" className="text-gray-700">
+                Super Admin
+              </a>
             </nav>
 
             {/* Auth Buttons */}
