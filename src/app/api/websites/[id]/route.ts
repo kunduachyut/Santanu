@@ -8,7 +8,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   await dbConnect();
-
+  console.log("GET request for website with ID:");
+  console.log("Fetching website with ID:", params);
   const website = await Website.findById(params.id);
   if (!website) {
     return NextResponse.json({ error: "Website not found" }, { status: 404 });
@@ -54,6 +55,7 @@ export async function PATCH(
 
   const userRole = await getUserRole(userId);
   const json = await req.json();
+  console.log("Updating website with data:", json); 
 
   if (userRole === 'superadmin') {
     if (json.action === 'approve') {

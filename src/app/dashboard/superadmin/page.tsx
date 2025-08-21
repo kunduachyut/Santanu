@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 type Website = {
-  _id: string;
+  id: string;
   ownerId: string;
   title: string;
   url: string;
@@ -242,7 +242,7 @@ export default function SuperAdminDashboard() {
                     {website.status === 'pending' && (
                       <div className="flex gap-2 mt-2">
                         <button
-                          onClick={() => updateStatus(website._id, "approved")}
+                          onClick={() => updateStatus(website.id, "approved")}
                           className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
                         >
                           Approve
@@ -300,7 +300,7 @@ export default function SuperAdminDashboard() {
                 Cancel
               </button>
               <button
-                onClick={() => updateStatus(selectedWebsite._id, "rejected", rejectionReason)}
+                onClick={() => updateStatus(selectedWebsite.id, "rejected", rejectionReason)}
                 className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
                 disabled={!rejectionReason.trim()}
               >

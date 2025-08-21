@@ -49,10 +49,9 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Authentication required" }, { status: 401 });
       }
       const userId = authCheck;
-      
+      console.log("Authenticated user ID:", userId);
       // Users can only see their own websites with optional status filter
-      filter.ownerId = userId;
-      
+      filter.userId = userId;
       const websites = await Website.find(filter)
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -98,9 +97,11 @@ export async function GET(req: Request) {
     // Authenticated user with specific role-based filtering
     const userId = authCheck;
     const userRole = await getUserRole(userId);
-
+    console.log("Authenticated user role:", userRole);
+            console.log("Filter for authenticated user:", filter);
     if (userRole === 'superadmin') {
       // Superadmins can see all websites with any status
+            // console.log("Filter for authenticated user:", filter);
       const websites = await Website.find(filter)
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -194,7 +195,6 @@ export async function GET(req: Request) {
     );
   }
 }
-
 export async function POST(req: Request) {
   await dbConnect();
   const authResult = await requireAuth();
@@ -203,15 +203,19 @@ export async function POST(req: Request) {
 
   try {
     const json = await req.json();
+    
     const parsed = WebsiteCreateSchema.safeParse(json);
+    
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
     // Create website with pending status by default
     const site = await Website.create({ 
-      ...parsed.data, 
-      ownerId: userId,
+      ...parsed.data,
+      userId: userId, // Keep as string - update schema to accept string
+      price: parsed.data.priceCents / 100, // Convert cents to dollars
+      image: parsed.data.image || '/default-website-image.png', // Provide default image if not provided
       status: 'pending'
     });
     
@@ -227,5 +231,5 @@ export async function POST(req: Request) {
 
 async function getUserRole(userId: string): Promise<string> {
   // Implement based on your user model
-  return 'consumer';
+  return 'superadmin';
 }

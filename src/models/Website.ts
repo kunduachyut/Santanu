@@ -8,7 +8,7 @@ export interface IWebsite extends mongoose.Document {
   category: string;
   price: number;
   image: string;
-  userId: mongoose.Types.ObjectId;
+  userId: string;
   status: 'pending' | 'approved' | 'rejected';
   approvedAt?: Date;
   rejectedAt?: Date;
@@ -78,11 +78,11 @@ const WebsiteSchema = new mongoose.Schema({
   },
   image: {
     type: String,
-    required: [true, 'Image is required']
+    required: false, // Change to false
+    default: '/default-website-image.png'
   },
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,
     required: true
   },
   // New approval workflow fields
@@ -145,9 +145,9 @@ WebsiteSchema.index({ status: 1, createdAt: -1 });
 WebsiteSchema.index({ category: 1, status: 1 });
 
 // Virtual for formatted date
-WebsiteSchema.virtual('formattedCreatedAt').get(function(this: IWebsite) {
-  return this.createdAt.toLocaleDateString();
-});
+// WebsiteSchema.virtual('formattedCreatedAt').get(function(this: IWebsite) {
+//   return this.createdAt.toLocaleDateString();
+// });
 
 // Virtual for isNew (less than 7 days old)
 WebsiteSchema.virtual('isNew').get(function(this: IWebsite) {

@@ -6,7 +6,11 @@ export const WebsiteCreateSchema = z.object({
   url: z.string().url(),
   description: z.string().min(10),
   priceCents: z.number().int().nonnegative(),
+  category: z.string().min(1),
+  tags: z.array(z.string()).optional().default([]),
+  image: z.string().url().optional(),
 });
+
 
 export const AdRequestSchema = z.object({
   websiteId: z.string().min(1),

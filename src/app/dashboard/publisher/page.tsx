@@ -60,27 +60,41 @@ export default function PublisherDashboard() {
     .finally(() => setLoading(false));
   }
 
-  async function createSite(e: React.FormEvent) {
-    e.preventDefault();
-    const res = await fetch("/api/websites", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        ...form, 
-        priceCents: Number(form.priceCents),
-        tags: form.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
-      }),
+async function createSite(e: React.FormEvent) {
+  e.preventDefault();
+  console.log(form);
+  
+  const res = await fetch("/api/websites", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ 
+      title: form.title,
+      url: form.url,
+      description: form.description,
+      priceCents: Number(form.priceCents),
+      category: form.category,
+      tags: form.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+      // Add image if you have it, or make it optional in schema
+      // image: form.image
+    }),
+  });
+  
+  if (res.ok) {
+    setForm({ 
+      title: "", 
+      url: "", 
+      description: "", 
+      priceCents: 0, 
+      category: "", 
+      tags: "" 
     });
-    if (res.ok) {
-      setForm({ title: "", url: "", description: "", priceCents: 0, category: "", tags: "" });
-      refresh();
-      alert("Website submitted for approval!");
-    } else {
-      const err = await res.json(); 
-      alert("Error: " + JSON.stringify(err));
-    }
+    refresh();
+    alert("Website submitted for approval!");
+  } else {
+    const err = await res.json(); 
+    alert("Error: " + JSON.stringify(err));
   }
-
+}
   async function removeSite(id: string) {
     if (!confirm("Are you sure you want to delete this website?")) return;
     
@@ -321,7 +335,7 @@ export default function PublisherDashboard() {
                         
                         <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-500">
                           {getStatusBadge(site.status, site.rejectionReason)}
-                          <span>Created: {formatDate(site.createdAt)}</span>
+                          {/* <span>Created: {formatDate(site.createdAt)}</span> */}
                           {site.views !== undefined && (
                             <span>Views: {site.views}</span>
                           )}
