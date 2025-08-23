@@ -38,6 +38,7 @@ export default function PublisherDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"websites" | "adRequests">("websites");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   useEffect(() => {
     refresh();
@@ -60,50 +61,84 @@ export default function PublisherDashboard() {
     .finally(() => setLoading(false));
   }
 
-async function createSite(e: React.FormEvent) {
-  e.preventDefault();
-  console.log(form);
-  
-  const res = await fetch("/api/websites", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ 
-      title: form.title,
-      url: form.url,
-      description: form.description,
-      priceCents: Number(form.priceCents),
-      category: form.category,
-      tags: form.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-      // Add image if you have it, or make it optional in schema
-      // image: form.image
-    }),
-  });
-  
-  if (res.ok) {
-    setForm({ 
-      title: "", 
-      url: "", 
-      description: "", 
-      priceCents: 0, 
-      category: "", 
-      tags: "" 
-    });
-    refresh();
-    alert("Website submitted for approval!");
-  } else {
-    const err = await res.json(); 
-    alert("Error: " + JSON.stringify(err));
+  async function createSite(e: React.FormEvent) {
+    e.preventDefault();
+    console.log(form);
+    
+    try {
+      const res = await fetch("/api/websites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          title: form.title,
+          url: form.url,
+          description: form.description,
+          priceCents: Number(form.priceCents),
+          category: form.category,
+          tags: form.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+        }),
+      });
+      
+      if (res.ok) {
+        setForm({ 
+          title: "", 
+          url: "", 
+          description: "", 
+          priceCents: 0, 
+          category: "", 
+          tags: "" 
+        });
+        refresh();
+        alert("Website submitted for approval!");
+      } else {
+        const err = await res.json(); 
+        console.error("Create site error:", err);
+        alert("Error: " + (err.error || JSON.stringify(err)));
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+      alert("Network error occurred. Please try again.");
+    }
   }
-}
+
   async function removeSite(id: string) {
     if (!confirm("Are you sure you want to delete this website?")) return;
     
-    const res = await fetch(`/api/websites/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      refresh();
-      alert("Website deleted successfully");
-    } else {
-      alert("Failed to delete website");
+    setDeleteLoading(id); // Show loading state for this specific site
+    
+    try {
+      const res = await fetch(`/api/websites/${id}`, { 
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        // Remove the site from local state immediately for better UX
+        setMySites(prevSites => prevSites.filter(site => site._id !== id));
+        alert("Website deleted successfully!");
+      } else {
+        console.error("Delete error:", data);
+        if (res.status === 401) {
+          alert("Please log in to delete websites");
+        } else if (res.status === 403) {
+          alert("You don't have permission to delete this website");
+        } else if (res.status === 404) {
+          alert("Website not found");
+          // Remove from local state anyway since it doesn't exist
+          setMySites(prevSites => prevSites.filter(site => site._id !== id));
+        } else {
+          alert("Failed to delete website: " + (data.error || "Unknown error"));
+        }
+      }
+    } catch (error) {
+      console.error("Network error during delete:", error);
+      alert("Network error occurred. Please check your connection and try again.");
+    } finally {
+      setDeleteLoading(null); // Clear loading state
     }
   }
 
@@ -310,8 +345,8 @@ async function createSite(e: React.FormEvent) {
               </div>
             ) : (
               <div className="grid gap-4">
-                {filteredSites.map(site => (
-                  <div key={site._id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                {filteredSites.filter(Boolean).map((site, idx) => (
+                  <div key={site._id || idx} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
                     <div className="flex flex-col md:flex-row justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-start justify-between">
@@ -335,7 +370,6 @@ async function createSite(e: React.FormEvent) {
                         
                         <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-500">
                           {getStatusBadge(site.status, site.rejectionReason)}
-                          {/* <span>Created: {formatDate(site.createdAt)}</span> */}
                           {site.views !== undefined && (
                             <span>Views: {site.views}</span>
                           )}
@@ -349,9 +383,14 @@ async function createSite(e: React.FormEvent) {
                         {site.status === "pending" && (
                           <button 
                             onClick={() => removeSite(site._id)}
-                            className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm"
+                            disabled={deleteLoading === site._id}
+                            className={`px-3 py-1 text-white rounded-md transition-colors text-sm ${
+                              deleteLoading === site._id
+                                ? "bg-red-300 cursor-not-allowed"
+                                : "bg-red-500 hover:bg-red-600"
+                            }`}
                           >
-                            Delete
+                            {deleteLoading === site._id ? "Deleting..." : "Delete"}
                           </button>
                         )}
                         {site.status === "approved" && (
@@ -376,8 +415,8 @@ async function createSite(e: React.FormEvent) {
             </div>
           ) : (
             <div className="grid gap-4">
-              {adRequests.map(ar => (
-                <div key={ar._id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+              {adRequests.filter(Boolean).map((ar, idx) => (
+                <div key={ar._id || idx} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-3">
                     <h4 className="font-semibold text-lg">{ar.websiteId?.title}</h4>
                     <span className={`px-2 py-1 rounded-full text-xs ${

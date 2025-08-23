@@ -169,8 +169,8 @@ export default function SuperAdminDashboard() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {websites.map(website => (
-              <div key={website._id} className="border rounded-lg p-6 bg-white shadow-sm">
+            {websites.map((website, idx) => (
+              <div key={website.id || website._id || idx} className="border rounded-lg p-6 bg-white shadow-sm">
                 <div className="flex flex-col md:flex-row justify-between gap-4">
                   {/* Website Info */}
                   <div className="flex-1">

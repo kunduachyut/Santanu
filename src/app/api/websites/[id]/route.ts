@@ -2,15 +2,17 @@ import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import Website from "@/models/Website";
 import { requireAuth } from "@/lib/auth";
+import mongoose from "mongoose";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
+  const { id } = await context.params; // <-- Await params
   console.log("GET request for website with ID:");
-  console.log("Fetching website with ID:", params);
-  const website = await Website.findById(params.id);
+  console.log("Fetching website with ID:", id);
+  const website = await Website.findById(id);
   if (!website) {
     return NextResponse.json({ error: "Website not found" }, { status: 404 });
   }
@@ -40,15 +42,16 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
+  const { id } = await context.params; // <-- Await params
 
   const authResult = await requireAuth();
   if (authResult instanceof NextResponse) return authResult;
   const userId = authResult;
 
-  const website = await Website.findById(params.id);
+  const website = await Website.findById(id);
   if (!website) {
     return NextResponse.json({ error: "Website not found" }, { status: 404 });
   }
@@ -90,15 +93,21 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
+  const { id } = await context.params; // <-- Await params
+
+  // Validate ObjectId
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ error: "Invalid website ID" }, { status: 400 });
+  }
 
   const authResult = await requireAuth();
   if (authResult instanceof NextResponse) return authResult;
   const userId = authResult;
 
-  const website = await Website.findById(params.id);
+  const website = await Website.findById(id);
   if (!website) {
     return NextResponse.json({ error: "Website not found" }, { status: 404 });
   }
@@ -107,7 +116,7 @@ export async function DELETE(
 
   // Only owners and superadmins can delete
   if (website.userId.toString() === userId || userRole === 'superadmin') {
-    await Website.findByIdAndDelete(params.id);
+    await Website.findByIdAndDelete(id);
     return NextResponse.json({ message: "Website deleted successfully" });
   }
 
