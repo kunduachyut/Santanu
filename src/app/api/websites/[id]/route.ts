@@ -125,6 +125,8 @@ export async function DELETE(
 
 // Helper function to get user role
 async function getUserRole(userId: string): Promise<string> {
-  // Implement based on your user model
-  return 'consumer'; // Default role
+  // Example: hardcode your user ID for testing
+  if (userId === "user_31H9OiuHhU5R5ITj5AlP4aJBosn") return "superadmin";
+  // Add more user IDs and roles as needed
+  return "consumer"; // Default role
 }
