@@ -9,7 +9,7 @@ type Website = {
   description: string;
   priceCents: number;
   ownerId: string;
-  status?: string; // Added status field for filtering
+  status?: string;
 };
 
 type Purchase = {
@@ -22,7 +22,7 @@ type Purchase = {
 export default function ConsumerDashboard() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<{[key: string]: string}>({});
   const [loading, setLoading] = useState({ websites: true, purchases: true });
   const [error, setError] = useState({ websites: "", purchases: "" });
 
@@ -40,11 +40,7 @@ export default function ConsumerDashboard() {
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       
       const data = await res.json();
-      
-      // Handle both response formats
       const websitesData = Array.isArray(data) ? data : data.websites || [];
-      
-      // Filter to only show approved websites for consumers
       const approvedWebsites = websitesData.filter((w: Website) => 
         w.status === undefined || w.status === "approved"
       );
@@ -67,8 +63,6 @@ export default function ConsumerDashboard() {
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       
       const data = await res.json();
-      
-      // Handle both response formats
       const purchasesData = Array.isArray(data) ? data : data.purchases || [];
       setPurchases(purchasesData);
     } catch (err) {
@@ -91,13 +85,11 @@ export default function ConsumerDashboard() {
       
       const data = await res.json();
       
-      // Stripe flow -> redirect to checkout
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
         return;
       }
       
-      // fallback (no Stripe): refresh purchases
       refreshPurchases();
     } catch (err) {
       console.error("Failed to purchase:", err);
@@ -105,7 +97,9 @@ export default function ConsumerDashboard() {
     }
   }
 
-  async function requestAd(websiteId: string) {
+  async function requestAd(websiteId: string, purchaseId: string) {
+    const message = messages[purchaseId] || "";
+    
     if (!message.trim()) {
       alert("Write a short message for the publisher.");
       return;
@@ -115,12 +109,12 @@ export default function ConsumerDashboard() {
       const res = await fetch("/api/ad-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ websiteId, message }),
+        body: JSON.stringify({ websiteId, message, purchaseId }),
       });
       
       if (res.ok) {
         alert("Ad request sent!");
-        setMessage("");
+        setMessages(prev => ({ ...prev, [purchaseId]: "" }));
       } else {
         const err = await res.json();
         alert(err.error || "Failed to send ad request");
@@ -131,7 +125,6 @@ export default function ConsumerDashboard() {
     }
   }
 
-  // Helper function to get website ID from purchase object
   const getWebsiteId = (purchase: Purchase): string => {
     if (typeof purchase.websiteId === 'string') {
       return purchase.websiteId;
@@ -139,7 +132,6 @@ export default function ConsumerDashboard() {
     return purchase.websiteId?._id || '';
   };
 
-  // Helper function to get website title from purchase object
   const getWebsiteTitle = (purchase: Purchase): string => {
     if (typeof purchase.websiteId === 'string') {
       return "Unknown Website";
@@ -147,12 +139,15 @@ export default function ConsumerDashboard() {
     return purchase.websiteId?.title || "Unknown Website";
   };
 
-  // Helper function to get website URL from purchase object
   const getWebsiteUrl = (purchase: Purchase): string => {
     if (typeof purchase.websiteId === 'string') {
       return "#";
     }
     return purchase.websiteId?.url || "#";
+  };
+
+  const updateMessage = (purchaseId: string, message: string) => {
+    setMessages(prev => ({ ...prev, [purchaseId]: message }));
   };
 
   const paidSiteIds = new Set(
@@ -162,53 +157,87 @@ export default function ConsumerDashboard() {
   );
 
   return (
-    <div className="space-y-10">
-      <section>
-        <h2 className="text-2xl font-semibold mb-4">Marketplace</h2>
+    <div className="max-w-6xl mx-auto p-6 space-y-10">
+      {/* Header */}
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Consumer Dashboard</h1>
+        <p className="text-gray-600">Browse websites and manage your purchases</p>
+      </div>
+
+      {/* Marketplace Section */}
+      <section className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold text-gray-900">Marketplace</h2>
+          <button
+            onClick={refreshWebsites}
+            className="px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
         
         {loading.websites ? (
-          <div className="flex justify-center items-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <span className="ml-3">Loading websites...</span>
+          <div className="flex flex-col items-center justify-center h-48">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-3"></div>
+            <span className="text-gray-600">Loading websites...</span>
           </div>
         ) : error.websites ? (
-          <div className="text-center text-red-500 py-8">
-            <p>{error.websites}</p>
+          <div className="text-center py-8">
+            <div className="text-red-500 mb-4">
+              <svg className="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-lg font-medium">{error.websites}</p>
+            </div>
             <button
               onClick={refreshWebsites}
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               Try Again
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {websites.length === 0 ? (
-              <div className="col-span-2 text-center py-12 text-gray-500">
-                No websites available at the moment.
+              <div className="col-span-full text-center py-12">
+                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+                <p className="text-gray-500 text-lg">No websites available at the moment.</p>
               </div>
             ) : (
-              websites.map(w => (
-                <div key={w._id} className="border rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <h3 className="font-bold">{w.title}</h3>
-                    <span>${(w.priceCents/100).toFixed(2)}</span>
+              websites.map((w,idx) => (
+                <div key={w._id || idx} className="border border-gray-200 rounded-xl p-5 space-y-4 hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-bold text-lg text-gray-900 line-clamp-2">{w.title}</h3>
+                    <span className="text-2xl font-bold text-blue-600">${(w.priceCents/100).toFixed(2)}</span>
                   </div>
-                  <p className="text-sm text-gray-600">{w.description}</p>
-                  <a className="text-blue-600 text-sm underline" href={w.url} target="_blank" rel="noopener noreferrer">
-                    Visit
-                  </a>
-                  <div className="flex gap-3">
+                  
+                  <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">{w.description}</p>
+                  
+                  <div className="flex items-center justify-between">
+                    <a 
+                      href={w.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+                    >
+                      Visit Website
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                    
                     <button
                       onClick={() => buy(w._id)}
                       disabled={paidSiteIds.has(w._id)}
-                      className={`px-3 py-2 rounded text-sm ${
+                      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                         paidSiteIds.has(w._id)
-                          ? "bg-gray-400 text-white cursor-not-allowed"
-                          : "bg-black text-white hover:bg-gray-800"
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-blue-500 text-white hover:bg-blue-600 shadow-sm hover:shadow-md"
                       }`}
                     >
-                      {paidSiteIds.has(w._id) ? "Purchased" : "Buy"}
+                      {paidSiteIds.has(w._id) ? "✓ Purchased" : "Buy Now"}
                     </button>
                   </div>
                 </div>
@@ -218,67 +247,112 @@ export default function ConsumerDashboard() {
         )}
       </section>
 
-      <section>
-        <h2 className="text-2xl font-semibold mb-4">My Purchases</h2>
+      {/* Purchases Section */}
+      <section className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold text-gray-900">My Purchases</h2>
+          <button
+            onClick={refreshPurchases}
+            className="px-4 py-2 text-sm bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
         
         {loading.purchases ? (
-          <div className="flex justify-center items-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <span className="ml-3">Loading purchases...</span>
+          <div className="flex flex-col items-center justify-center h-48">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-3"></div>
+            <span className="text-gray-600">Loading purchases...</span>
           </div>
         ) : error.purchases ? (
-          <div className="text-center text-red-500 py-8">
-            <p>{error.purchases}</p>
+          <div className="text-center py-8">
+            <div className="text-red-500 mb-4">
+              <svg className="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-lg font-medium">{error.purchases}</p>
+            </div>
             <button
               onClick={refreshPurchases}
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               Try Again
             </button>
           </div>
         ) : (
-          <ul className="space-y-3">
+          <div className="space-y-4">
             {purchases.length === 0 ? (
-              <li className="text-center py-8 text-gray-500">
-                No purchases yet.
-              </li>
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <p className="text-gray-500 text-lg mb-4">No purchases yet.</p>
+                <p className="text-gray-400 text-sm">Start by purchasing a website from the marketplace above.</p>
+              </div>
             ) : (
-              purchases.map(p => (
-                <li key={p._id} className="border rounded-lg p-4">
-                  <div className="flex justify-between">
-                    <div>
-                      <div className="font-semibold">{getWebsiteTitle(p)}</div>
-                      <div className="text-sm text-gray-600">{getWebsiteUrl(p)}</div>
+              purchases.map(p => {
+                const websiteId = getWebsiteId(p);
+                const websiteTitle = getWebsiteTitle(p);
+                const websiteUrl = getWebsiteUrl(p);
+                const isPaid = p.status === "paid" || p.status === "completed";
+                
+                return (
+                  <div key={p._id} className="border border-gray-200 rounded-xl p-5 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 text-lg mb-1">{websiteTitle}</h3>
+                        <a 
+                          href={websiteUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700 text-sm flex items-center"
+                        >
+                          {websiteUrl}
+                          <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
+                      
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        isPaid 
+                          ? "bg-green-100 text-green-800" 
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}>
+                        {p.status.toUpperCase()}
+                      </div>
                     </div>
-                    <div className={`text-sm font-medium ${
-                      p.status === "paid" || p.status === "completed" 
-                        ? "text-green-600" 
-                        : "text-yellow-600"
-                    }`}>
-                      {p.status.toUpperCase()}
+                    
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>Amount: ${(p.amountCents/100).toFixed(2)}</span>
+                      <span>Purchase ID: {p._id.slice(-8)}</span>
                     </div>
+                    
+                    {isPaid && (
+                      <div className="pt-4 border-t border-gray-100">
+                        <h4 className="font-medium text-gray-900 mb-3">Request Ad Placement</h4>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <input
+                            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Write your ad request message..."
+                            value={messages[p._id] || ""}
+                            onChange={(e) => updateMessage(p._id, e.target.value)}
+                          />
+                          <button
+                            onClick={() => requestAd(websiteId, p._id)}
+                            disabled={!messages[p._id]?.trim()}
+                            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                          >
+                            Send Request
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  
-                  {(p.status === "paid" || p.status === "completed") && (
-                    <div className="mt-3 flex gap-3">
-                      <input
-                        className="border rounded px-2 py-1 text-sm w-full"
-                        placeholder="Request ad message to publisher…"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                      />
-                      <button
-                        onClick={() => requestAd(getWebsiteId(p))}
-                        className="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 whitespace-nowrap"
-                      >
-                        Send Request
-                      </button>
-                    </div>
-                  )}
-                </li>
-              ))
+                );
+              })
             )}
-          </ul>
+          </div>
         )}
       </section>
     </div>
