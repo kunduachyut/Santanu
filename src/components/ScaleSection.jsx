@@ -36,7 +36,7 @@ export default function ScaleSection() {
         {/* SOC 2 Compliance */}
         <div className="p-6 rounded-xl bg-gradient-to-b from-gray-900 to-black border border-gray-800">
           <Image
-            src="/images/soc2.png"
+            src="/Mask group-1.png"
             alt="SOC 2 Compliance illustration"
             width={400}
             height={240}
@@ -51,7 +51,7 @@ export default function ScaleSection() {
         {/* SSO and Domain Capture */}
         <div className="p-6 rounded-xl bg-gradient-to-b from-gray-900 to-black border border-gray-800">
           <Image
-            src="/images/sso.png"
+            src="/Image [__wab_img]-3.png"
             alt="SSO and Domain Capture illustration"
             width={400}
             height={240}
@@ -66,7 +66,7 @@ export default function ScaleSection() {
         {/* Fine-Grained Permissions */}
         <div className="p-6 rounded-xl bg-gradient-to-b from-gray-900 to-black border border-gray-800">
           <Image
-            src="/images/permissions.png"
+            src="/Image [__wab_img]-2.png"
             alt="Fine-Grained Permissions illustration"
             width={400}
             height={240}
@@ -81,7 +81,7 @@ export default function ScaleSection() {
         {/* Branching & Approvals */}
         <div className="p-6 rounded-xl bg-gradient-to-b from-gray-900 to-black border border-gray-800">
           <Image
-            src="/images/branching.png"
+            src="/Image [__wab_img]-1.png"
             alt="Branching and Approvals illustration"
             width={400}
             height={240}
@@ -97,7 +97,7 @@ export default function ScaleSection() {
         {/* Shared Libraries */}
         <div className="p-6 rounded-xl bg-gradient-to-b from-gray-900 to-black border border-gray-800">
           <Image
-            src="/images/shared.png"
+            src="/Image [__wab_img].png"
             alt="Shared Libraries illustration"
             width={400}
             height={240}
@@ -113,7 +113,7 @@ export default function ScaleSection() {
         {/* On-Premise Deployment */}
         <div className="p-6 rounded-xl bg-gradient-to-b from-gray-900 to-black border border-gray-800">
           <Image
-            src="/images/deployment.png"
+            src="/Mask group.png"
             alt="On-Premise Link Deployment illustration"
             width={400}
             height={240}

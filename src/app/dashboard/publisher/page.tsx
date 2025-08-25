@@ -171,6 +171,12 @@ export default function PublisherDashboard() {
     return new Date(dateString).toLocaleDateString();
   }
 
+  // ✅ Safe formatter to fix NaN issues
+  function formatPrice(cents?: number) {
+    if (!cents || isNaN(cents)) return "$0.00";
+    return `$${(cents / 100).toFixed(2)}`;
+  }
+
   const filteredSites = statusFilter === "all" 
     ? mySites 
     : mySites.filter(site => site.status === statusFilter);
@@ -256,8 +262,8 @@ export default function PublisherDashboard() {
                   type="number" 
                   placeholder="0.00"
                   step="0.01"
-                  value={(form.priceCents / 100).toFixed(2)} 
-                  onChange={e => setForm({ ...form, priceCents: Math.round(parseFloat(e.target.value) * 100) })}
+                  value={form.priceCents ? (form.priceCents / 100).toFixed(2) : ""}
+                  onChange={e => setForm({ ...form, priceCents: Math.round(parseFloat(e.target.value || "0") * 100) })}
                   required
                 />
               </div>
@@ -362,7 +368,7 @@ export default function PublisherDashboard() {
                             </a>
                           </div>
                           <div className="text-2xl font-bold text-green-600">
-                            ${(site.priceCents / 100).toFixed(2)}
+                            {formatPrice(site.priceCents)}
                           </div>
                         </div>
                         
