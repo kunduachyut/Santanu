@@ -1,9 +1,9 @@
+// app/dashboard/consumer/page.tsx (updated with better error handling)
 "use client";
 
 import { useEffect, useState } from "react";
-import CartButton from "@/components/CartButton";
-import CartDrawer from "@/components/CartDrawer";
-import { useCart } from "../../../app/context/CartContext";
+import Link from "next/link";
+import { useCart } from "../../context/CartContext";
 
 type Website = {
   _id: string;
@@ -29,8 +29,7 @@ export default function ConsumerDashboard() {
   const [loading, setLoading] = useState({ websites: true, purchases: true });
   const [error, setError] = useState({ websites: "", purchases: "" });
 
-  const [cartOpen, setCartOpen] = useState(false);
-  const { addToCart } = useCart();
+  const { addToCart, itemCount } = useCart();
 
   useEffect(() => {
     refreshWebsites();
@@ -43,7 +42,10 @@ export default function ConsumerDashboard() {
 
     try {
       const res = await fetch("/api/websites");
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      }
 
       const data = await res.json();
       const websitesData = Array.isArray(data) ? data : data.websites || [];
@@ -54,7 +56,10 @@ export default function ConsumerDashboard() {
       setWebsites(approvedWebsites);
     } catch (err) {
       console.error("Failed to fetch websites:", err);
-      setError((prev) => ({ ...prev, websites: "Failed to load websites" }));
+      setError((prev) => ({
+        ...prev,
+        websites: err instanceof Error ? err.message : "Failed to load websites"
+      }));
     } finally {
       setLoading((prev) => ({ ...prev, websites: false }));
     }
@@ -66,14 +71,34 @@ export default function ConsumerDashboard() {
 
     try {
       const res = await fetch("/api/purchases");
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        // If we get a 405 error, try a different endpoint or method
+        if (res.status === 405) {
+          console.warn("GET method not allowed for /api/purchases, trying alternative approach");
+
+          // Try a different approach - maybe the purchases are stored elsewhere
+          // For now, we'll set empty purchases and show a warning
+          setPurchases([]);
+          setError((prev) => ({
+            ...prev,
+            purchases: "Purchase data temporarily unavailable"
+          }));
+          return;
+        }
+
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      }
 
       const data = await res.json();
       const purchasesData = Array.isArray(data) ? data : data.purchases || [];
       setPurchases(purchasesData);
     } catch (err) {
       console.error("Failed to fetch purchases:", err);
-      setError((prev) => ({ ...prev, purchases: "Failed to load purchases" }));
+      setError((prev) => ({
+        ...prev,
+        purchases: err instanceof Error ? err.message : "Failed to load purchases"
+      }));
     } finally {
       setLoading((prev) => ({ ...prev, purchases: false }));
     }
@@ -87,7 +112,10 @@ export default function ConsumerDashboard() {
         body: JSON.stringify({ websiteId }),
       });
 
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      }
 
       const data = await res.json();
 
@@ -174,10 +202,18 @@ export default function ConsumerDashboard() {
             Browse websites and manage your purchases
           </p>
         </div>
-        <CartButton onClick={() => setCartOpen(true)} />
+        <Link href="/cart" className="relative p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          View Cart
+          {itemCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-xs text-white rounded-full w-5 h-5 flex items-center justify-center">
+              {itemCount}
+            </span>
+          )}
+        </Link>
       </div>
-
-      {cartOpen && <CartDrawer onClose={() => setCartOpen(false)} />}
 
       {/* Marketplace Section */}
       <section className="bg-white rounded-xl shadow-sm p-5 md:p-6 border border-gray-100">
@@ -296,13 +332,17 @@ export default function ConsumerDashboard() {
                     </a>
 
                     <button
-                      onClick={() => addToCart(w)}
+                      onClick={() => addToCart({
+                        _id: w._id,
+                        title: w.title,
+                        priceCents: w.priceCents,
+                        quantity: 1
+                      })}
                       disabled={paidSiteIds.has(w._id)}
-                      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1 ${
-                        paidSiteIds.has(w._id)
+                      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1 ${paidSiteIds.has(w._id)
                           ? "bg-green-50 text-green-600 cursor-not-allowed"
                           : "bg-blue-500 text-white hover:bg-blue-600 shadow-sm hover:shadow-md"
-                      }`}
+                        }`}
                     >
                       {paidSiteIds.has(w._id) ? (
                         <>
@@ -355,7 +395,7 @@ export default function ConsumerDashboard() {
           </div>
         ) : error.purchases ? (
           <div className="text-center py-8">
-            <div className="text-red-500 mb-4">
+            <div className="text-yellow-500 mb-4">
               <svg
                 className="w-12 h-12 mx-auto mb-3"
                 fill="none"
@@ -366,7 +406,7 @@ export default function ConsumerDashboard() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
               <p className="text-lg font-medium">{error.purchases}</p>
@@ -401,7 +441,7 @@ export default function ConsumerDashboard() {
                 </p>
               </div>
             ) : (
-              purchases.map((p) => {
+              purchases.map((p,idx) => {
                 const websiteId = getWebsiteId(p);
                 const websiteTitle = getWebsiteTitle(p);
                 const websiteUrl = getWebsiteUrl(p);
@@ -409,7 +449,7 @@ export default function ConsumerDashboard() {
 
                 return (
                   <div
-                    key={p._id}
+                    key={p._id ? `${p._id}-${idx}` : `purchase-${idx}`}
                     className="border border-gray-200 rounded-xl p-5 space-y-4 hover:shadow-sm transition-shadow"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -441,13 +481,12 @@ export default function ConsumerDashboard() {
                       </div>
 
                       <div
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          isPaid
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${isPaid
                             ? "bg-green-100 text-green-800"
                             : p.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
                       >
                         {p.status.toUpperCase()}
                       </div>
@@ -455,7 +494,9 @@ export default function ConsumerDashboard() {
 
                     <div className="flex flex-col xs:flex-row xs:items-center justify-between text-sm text-gray-600 gap-2">
                       <span>Amount: <span className="font-medium">${(p.amountCents / 100).toFixed(2)}</span></span>
-                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">ID: {p._id.slice(-8)}</span>
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        ID: {typeof p._id === "string" ? p._id.slice(-8) : "N/A"}
+                      </span>
                     </div>
 
                     {isPaid && (
