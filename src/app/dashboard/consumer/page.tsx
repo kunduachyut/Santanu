@@ -6,11 +6,13 @@ import Link from "next/link";
 import { useCart } from "../../context/CartContext";
 
 type Website = {
-  _id: string;
+  _id?: string;
+  id?: string;
   title: string;
   url: string;
   description: string;
   priceCents: number;
+  price?: number;
   ownerId: string;
   status?: string;
 };
@@ -51,7 +53,23 @@ export default function ConsumerDashboard() {
       }
 
       const data = await res.json();
-      const websitesData = Array.isArray(data) ? data : data.websites || [];
+      const rawWebsites = Array.isArray(data) ? data : data.websites || [];
+      const websitesData: Website[] = rawWebsites.map((w: any) => ({
+        _id: w._id ?? w.id,
+        id: w.id,
+        title: w.title,
+        url: w.url,
+        description: w.description,
+        // Normalize: prefer priceCents; if absent but price (dollars) exists, convert to cents
+        priceCents: typeof w.priceCents === 'number' && !Number.isNaN(w.priceCents)
+          ? w.priceCents
+          : typeof w.price === 'number' && !Number.isNaN(w.price)
+            ? Math.round(w.price * 100)
+            : 0,
+        price: w.price,
+        ownerId: w.ownerId,
+        status: w.status,
+      }));
       const approvedWebsites = websitesData.filter(
         (w: Website) => w.status === undefined || w.status === "approved"
       );
@@ -328,9 +346,11 @@ export default function ConsumerDashboard() {
                   </p>
                 </div>
               ) : (
-                websites.map((w, idx) => (
+                websites.map((w, idx) => {
+                  const stableId = w._id || w.id || `${w.title}-${w.url}`;
+                  return (
                   <div
-                    key={w._id || idx}
+                    key={stableId}
                     className="border border-gray-200 rounded-xl p-5 space-y-4 hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
                   >
                     <div className="flex justify-between items-start">
@@ -371,18 +391,18 @@ export default function ConsumerDashboard() {
 
                       <button
                         onClick={() => addToCart({
-                          _id: w._id,
+                          _id: stableId,
                           title: w.title,
-                          priceCents: w.priceCents,
+                          priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.price || 0) * 100),
                           quantity: 1
                         })}
-                        disabled={paidSiteIds.has(w._id)}
-                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1 ${paidSiteIds.has(w._id)
+                        disabled={paidSiteIds.has(stableId)}
+                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1 ${paidSiteIds.has(stableId)
                             ? "bg-green-50 text-green-600 cursor-not-allowed"
                             : "bg-blue-500 text-white hover:bg-blue-600 shadow-sm hover:shadow-md"
                           }`}
                       >
-                        {paidSiteIds.has(w._id) ? (
+                        {paidSiteIds.has(stableId) ? (
                           <>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -400,7 +420,8 @@ export default function ConsumerDashboard() {
                       </button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
