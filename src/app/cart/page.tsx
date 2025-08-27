@@ -10,6 +10,11 @@ export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, clearCart, totalCents } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
   const { userId, isSignedIn } = useAuth();
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [showContentModal, setShowContentModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestTopic, setRequestTopic] = useState("");
+  const [wordCount, setWordCount] = useState(500);
 
   const handleCheckout = async () => {
     if (!isSignedIn) {
@@ -48,6 +53,51 @@ export default function CartPage() {
       alert("Failed to complete purchase. Please try again.");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const openContentModal = (item: any) => {
+    setSelectedItem(item);
+    setShowContentModal(true);
+  };
+
+  const openRequestModal = (item: any) => {
+    setSelectedItem(item);
+    setShowRequestModal(true);
+  };
+
+  const handleContentRequest = async () => {
+    if (!requestTopic.trim()) {
+      alert("Please enter a topic for your content request");
+      return;
+    }
+
+    try {
+      // Send content request to the server
+      const res = await fetch("/api/content-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          websiteId: selectedItem._id,
+          websiteTitle: selectedItem.title,
+          topic: requestTopic,
+          wordCount: wordCount,
+          customerId: userId,
+          customerEmail: "user@example.com" // In a real app, get from user profile
+        }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+      const data = await res.json();
+      alert("Content request submitted successfully!");
+      setShowRequestModal(false);
+      setRequestTopic("");
+      setWordCount(500);
+      
+    } catch (err) {
+      console.error("Failed to submit content request:", err);
+      alert("Failed to submit content request. Please try again.");
     }
   };
 
@@ -99,15 +149,15 @@ export default function CartPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="p-6 border-b">
           <div className="grid grid-cols-12 gap-4 font-semibold text-gray-700 pb-4">
-            <div className="col-span-6">Product</div>
+            <div className="col-span-5">Product</div>
             <div className="col-span-2 text-center">Price</div>
             <div className="col-span-2 text-center">Quantity</div>
-            <div className="col-span-2 text-right">Total</div>
+            <div className="col-span-3 text-right">Actions</div>
           </div>
 
           {cart.map((item, idx) => (
             <div key={item._id ?? idx} className="grid grid-cols-12 gap-4 py-4 border-b items-center">
-              <div className="col-span-6">
+              <div className="col-span-5">
                 <h3 className="font-medium text-gray-900">{item.title}</h3>
               </div>
               <div className="col-span-2 text-center text-gray-700">
@@ -130,10 +180,19 @@ export default function CartPage() {
                   </button>
                 </div>
               </div>
-              <div className="col-span-2 flex items-center justify-end">
-                <span className="text-gray-700 font-medium mr-4">
-                  ${((item.priceCents * item.quantity) / 100).toFixed(2)}
-                </span>
+              <div className="col-span-3 flex items-center justify-end gap-2">
+                <button
+                  onClick={() => openContentModal(item)}
+                  className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                >
+                  My Content
+                </button>
+                <button
+                  onClick={() => openRequestModal(item)}
+                  className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                >
+                  Request Content
+                </button>
                 <button
                   onClick={() => removeFromCart(item._id)}
                   className="text-red-500 hover:text-red-700"
@@ -175,6 +234,135 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* My Content Modal */}
+      {showContentModal && selectedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold">Content for {selectedItem.title}</h3>
+              <button
+                onClick={() => setShowContentModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <h4 className="font-medium mb-2">Available Content:</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Sample content items - in a real app, these would come from the database */}
+                <div className="border rounded p-3">
+                  <h5 className="font-medium">Introduction to Web Development</h5>
+                  <p className="text-sm text-gray-600 mt-1">A comprehensive guide to getting started with web development...</p>
+                  <button className="mt-2 text-blue-500 text-sm hover:underline">View Details</button>
+                </div>
+                <div className="border rounded p-3">
+                  <h5 className="font-medium">Advanced JavaScript Techniques</h5>
+                  <p className="text-sm text-gray-600 mt-1">Learn advanced JavaScript patterns and best practices...</p>
+                  <button className="mt-2 text-blue-500 text-sm hover:underline">View Details</button>
+                </div>
+                <div className="border rounded p-3">
+                  <h5 className="font-medium">CSS Layout Mastery</h5>
+                  <p className="text-sm text-gray-600 mt-1">Master CSS layout techniques including Flexbox and Grid...</p>
+                  <button className="mt-2 text-blue-500 text-sm hover:underline">View Details</button>
+                </div>
+                <div className="border rounded p-3">
+                  <h5 className="font-medium">React Best Practices</h5>
+                  <p className="text-sm text-gray-600 mt-1">Learn how to structure React applications for maintainability...</p>
+                  <button className="mt-2 text-blue-500 text-sm hover:underline">View Details</button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowContentModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Request Content Modal */}
+      {showRequestModal && selectedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold">Request Content for {selectedItem.title}</h3>
+              <button
+                onClick={() => setShowRequestModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Topic
+              </label>
+              <input
+                type="text"
+                value={requestTopic}
+                onChange={(e) => setRequestTopic(e.target.value)}
+                placeholder="Enter the topic for your content"
+                className="w-full p-2 border rounded-md"
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Word Count
+              </label>
+              <select
+                value={wordCount}
+                onChange={(e) => setWordCount(Number(e.target.value))}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value="500">500 words</option>
+                <option value="1000">1000 words</option>
+                <option value="1500">1500 words</option>
+                <option value="2000">2000 words</option>
+                <option value="2500">2500+ words</option>
+              </select>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Additional Notes (Optional)
+              </label>
+              <textarea
+                placeholder="Any specific requirements or details..."
+                className="w-full p-2 border rounded-md h-24"
+              />
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowRequestModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleContentRequest}
+                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+              >
+                Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
