@@ -51,7 +51,20 @@ export default function PublisherDashboard() {
       fetch("/api/ad-requests?role=publisher").then(r => r.json())
     ])
     .then(([sitesData, adRequestsData]) => {
-      setMySites(sitesData.websites || sitesData);
+      const rawSites = sitesData.websites || sitesData || [];
+      const normalizedSites = Array.isArray(rawSites)
+        ? rawSites.map((s: any) => ({
+            ...s,
+            // Normalize priceCents from either priceCents or price (dollars)
+            priceCents:
+              typeof s.priceCents === "number" && !Number.isNaN(s.priceCents)
+                ? s.priceCents
+                : typeof s.price === "number" && !Number.isNaN(s.price)
+                  ? Math.round(s.price * 100)
+                  : 0,
+          }))
+        : [];
+      setMySites(normalizedSites);
       setAdRequests(adRequestsData.adRequests || adRequestsData);
     })
     .catch(err => {
