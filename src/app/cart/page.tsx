@@ -19,6 +19,7 @@ export default function CartPage() {
   const [requirements, setRequirements] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [myUploads, setMyUploads] = useState<any[]>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [uploadsByWebsite, setUploadsByWebsite] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -289,48 +290,43 @@ export default function CartPage() {
                 if (!isSignedIn) { alert("Please sign in first"); return; }
                 if (!pdfFile) { alert("Please select a PDF file"); return; }
                 if (!requirements.trim()) { alert("Enter requirements"); return; }
-                try {
-                  setUploading(true);
-                  const fd = new FormData();
-                  fd.append("pdfFile", pdfFile);
-                  fd.append("requirements", requirements);
-                  fd.append("websiteId", selectedItem._id);
-                  const res = await fetch("/api/my-content", { method: "POST", body: fd });
-                  if (!res.ok) {
-                    let msg = `HTTP ${res.status}`;
-                    try { const j = await res.json(); if (j?.error) msg = j.error; } catch {}
-                    throw new Error(msg);
-                  }
-                  // refresh list
-                  const listRes = await fetch(`/api/my-content?websiteId=${encodeURIComponent(selectedItem._id)}`);
-                  const list = await listRes.json();
-                  setMyUploads(list.items ?? []);
-                  setRequirements("");
-                  setPdfFile(null);
-                  (document.getElementById("pdf-input") as HTMLInputElement | null)?.value && ((document.getElementById("pdf-input") as HTMLInputElement).value = "");
-                  alert("Uploaded successfully");
-                } catch (err: any) {
-                  alert(`Upload failed: ${err?.message ?? "Unknown error"}`);
-                } finally {
-                  setUploading(false);
-                }
+                setShowConfirmModal(true);
               }}
               className="space-y-4 mb-6"
             >
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Upload PDF</label>
-                <input
-                  id="pdf-input"
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => {
-                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                    if (f && f.size > 10 * 1024 * 1024) { alert("File must be <= 10MB"); e.currentTarget.value = ""; setPdfFile(null); return; }
-                    if (f && f.type !== "application/pdf") { alert("Only PDF files are allowed"); e.currentTarget.value = ""; setPdfFile(null); return; }
-                    setPdfFile(f);
-                  }}
-                  className="w-full"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    id="pdf-input"
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => {
+                      const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                      if (f && f.size > 10 * 1024 * 1024) { alert("File must be <= 10MB"); e.currentTarget.value = ""; setPdfFile(null); return; }
+                      if (f && f.type !== "application/pdf") { alert("Only PDF files are allowed"); e.currentTarget.value = ""; setPdfFile(null); return; }
+                      setPdfFile(f);
+                    }}
+                    className="flex-1"
+                  />
+                  {pdfFile && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPdfFile(null);
+                        (document.getElementById("pdf-input") as HTMLInputElement).value = "";
+                      }}
+                      className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {pdfFile && (
+                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+                    Selected: {pdfFile.name} ({(pdfFile.size / 1024).toFixed(1)} KB)
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Requirements</label>
@@ -352,10 +348,10 @@ export default function CartPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={uploading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+                  disabled={!pdfFile || !requirements.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {uploading ? "Uploading..." : "Upload"}
+                  Upload
                 </button>
               </div>
             </form>
@@ -451,6 +447,93 @@ export default function CartPage() {
                 className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
               >
                 Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Confirmation Modal */}
+      {showConfirmModal && selectedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold">Confirm Upload</h3>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-gray-600 mb-3">Please confirm your upload details:</p>
+              <div className="space-y-2 text-sm">
+                <div><strong>Website:</strong> {selectedItem.title}</div>
+                <div><strong>File:</strong> {pdfFile?.name}</div>
+                <div><strong>Size:</strong> {pdfFile ? `${(pdfFile.size / 1024).toFixed(1)} KB` : ""}</div>
+                <div><strong>Requirements:</strong> {requirements}</div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setUploading(true);
+                    setShowConfirmModal(false);
+                    const fd = new FormData();
+                    fd.append("pdfFile", pdfFile!);
+                    fd.append("requirements", requirements);
+                    fd.append("websiteId", selectedItem._id);
+                    const res = await fetch("/api/my-content", { method: "POST", body: fd });
+                    if (!res.ok) {
+                      let msg = `HTTP ${res.status}`;
+                      try { const j = await res.json(); if (j?.error) msg = j.error; } catch {}
+                      throw new Error(msg);
+                    }
+                    // refresh list
+                    const listRes = await fetch(`/api/my-content?websiteId=${encodeURIComponent(selectedItem._id)}`);
+                    const list = await listRes.json();
+                    setMyUploads(list.items ?? []);
+                    // refresh counts across cart
+                    try {
+                      const allRes = await fetch("/api/my-content");
+                      if (allRes.ok) {
+                        const all = await allRes.json();
+                        const items: any[] = all.items || [];
+                        const map: Record<string, number> = {};
+                        for (const it of items) {
+                          const wid = it.websiteId || "";
+                          if (!wid) continue;
+                          map[wid] = (map[wid] || 0) + 1;
+                        }
+                        setUploadsByWebsite(map);
+                      }
+                    } catch {}
+                    setRequirements("");
+                    setPdfFile(null);
+                    (document.getElementById("pdf-input") as HTMLInputElement | null)?.value && ((document.getElementById("pdf-input") as HTMLInputElement).value = "");
+                    alert("Uploaded successfully");
+                  } catch (err: any) {
+                    alert(`Upload failed: ${err?.message ?? "Unknown error"}`);
+                  } finally {
+                    setUploading(false);
+                  }
+                }}
+                disabled={uploading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {uploading ? "Uploading..." : "Confirm Upload"}
               </button>
             </div>
           </div>
