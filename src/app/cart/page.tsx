@@ -162,21 +162,26 @@ export default function CartPage() {
         body: JSON.stringify({
           websiteId: selectedItem._id,
           websiteTitle: selectedItem.title,
-          contentRequest: contentRequestData,
+          topic: contentRequestData.keywords, // Using keywords as topic
+          wordCount: parseInt(contentRequestData.wordCount),
           customerId: userId,
-          customerEmail: "user@example.com" // In a real app, get from user profile
+          customerEmail: "user@example.com", // In a real app, get from user profile
+          contentRequest: contentRequestData // Include the full request data
         }),
       });
 
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
+      }
 
       const data = await res.json();
       alert("Content request submitted successfully!");
       setShowRequestModal(false);
       
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to submit content request:", err);
-      alert("Failed to submit content request. Please try again.");
+      alert(`Failed to submit content request: ${err.message || "Please try again."}`);
     }
   };
 
@@ -490,7 +495,7 @@ export default function CartPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1 required">
                   Anchor Text*
-                </label>
+                  </label>
                 <input
                   type="text"
                   name="anchorText"
@@ -541,14 +546,14 @@ export default function CartPage() {
                     onChange={handleContentRequestChange}
                     className="w-full p-2 border rounded-md"
                     required
-                  >
-                    <option value="">Select Word Count</option>
-                    <option value="500">500 words</option>
-                    <option value="1000">1000 words</option>
-                    <option value="1500">1500 words</option>
-                    <option value="2000">2000 words</option>
-                    <option value="2500">2500+ words</option>
-                  </select>
+                >
+                  <option value="">Select Word Count</option>
+                  <option value="500">500 words</option>
+                  <option value="1000">1000 words</option>
+                  <option value="1500">1500 words</option>
+                  <option value="2000">2000 words</option>
+                  <option value="2500">2500+ words</option>
+                </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 required">

@@ -9,7 +9,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
-  const { id } = await context.params; // <-- Await params
+  const { id } = await context.params; 
   console.log("GET request for website with ID:");
   console.log("Fetching website with ID:", id);
   const website = await Website.findById(id);
@@ -126,7 +126,7 @@ export async function DELETE(
 // Helper function to get user role
 async function getUserRole(userId: string): Promise<string> {
   // Example: hardcode your user ID for testing
-  if (userId === "user_31H9OiuHhU5R5ITj5AlP4aJBosn") return "superadmin";
+  if (userId === "user_31H9OiuHhU5R5ITj5AlP4aJBosn" || userId === "user_31XHCLTOeZ74gf9COPnuyjHpQY6") return "superadmin";
   // Add more user IDs and roles as needed
   return "consumer"; // Default role
 }

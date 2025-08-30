@@ -1,4 +1,3 @@
-// app/dashboard/superadmin/page.tsx (updated with active tabs)
 "use client";
 
 import { useEffect, useState } from "react";
@@ -36,17 +35,31 @@ type PurchaseRequest = {
   updatedAt?: string;
 };
 
+type ContentRequest = {
+  _id: string;
+  websiteId: string;
+  websiteTitle?: string;
+  topic: string;
+  wordCount?: number;
+  customerId: string;
+  customerEmail?: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+};
+
 type FilterType = "all" | "pending" | "approved" | "rejected";
 
 export default function SuperAdminDashboard() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
+  const [requests, setRequests] = useState<ContentRequest[]>([]);
   const [filter, setFilter] = useState<FilterType>("pending");
   const [purchaseFilter, setPurchaseFilter] = useState<FilterType>("pending");
   const [loading, setLoading] = useState({ 
     websites: true, 
     purchases: true 
   });
+  const [contentLoading, setContentLoading] = useState(true);
   const [selectedWebsite, setSelectedWebsite] = useState<Website | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -62,16 +75,16 @@ export default function SuperAdminDashboard() {
     rejected: 0,
     total: 0
   });
-  const [activeTab, setActiveTab] = useState<"websites" | "purchases">("websites");
+  const [activeTab, setActiveTab] = useState<"websites" | "purchases" | "contentRequests">("websites");
 
   useEffect(() => {
     refresh();
     refreshPurchaseRequests();
+    fetchContentRequests();
   }, [filter, purchaseFilter]);
 
   function refresh() {
     setLoading(prev => ({ ...prev, websites: true }));
-    // Fetch websites with status filter
     fetch(`/api/websites?status=${filter}&role=superadmin`)
       .then(r => r.json())
       .then(data => {
@@ -87,7 +100,6 @@ export default function SuperAdminDashboard() {
 
   function refreshPurchaseRequests() {
     setLoading(prev => ({ ...prev, purchases: true }));
-    // Fetch purchase requests
     fetch("/api/purchases")
       .then(r => r.json())
       .then(data => {
@@ -99,6 +111,21 @@ export default function SuperAdminDashboard() {
         alert("Failed to load purchase requests");
       })
       .finally(() => setLoading(prev => ({ ...prev, purchases: false })));
+  }
+
+  async function fetchContentRequests() {
+    setContentLoading(true);
+    try {
+      const res = await fetch("/api/content-requests");
+      const data = await res.json();
+      if (data.success) {
+        setRequests(data.items);
+      }
+    } catch (err) {
+      console.error("Error fetching content requests:", err);
+    } finally {
+      setContentLoading(false);
+    }
   }
 
   function calculateStats(websites: Website[]) {
@@ -181,7 +208,7 @@ export default function SuperAdminDashboard() {
     return request.status === purchaseFilter;
   });
 
-  if (loading.websites && loading.purchases) {
+  if (loading.websites && loading.purchases && contentLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -196,7 +223,7 @@ export default function SuperAdminDashboard() {
         <h1 className="text-3xl font-bold text-gray-900">Super Admin Dashboard</h1>
         <div className="flex gap-2">
           <button 
-            onClick={activeTab === "websites" ? refresh : refreshPurchaseRequests}
+            onClick={activeTab === "websites" ? refresh : activeTab === "purchases" ? refreshPurchaseRequests : fetchContentRequests}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
           >
             Refresh
@@ -226,10 +253,60 @@ export default function SuperAdminDashboard() {
         >
           Purchase Requests ({purchaseStats.total})
         </button>
+        <button
+          onClick={() => setActiveTab("contentRequests")}
+          className={`px-6 py-3 font-medium ${
+            activeTab === "contentRequests"
+              ? "border-b-2 border-blue-500 text-blue-600"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Content Requests ({requests.length})
+        </button>
       </div>
 
       {/* Content based on active tab */}
-      {activeTab === "purchases" ? (
+      {activeTab === "contentRequests" ? (
+        <section className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">📋 Content Requests</h2>
+          {contentLoading ? <p>Loading requests...</p> : requests.length === 0 ? (
+            <p>No content requests found.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border border-gray-200 rounded-lg">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="px-4 py-2 border">Website</th>
+                    <th className="px-4 py-2 border">Topic</th>
+                    <th className="px-4 py-2 border">Word Count</th>
+                    <th className="px-4 py-2 border">Customer</th>
+                    <th className="px-4 py-2 border">Email</th>
+                    <th className="px-4 py-2 border">Status</th>
+                    <th className="px-4 py-2 border">Created At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requests.map(req => (
+                    <tr key={req._id} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 border">{req.websiteTitle || req.websiteId}</td>
+                      <td className="px-4 py-2 border">{req.topic}</td>
+                      <td className="px-4 py-2 border">{req.wordCount || "-"}</td>
+                      <td className="px-4 py-2 border">{req.customerId}</td>
+                      <td className="px-4 py-2 border">{req.customerEmail || "-"}</td>
+                      <td className="px-4 py-2 border font-semibold">
+                        {req.status === "pending" && <span className="text-yellow-600">Pending</span>}
+                        {req.status === "approved" && <span className="text-green-600">Approved</span>}
+                        {req.status === "rejected" && <span className="text-red-600">Rejected</span>}
+                      </td>
+                      <td className="px-4 py-2 border">{new Date(req.createdAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : activeTab === "purchases" ? (
         /* Purchase Requests Section */
         <section className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Purchase Requests</h2>

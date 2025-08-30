@@ -1,59 +1,54 @@
-// app/api/content-requests/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import {dbConnect} from "@/lib/db";
+import ContentRequest, { IContentRequest } from "@/models/ContentRequest";
 
-// In-memory storage for demo purposes (replace with database in production)
-let contentRequests: any[] = [];
-
-export async function GET() {
+// ✅ Create a new content request
+export async function POST(req: Request) {
   try {
-    // Return all content requests for super admin
-    return NextResponse.json(contentRequests);
-  } catch (error) {
-    console.error('Failed to fetch content requests:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch content requests' },
-      { status: 500 }
-    );
-  }
-}
+    await dbConnect();
+    const body = await req.json();
 
-export async function POST(req: NextRequest) {
-  try {
-    const { websiteId, websiteTitle, topic, wordCount, customerId, customerEmail } = await req.json();
-    
-    if (!websiteId || !topic) {
+    const { websiteId, websiteTitle, topic, wordCount, customerId, customerEmail } = body;
+
+    if (!websiteId || !topic || !customerId) {
       return NextResponse.json(
-        { error: 'Website ID and topic are required' },
+        { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Create a content request
-    const contentRequest = {
-      id: Math.random().toString(36).substr(2, 9),
+    const newRequest = await ContentRequest.create<IContentRequest>({
       websiteId,
       websiteTitle,
       topic,
       wordCount,
       customerId,
       customerEmail,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
+      status: "pending",
+    }as any);
 
-    contentRequests.push(contentRequest);
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Content request submitted successfully',
-      request: contentRequest
-    });
-
-  } catch (error) {
-    console.error('Content request error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { success: true, request: newRequest },
+      { status: 201 }
     );
+  } catch (err: any) {
+    console.error("Content Request Error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// ✅ Get all content requests (for super admin)
+export async function GET() {
+  try {
+    await dbConnect();
+
+    const requests: IContentRequest[] = await ContentRequest.find({})
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return NextResponse.json({ success: true, items: requests });
+  } catch (err: any) {
+    console.error("Fetch Content Requests Error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
