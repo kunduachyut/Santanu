@@ -3,11 +3,11 @@
 
 import { useCart } from "../context/CartContext";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, clearCart, totalCents } = useCart();
+  const { cart, removeFromCart, clearCart, totalCents } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
   const { userId, isSignedIn } = useAuth();
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -21,6 +21,10 @@ export default function CartPage() {
   const [myUploads, setMyUploads] = useState<any[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [uploadsByWebsite, setUploadsByWebsite] = useState<Record<string, number>>({});
+  const [modalKey, setModalKey] = useState(0); // Add key to force re-render
+  
+  // Create ref for file input
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // New state for the content request form
   const [contentRequestData, setContentRequestData] = useState({
@@ -52,6 +56,19 @@ export default function CartPage() {
       .catch(() => setUploadsByWebsite({}));
   }, [isSignedIn, cart.length]);
 
+  // Reset file input when modal opens/closes
+  useEffect(() => {
+    if (showContentModal) {
+      // Reset file input when modal opens
+      setTimeout(() => {
+        resetFileInput();
+      }, 50);
+    } else {
+      // Reset file input when modal closes
+      resetFileInput();
+    }
+  }, [showContentModal]);
+
   const handleCheckout = async () => {
     if (!isSignedIn) {
       alert("Please sign in to proceed with checkout");
@@ -68,8 +85,7 @@ export default function CartPage() {
           items: cart.map(item => ({
             websiteId: item._id,
             title: item.title,
-            priceCents: item.priceCents,
-            quantity: item.quantity
+            priceCents: item.priceCents
           })),
           customerId: userId,
           customerEmail: "user@example.com" // In a real app, get from user profile
@@ -80,8 +96,34 @@ export default function CartPage() {
 
       const data = await res.json();
 
-      // Clear cart on successful purchase request
+      // Clear cart and reset all states for fresh experience
       clearCart();
+      
+      // Clear cached upload data
+      setUploadsByWebsite({});
+      setMyUploads([]);
+      
+      // Reset modal states
+      setShowContentModal(false);
+      setShowRequestModal(false);
+      setShowConfirmModal(false);
+      
+      // Reset form data
+      setContentRequestData({
+        titleSuggestion: '',
+        keywords: '',
+        anchorText: '',
+        targetAudience: '',
+        wordCount: '',
+        category: '',
+        referenceLink: '',
+        landingPageUrl: '',
+        briefNote: ''
+      });
+      
+      // Reset file input
+      resetFileInput();
+      
       alert("Purchase request sent! The administrator will review your order.");
       
     } catch (err) {
@@ -95,6 +137,11 @@ export default function CartPage() {
   const openContentModal = (item: any) => {
     setSelectedItem(item);
     setShowContentModal(true);
+    setModalKey(prev => prev + 1); // Increment key to force fresh render
+    // Reset file input for fresh start - use setTimeout to ensure modal is rendered
+    setTimeout(() => {
+      resetFileInput();
+    }, 100);
     // preload existing uploads for this website
     fetch(`/api/my-content?websiteId=${encodeURIComponent(item._id)}`)
       .then(r => r.ok ? r.json() : Promise.reject(r))
@@ -185,6 +232,64 @@ export default function CartPage() {
     }
   };
 
+  const resetFileInput = () => {
+    // Reset file state
+    setPdfFile(null);
+    setRequirements("");
+    
+    // Reset file input using ref - with additional safety checks
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+      // Force a re-render by triggering a change event
+      fileInputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    
+    // Also try to reset any other file inputs that might exist
+    const allFileInputs = document.querySelectorAll('input[type="file"]');
+    allFileInputs.forEach((input: any) => {
+      if (input.accept === "application/pdf") {
+        input.value = "";
+      }
+    });
+  };
+
+  const handleClearCart = () => {
+    // Ask for confirmation before clearing
+    if (!confirm("Are you sure you want to clear your cart? This action cannot be undone.")) {
+      return;
+    }
+    
+    // Clear cart
+    clearCart();
+    
+    // Clear cached upload data
+    setUploadsByWebsite({});
+    setMyUploads([]);
+    
+    // Reset modal states
+    setShowContentModal(false);
+    setShowRequestModal(false);
+    setShowConfirmModal(false);
+    
+    // Reset form data
+    setContentRequestData({
+      titleSuggestion: '',
+      keywords: '',
+      anchorText: '',
+      targetAudience: '',
+      wordCount: '',
+      category: '',
+      referenceLink: '',
+      landingPageUrl: '',
+      briefNote: ''
+    });
+    
+    // Reset file input
+    resetFileInput();
+    
+    alert("Cart cleared successfully!");
+  };
+
   if (cart.length === 0) {
     return (
       <div className="max-w-4xl mx-auto p-6">
@@ -233,38 +338,20 @@ export default function CartPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="p-6 border-b">
           <div className="grid grid-cols-12 gap-4 font-semibold text-gray-700 pb-4">
-            <div className="col-span-5">Product</div>
+            <div className="col-span-6">Product</div>
             <div className="col-span-2 text-center">Price</div>
-            <div className="col-span-2 text-center">Quantity</div>
-            <div className="col-span-3 text-right">Actions</div>
+            <div className="col-span-4 text-right">Actions</div>
           </div>
 
           {cart.map((item, idx) => (
             <div key={item._id ?? idx} className="grid grid-cols-12 gap-4 py-4 border-b items-center">
-              <div className="col-span-5">
+              <div className="col-span-6">
                 <h3 className="font-medium text-gray-900">{item.title}</h3>
               </div>
               <div className="col-span-2 text-center text-gray-700">
                 ${(item.priceCents / 100).toFixed(2)}
               </div>
-              <div className="col-span-2 flex justify-center">
-                <div className="flex items-center border rounded-md">
-                  <button
-                    onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                    className="px-3 py-1 text-gray-600 hover:bg-gray-100"
-                  >
-                    -
-                  </button>
-                  <span className="px-3 py-1">{item.quantity}</span>
-                  <button
-                    onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                    className="px-3 py-1 text-gray-600 hover:bg-gray-100"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              <div className="col-span-3 flex items-center justify-end gap-2">
+              <div className="col-span-4 flex items-center justify-end gap-2">
                 <button
                   onClick={() => openContentModal(item)}
                   className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
@@ -297,7 +384,7 @@ export default function CartPage() {
 
         <div className="p-6 bg-gray-50 flex justify-between items-center">
           <button
-            onClick={clearCart}
+            onClick={handleClearCart}
             className="text-gray-500 hover:text-gray-700 flex items-center"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -330,10 +417,13 @@ export default function CartPage() {
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold">Content for {selectedItem.title}</h3>
-              <button
-                onClick={() => setShowContentModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
+                             <button
+                 onClick={() => {
+                   setShowContentModal(false);
+                   resetFileInput();
+                 }}
+                 className="text-gray-500 hover:text-gray-700"
+               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -353,30 +443,33 @@ export default function CartPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Upload PDF</label>
                 <div className="flex items-center gap-2">
-                  <input
-                    id="pdf-input"
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(e) => {
-                      const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                      if (f && f.size > 10 * 1024 * 1024) { alert("File must be <= 10MB"); e.currentTarget.value = ""; setPdfFile(null); return; }
-                      if (f && f.type !== "application/pdf") { alert("Only PDF files are allowed"); e.currentTarget.value = ""; setPdfFile(null); return; }
-                      setPdfFile(f);
-                    }}
-                    className="flex-1"
-                  />
-                  {pdfFile && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPdfFile(null);
-                        (document.getElementById("pdf-input") as HTMLInputElement).value = "";
-                      }}
-                      className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                    >
-                      Clear
-                    </button>
-                  )}
+                                     <input
+                     key={`file-input-${selectedItem?._id}-${modalKey}`}
+                     ref={fileInputRef}
+                     type="file"
+                     accept="application/pdf"
+                     onChange={(e) => {
+                       const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                       if (f && f.size > 10 * 1024 * 1024) { alert("File must be <= 10MB"); e.currentTarget.value = ""; setPdfFile(null); return; }
+                       if (f && f.type !== "application/pdf") { alert("Only PDF files are allowed"); e.currentTarget.value = ""; setPdfFile(null); return; }
+                       setPdfFile(f);
+                     }}
+                     className="flex-1"
+                   />
+                                     {pdfFile && (
+                     <button
+                       type="button"
+                       onClick={() => {
+                         setPdfFile(null);
+                         if (fileInputRef.current) {
+                           fileInputRef.current.value = "";
+                         }
+                       }}
+                       className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                     >
+                       Clear
+                     </button>
+                   )}
                 </div>
                 {pdfFile && (
                   <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
@@ -395,13 +488,16 @@ export default function CartPage() {
                 />
               </div>
               <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowContentModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
-                >
-                  Close
-                </button>
+                                 <button
+                   type="button"
+                   onClick={() => {
+                     setShowContentModal(false);
+                     resetFileInput();
+                   }}
+                   className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                 >
+                   Close
+                 </button>
                 <button
                   type="submit"
                   disabled={!pdfFile || !requirements.trim()}
@@ -711,10 +807,12 @@ export default function CartPage() {
                         setUploadsByWebsite(map);
                       }
                     } catch {}
-                    setRequirements("");
-                    setPdfFile(null);
-                    (document.getElementById("pdf-input") as HTMLInputElement | null)?.value && ((document.getElementById("pdf-input") as HTMLInputElement).value = "");
-                    alert("Uploaded successfully");
+                                         setRequirements("");
+                     setPdfFile(null);
+                     if (fileInputRef.current) {
+                       fileInputRef.current.value = "";
+                     }
+                     alert("Uploaded successfully");
                   } catch (err: any) {
                     alert(`Upload failed: ${err?.message ?? "Unknown error"}`);
                   } finally {

@@ -7,7 +7,6 @@ type CartItem = {
   _id: string;
   title: string;
   priceCents: number;
-  quantity: number;
 };
 
 type CartContextType = {
@@ -15,7 +14,6 @@ type CartContextType = {
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string) => void;
   clearCart: () => void;
-  updateQuantity: (id: string, quantity: number) => void;
   totalCents: number;
   itemCount: number;
 };
@@ -40,20 +38,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [cart, isLoaded]);
 
+
+
   const addToCart = (item: CartItem) => {
     setCart(prev => {
       const existingItem = prev.find(p => p._id === item._id);
       
       if (existingItem) {
-        // If item already exists, increase quantity
-        return prev.map(p => 
-          p._id === item._id 
-            ? { ...p, quantity: p.quantity + 1 } 
-            : p
-        );
+        // If item already exists, don't add it again
+        return prev;
       } else {
-        // If item doesn't exist, add it with quantity 1
-        return [...prev, { ...item, quantity: 1 }];
+        // If item doesn't exist, add it
+        return [...prev, item];
       }
     });
   };
@@ -62,23 +58,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart(prev => prev.filter(p => p._id !== id));
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
-    if (quantity < 1) {
-      removeFromCart(id);
-      return;
-    }
-    
-    setCart(prev => 
-      prev.map(p => 
-        p._id === id ? { ...p, quantity } : p
-      )
-    );
+  const clearCart = () => {
+    setCart([]);
+    // Force localStorage update immediately
+    localStorage.removeItem('cart');
   };
 
-  const clearCart = () => setCart([]);
-
-  const totalCents = cart.reduce((sum, item) => sum + (item.priceCents * item.quantity), 0);
-  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalCents = cart.reduce((sum, item) => sum + item.priceCents, 0);
+  const itemCount = cart.length;
 
   return (
     <CartContext.Provider value={{ 
@@ -86,7 +73,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       addToCart, 
       removeFromCart, 
       clearCart, 
-      updateQuantity,
       totalCents,
       itemCount
     }}>
