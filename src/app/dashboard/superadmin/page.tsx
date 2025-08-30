@@ -80,11 +80,6 @@ export default function SuperAdminDashboard() {
     refresh();
     refreshPurchaseRequests();
     fetchContentRequests();
-    const interval = setInterval(() => {
-      refresh();
-    refreshPurchaseRequests();
-    fetchContentRequests();
-    },10000)
   }, [filter, purchaseFilter]);
 
   function refresh() {
