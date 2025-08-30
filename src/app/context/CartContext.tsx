@@ -38,6 +38,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [cart, isLoaded]);
 
+
+
   const addToCart = (item: CartItem) => {
     setCart(prev => {
       const existingItem = prev.find(p => p._id === item._id);
@@ -56,7 +58,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart(prev => prev.filter(p => p._id !== id));
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    // Force localStorage update immediately
+    localStorage.removeItem('cart');
+  };
 
   const totalCents = cart.reduce((sum, item) => sum + item.priceCents, 0);
   const itemCount = cart.length;
