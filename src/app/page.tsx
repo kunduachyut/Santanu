@@ -7,6 +7,7 @@ import Testimonials from "../components/Testimonials"
 import ScaleSection from "../components/ScaleSection"
 import PublishSection from "../components/PublishSection"
 import PublishAnywhere from "../components/PublishAnywhere"
+
 export default function Home() {
   return (
     <section className="space-y-3">

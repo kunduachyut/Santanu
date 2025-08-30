@@ -20,6 +20,19 @@ export default function CartPage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [myUploads, setMyUploads] = useState<any[]>([]);
   const [uploadsByWebsite, setUploadsByWebsite] = useState<Record<string, number>>({});
+  
+  // New state for the content request form
+  const [contentRequestData, setContentRequestData] = useState({
+    titleSuggestion: '',
+    keywords: '',
+    anchorText: '',
+    targetAudience: '',
+    wordCount: '',
+    category: '',
+    referenceLink: '',
+    landingPageUrl: '',
+    briefNote: ''
+  });
 
   useEffect(() => {
     if (!isSignedIn) { setUploadsByWebsite({}); return; }
@@ -91,11 +104,52 @@ export default function CartPage() {
   const openRequestModal = (item: any) => {
     setSelectedItem(item);
     setShowRequestModal(true);
+    // Reset form data when opening modal
+    setContentRequestData({
+      titleSuggestion: '',
+      keywords: '',
+      anchorText: '',
+      targetAudience: '',
+      wordCount: '',
+      category: '',
+      referenceLink: '',
+      landingPageUrl: '',
+      briefNote: ''
+    });
+  };
+
+  const handleContentRequestChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setContentRequestData(prevState => ({
+      ...prevState,
+      [name]: value
+    }));
   };
 
   const handleContentRequest = async () => {
-    if (!requestTopic.trim()) {
-      alert("Please enter a topic for your content request");
+    // Validate required fields
+    if (!contentRequestData.keywords.trim()) {
+      alert("Please provide keywords");
+      return;
+    }
+    if (!contentRequestData.anchorText.trim()) {
+      alert("Please provide anchor text");
+      return;
+    }
+    if (!contentRequestData.targetAudience) {
+      alert("Please select target audience");
+      return;
+    }
+    if (!contentRequestData.wordCount) {
+      alert("Please select word count");
+      return;
+    }
+    if (!contentRequestData.category) {
+      alert("Please select category");
+      return;
+    }
+    if (!contentRequestData.landingPageUrl.trim()) {
+      alert("Please provide landing page URL");
       return;
     }
 
@@ -107,8 +161,7 @@ export default function CartPage() {
         body: JSON.stringify({
           websiteId: selectedItem._id,
           websiteTitle: selectedItem.title,
-          topic: requestTopic,
-          wordCount: wordCount,
+          contentRequest: contentRequestData,
           customerId: userId,
           customerEmail: "user@example.com" // In a real app, get from user profile
         }),
@@ -119,8 +172,6 @@ export default function CartPage() {
       const data = await res.json();
       alert("Content request submitted successfully!");
       setShowRequestModal(false);
-      setRequestTopic("");
-      setWordCount(500);
       
     } catch (err) {
       console.error("Failed to submit content request:", err);
@@ -383,10 +434,10 @@ export default function CartPage() {
         </div>
       )}
 
-      {/* Request Content Modal */}
+      {/* Request Content Modal - Updated with the form from screenshot */}
       {showRequestModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold">Request Content for {selectedItem.title}</h3>
               <button
@@ -399,47 +450,182 @@ export default function CartPage() {
               </button>
             </div>
             
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Topic
-              </label>
-              <input
-                type="text"
-                value={requestTopic}
-                onChange={(e) => setRequestTopic(e.target.value)}
-                placeholder="Enter the topic for your content"
-                className="w-full p-2 border rounded-md"
-              />
+            <div className="mb-6 p-4 bg-blue-50 rounded-md">
+              <h4 className="font-bold text-lg mb-2">Language*</h4>
+              <div className="mb-2">
+                <h5 className="font-semibold">English</h5>
+                <p className="text-sm text-gray-600">Note: The publisher only accepts content in English</p>
+              </div>
             </div>
+
+            <form className="space-y-6">
+              {/* Title Suggestion & Keywords */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title Suggestion
+                  </label>
+                  <input
+                    type="text"
+                    name="titleSuggestion"
+                    value={contentRequestData.titleSuggestion}
+                    onChange={handleContentRequestChange}
+                    placeholder="Suggest Title"
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 required">
+                    Keywords*
+                  </label>
+                  <input
+                    type="text"
+                    name="keywords"
+                    value={contentRequestData.keywords}
+                    onChange={handleContentRequestChange}
+                    placeholder="Provide Keywords; Separated by comma"
+                    className="w-full p-2 border rounded-md"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Anchor Text */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 required">
+                  Anchor Text*
+                </label>
+                <input
+                  type="text"
+                  name="anchorText"
+                  value={contentRequestData.anchorText}
+                  onChange={handleContentRequestChange}
+                  placeholder="Enter Anchor text"
+                  className="w-full p-2 border rounded-md"
+                  required
+                />
+              </div>
+
+              {/* Target Audience */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 required">
+                  Target Audience is from (Country)*
+                </label>
+                <select
+                  name="targetAudience"
+                  value={contentRequestData.targetAudience}
+                  onChange={handleContentRequestChange}
+                  className="w-full p-2 border rounded-md"
+                  required
+                >
+                  <option value="">Select Target Audience</option>
+                  <option value="us">United States</option>
+                  <option value="uk">United Kingdom</option>
+                  <option value="ca">Canada</option>
+                  <option value="au">Australia</option>
+                  <option value="in">India</option>
+                  <option value="de">Germany</option>
+                  <option value="fr">France</option>
+                  <option value="jp">Japan</option>
+                  <option value="br">Brazil</option>
+                </select>
+              </div>
+
+              <hr className="my-4" />
+
+              {/* Word Count & Category */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 required">
+                    Word Count*
+                  </label>
+                  <select
+                    name="wordCount"
+                    value={contentRequestData.wordCount}
+                    onChange={handleContentRequestChange}
+                    className="w-full p-2 border rounded-md"
+                    required
+                  >
+                    <option value="">Select Word Count</option>
+                    <option value="500">500 words</option>
+                    <option value="1000">1000 words</option>
+                    <option value="1500">1500 words</option>
+                    <option value="2000">2000 words</option>
+                    <option value="2500">2500+ words</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 required">
+                    Category*
+                  </label>
+                  <select
+                    name="category"
+                    value={contentRequestData.category}
+                    onChange={handleContentRequestChange}
+                    className="w-full p-2 border rounded-md"
+                    required
+                  >
+                    <option value="">Select Category</option>
+                    <option value="technology">Technology</option>
+                    <option value="health">Health & Wellness</option>
+                    <option value="finance">Finance</option>
+                    <option value="education">Education</option>
+                    <option value="travel">Travel</option>
+                    <option value="food">Food & Cooking</option>
+                    <option value="lifestyle">Lifestyle</option>
+                    <option value="business">Business</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Reference Link */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reference Link
+                </label>
+                <input
+                  type="url"
+                  name="referenceLink"
+                  value={contentRequestData.referenceLink}
+                  onChange={handleContentRequestChange}
+                  placeholder="eg. https://example.com"
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
+
+              {/* Landing Page URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 required">
+                  Landing Page URL*
+                </label>
+                <input
+                  type="url"
+                  name="landingPageUrl"
+                  value={contentRequestData.landingPageUrl}
+                  onChange={handleContentRequestChange}
+                  placeholder="Enter Landing Page URL"
+                  className="w-full p-2 border rounded-md"
+                  required
+                />
+              </div>
+
+              {/* Brief Note */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Brief Note
+                </label>
+                <textarea
+                  name="briefNote"
+                  value={contentRequestData.briefNote}
+                  onChange={handleContentRequestChange}
+                  placeholder="Brief Note: Any additional notes required can be specified here in detail."
+                  className="w-full p-2 border rounded-md h-24"
+                  rows={4}
+                />
+              </div>
+            </form>
             
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Word Count
-              </label>
-              <select
-                value={wordCount}
-                onChange={(e) => setWordCount(Number(e.target.value))}
-                className="w-full p-2 border rounded-md"
-              >
-                <option value="500">500 words</option>
-                <option value="1000">1000 words</option>
-                <option value="1500">1500 words</option>
-                <option value="2000">2000 words</option>
-                <option value="2500">2500+ words</option>
-              </select>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Additional Notes (Optional)
-              </label>
-              <textarea
-                placeholder="Any specific requirements or details..."
-                className="w-full p-2 border rounded-md h-24"
-              />
-            </div>
-            
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowRequestModal(false)}
                 className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
