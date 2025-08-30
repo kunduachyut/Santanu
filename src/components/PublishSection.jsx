@@ -25,9 +25,11 @@ export default function PublishSection() {
                     </p>
 
                     <div className=" w-42  rounded-full p-[2px] bg-gradient-to-r from-purple-400 to-blue-500 inline-block">
+                        <a href="/dashboard/publisher">
                         <button className="px-5 py-3 rounded-full bg-white text-black font-medium hover:bg-purple-50 transition">
                             See all listings →
                         </button>
+                        </a>
                     </div>
                 </div>
 
