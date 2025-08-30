@@ -1,13 +1,14 @@
 "use client";
 import { useState } from "react";
-import { FaGoogle, FaFacebook, FaTwitter, FaTimes } from "react-icons/fa";
+import { FaTimes } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 
 export default function HeroSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen ">
+    <div className="flex flex-col items-center justify-center min-h-screen">
       {/* Hero Card */}
       <div className="hero-section text-center">
         <h1 className="text-4xl md:text-6xl font-bold max-w-3xl mx-auto">
@@ -85,45 +86,27 @@ export default function HeroSection() {
             {/* Tabs */}
             <div className="flex border-b mb-4">
               <button
-                className={`flex-1 py-2 font-medium ${!isSignup
+                className={`flex-1 py-2 font-medium ${
+                  !isSignup
                     ? "text-indigo-600 border-b-2 border-indigo-600"
                     : "text-gray-500"
-                  }`}
+                }`}
                 onClick={() => setIsSignup(false)}
               >
                 Login
               </button>
             </div>
 
-            {/* Forms */}
-            {!isSignup ? (
-              <div>
-                <div className="mb-4">
-                  <label className="block mb-1 font-medium">Email</label>
-                  <input
-                    type="email"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block mb-1 font-medium">Password</label>
-                  <input
-                    type="password"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-                <button className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition">
-                  Login
-                </button>
-              </div>
-            ) : null}
+            {/* Form */}
+            <LoginForm isSignup={isSignup} />
+
             {/* Request Access */}
             <div className="mt-4 border-t pt-3 text-center">
               <p className="text-sm text-gray-600">
                 Don’t have access yet?{" "}
                 <button
                   onClick={() =>
-                    alert("Access request form would appear here.")
+                    alert("Fuck you..................")
                   }
                   className="text-indigo-600 font-medium hover:underline"
                 >
@@ -135,5 +118,59 @@ export default function HeroSection() {
         </div>
       )}
     </div>
+  );
+}
+
+/* ---------- Login Form Component ---------- */
+function LoginForm({ isSignup }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const router = useRouter();
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (emailRegex.test(email) && password.trim() !== "") {
+      router.push("/dashboard/consumer"); // ✅ redirect
+    } else {
+      alert("Enter a valid email and password");
+    }
+  };
+
+  return (
+    <>
+      {!isSignup ? (
+        <form onSubmit={handleLogin}>
+          <div className="mb-4">
+            <label className="block mb-1 font-medium">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block mb-1 font-medium">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
+          >
+            Login
+          </button>
+        </form>
+      ) : null}
+    </>
   );
 }
