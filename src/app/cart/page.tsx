@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, clearCart, totalCents } = useCart();
+  const { cart, removeFromCart, clearCart, totalCents } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
   const { userId, isSignedIn } = useAuth();
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -68,8 +68,7 @@ export default function CartPage() {
           items: cart.map(item => ({
             websiteId: item._id,
             title: item.title,
-            priceCents: item.priceCents,
-            quantity: item.quantity
+            priceCents: item.priceCents
           })),
           customerId: userId,
           customerEmail: "user@example.com" // In a real app, get from user profile
@@ -233,38 +232,20 @@ export default function CartPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="p-6 border-b">
           <div className="grid grid-cols-12 gap-4 font-semibold text-gray-700 pb-4">
-            <div className="col-span-5">Product</div>
+            <div className="col-span-6">Product</div>
             <div className="col-span-2 text-center">Price</div>
-            <div className="col-span-2 text-center">Quantity</div>
-            <div className="col-span-3 text-right">Actions</div>
+            <div className="col-span-4 text-right">Actions</div>
           </div>
 
           {cart.map((item, idx) => (
             <div key={item._id ?? idx} className="grid grid-cols-12 gap-4 py-4 border-b items-center">
-              <div className="col-span-5">
+              <div className="col-span-6">
                 <h3 className="font-medium text-gray-900">{item.title}</h3>
               </div>
               <div className="col-span-2 text-center text-gray-700">
                 ${(item.priceCents / 100).toFixed(2)}
               </div>
-              <div className="col-span-2 flex justify-center">
-                <div className="flex items-center border rounded-md">
-                  <button
-                    onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                    className="px-3 py-1 text-gray-600 hover:bg-gray-100"
-                  >
-                    -
-                  </button>
-                  <span className="px-3 py-1">{item.quantity}</span>
-                  <button
-                    onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                    className="px-3 py-1 text-gray-600 hover:bg-gray-100"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              <div className="col-span-3 flex items-center justify-end gap-2">
+              <div className="col-span-4 flex items-center justify-end gap-2">
                 <button
                   onClick={() => openContentModal(item)}
                   className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"

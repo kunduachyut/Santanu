@@ -25,7 +25,6 @@ type PurchaseRequest = {
   id: string;
   websiteId: string;
   websiteTitle: string;
-  quantity: number;
   priceCents: number;
   totalCents: number;
   customerId: string;
@@ -100,7 +99,7 @@ export default function SuperAdminDashboard() {
 
   function refreshPurchaseRequests() {
     setLoading(prev => ({ ...prev, purchases: true }));
-    fetch("/api/purchases")
+    fetch("/api/purchases?role=superadmin")
       .then(r => r.json())
       .then(data => {
         setPurchaseRequests(data);
@@ -369,8 +368,7 @@ export default function SuperAdminDashboard() {
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                         <div>
-                          <p><strong>Quantity:</strong> {request.quantity}</p>
-                          <p><strong>Price:</strong> {formatCurrency(request.priceCents)} each</p>
+                          <p><strong>Price:</strong> {formatCurrency(request.priceCents)}</p>
                           <p><strong>Total:</strong> {formatCurrency(request.totalCents)}</p>
                         </div>
                         <div>

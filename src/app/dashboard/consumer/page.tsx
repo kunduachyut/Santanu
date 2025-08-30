@@ -93,20 +93,6 @@ export default function ConsumerDashboard() {
     try {
       const res = await fetch("/api/purchases");
       if (!res.ok) {
-        // If we get a 405 error, try a different endpoint or method
-        if (res.status === 405) {
-          console.warn("GET method not allowed for /api/purchases, trying alternative approach");
-
-          // Try a different approach - maybe the purchases are stored elsewhere
-          // For now, we'll set empty purchases and show a warning
-          setPurchases([]);
-          setError((prev) => ({
-            ...prev,
-            purchases: "Purchase data temporarily unavailable"
-          }));
-          return;
-        }
-
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
       }
@@ -180,25 +166,51 @@ export default function ConsumerDashboard() {
     }
   }
 
-  const getWebsiteId = (purchase: Purchase): string => {
+  const getWebsiteId = (purchase: any): string => {
+    // Handle different possible data structures
     if (typeof purchase.websiteId === "string") {
       return purchase.websiteId;
     }
-    return purchase.websiteId?._id || "";
+    if (purchase.websiteId?._id) {
+      return purchase.websiteId._id;
+    }
+    return purchase.websiteId || "";
   };
 
-  const getWebsiteTitle = (purchase: Purchase): string => {
-    if (typeof purchase.websiteId === "string") {
-      return "Unknown Website";
+  const getWebsiteTitle = (purchase: any): string => {
+    // Handle different possible data structures
+    if (purchase.websiteTitle) {
+      return purchase.websiteTitle;
     }
-    return purchase.websiteId?.title || "Unknown Website";
+    if (typeof purchase.websiteId === "object" && purchase.websiteId?.title) {
+      return purchase.websiteId.title;
+    }
+    return "Unknown Website";
   };
 
-  const getWebsiteUrl = (purchase: Purchase): string => {
-    if (typeof purchase.websiteId === "string") {
-      return "#";
+  const getWebsiteUrl = (purchase: any): string => {
+    // Handle different possible data structures
+    if (purchase.websiteUrl) {
+      return purchase.websiteUrl;
     }
-    return purchase.websiteId?.url || "#";
+    if (typeof purchase.websiteId === "object" && purchase.websiteId?.url) {
+      return purchase.websiteId.url;
+    }
+    return "#";
+  };
+
+  const getAmountCents = (purchase: any): number => {
+    // Handle different possible amount fields
+    if (typeof purchase.amountCents === "number" && !isNaN(purchase.amountCents)) {
+      return purchase.amountCents;
+    }
+    if (typeof purchase.totalCents === "number" && !isNaN(purchase.totalCents)) {
+      return purchase.totalCents;
+    }
+    if (typeof purchase.priceCents === "number" && !isNaN(purchase.priceCents)) {
+      return purchase.priceCents;
+    }
+    return 0;
   };
 
   const updateMessage = (purchaseId: string, message: string) => {
@@ -393,8 +405,7 @@ export default function ConsumerDashboard() {
                         onClick={() => addToCart({
                           _id: stableId,
                           title: w.title,
-                          priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.price || 0) * 100),
-                          quantity: 1
+                          priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.price || 0) * 100)
                         })}
                         disabled={paidSiteIds.has(stableId)}
                         className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1 ${paidSiteIds.has(stableId)
@@ -507,6 +518,7 @@ export default function ConsumerDashboard() {
                   const websiteTitle = getWebsiteTitle(p);
                   const websiteUrl = getWebsiteUrl(p);
                   const isPaid = p.status === "paid" || p.status === "completed";
+                  const amountCents = getAmountCents(p);
 
                   return (
                     <div
@@ -554,7 +566,7 @@ export default function ConsumerDashboard() {
                       </div>
 
                       <div className="flex flex-col xs:flex-row xs:items-center justify-between text-sm text-gray-600 gap-2">
-                        <span>Amount: <span className="font-medium">${(p.amountCents / 100).toFixed(2)}</span></span>
+                        <span>Amount: <span className="font-medium">${(amountCents / 100).toFixed(2)}</span></span>
                         <span className="text-xs bg-gray-100 px-2 py-1 rounded">
                           ID: {typeof p._id === "string" ? p._id.slice(-8) : "N/A"}
                         </span>

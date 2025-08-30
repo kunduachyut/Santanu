@@ -1,17 +1,63 @@
 // app/api/purchases/route.ts (updated)
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 
 // In-memory storage for demo purposes (replace with database in production)
-let purchaseRequests: any[] = [];
+let purchaseRequests: any[] = [
+  // Sample data for testing
+  {
+    id: "sample1",
+    _id: "sample1",
+    websiteId: "website1",
+    websiteTitle: "Sample Website 1",
+    priceCents: 2500,
+    totalCents: 2500,
+    amountCents: 2500,
+    customerId: "user_123",
+    customerEmail: "user@example.com",
+    status: "approved",
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "sample2", 
+    _id: "sample2",
+    websiteId: "website2",
+    websiteTitle: "Sample Website 2",
+    priceCents: 1500,
+    totalCents: 1500,
+    amountCents: 1500,
+    customerId: "user_123",
+    customerEmail: "user@example.com",
+    status: "pending",
+    createdAt: new Date().toISOString()
+  }
+];
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    // Return all purchase requests for super admin
-    return NextResponse.json(purchaseRequests);
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is super admin (you might want to implement proper role checking)
+    const url = new URL(req.url);
+    const isSuperAdmin = url.searchParams.get('role') === 'superadmin';
+    
+    // If super admin, return all purchases, otherwise filter for current user
+    const userPurchases = isSuperAdmin 
+      ? purchaseRequests 
+      : purchaseRequests.filter(purchase => purchase.customerId === userId);
+    
+    return NextResponse.json(userPurchases);
   } catch (error) {
-    console.error('Failed to fetch purchase requests:', error);
+    console.error('Failed to fetch purchases:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch purchase requests' },
+      { error: 'Failed to fetch purchases' },
       { status: 500 }
     );
   }
@@ -59,11 +105,12 @@ async function createPurchase(item: any, customerId: string, customerEmail: stri
   // This would typically create a database record
   return {
     id: Math.random().toString(36).substr(2, 9),
+    _id: Math.random().toString(36).substr(2, 9), // Add _id for compatibility
     websiteId: item.websiteId,
     websiteTitle: item.title,
-    quantity: item.quantity,
     priceCents: item.priceCents,
-    totalCents: item.priceCents * item.quantity,
+    totalCents: item.priceCents,
+    amountCents: item.priceCents, // Add amountCents for compatibility
     customerId,
     customerEmail,
     status: 'pending',
