@@ -3,7 +3,7 @@
 
 import { useCart } from "../context/CartContext";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 
 export default function CartPage() {
@@ -15,6 +15,28 @@ export default function CartPage() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestTopic, setRequestTopic] = useState("");
   const [wordCount, setWordCount] = useState(500);
+  const [uploading, setUploading] = useState(false);
+  const [requirements, setRequirements] = useState("");
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [myUploads, setMyUploads] = useState<any[]>([]);
+  const [uploadsByWebsite, setUploadsByWebsite] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!isSignedIn) { setUploadsByWebsite({}); return; }
+    fetch("/api/my-content")
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then((data) => {
+        const items: any[] = data.items || [];
+        const map: Record<string, number> = {};
+        for (const it of items) {
+          const wid = it.websiteId || "";
+          if (!wid) continue;
+          map[wid] = (map[wid] || 0) + 1;
+        }
+        setUploadsByWebsite(map);
+      })
+      .catch(() => setUploadsByWebsite({}));
+  }, [isSignedIn, cart.length]);
 
   const handleCheckout = async () => {
     if (!isSignedIn) {
@@ -59,6 +81,11 @@ export default function CartPage() {
   const openContentModal = (item: any) => {
     setSelectedItem(item);
     setShowContentModal(true);
+    // preload existing uploads for this website
+    fetch(`/api/my-content?websiteId=${encodeURIComponent(item._id)}`)
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(data => setMyUploads(data.items ?? []))
+      .catch(() => setMyUploads([]));
   };
 
   const openRequestModal = (item: any) => {
@@ -187,6 +214,11 @@ export default function CartPage() {
                 >
                   My Content
                 </button>
+                {uploadsByWebsite[item._id] > 0 && (
+                  <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs">
+                    {uploadsByWebsite[item._id]} doc{uploadsByWebsite[item._id] > 1 ? "s" : ""}
+                  </span>
+                )}
                 <button
                   onClick={() => openRequestModal(item)}
                   className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
@@ -250,41 +282,102 @@ export default function CartPage() {
                 </svg>
               </button>
             </div>
-            
-            <div className="mb-4">
-              <h4 className="font-medium mb-2">Available Content:</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Sample content items - in a real app, these would come from the database */}
-                <div className="border rounded p-3">
-                  <h5 className="font-medium">Introduction to Web Development</h5>
-                  <p className="text-sm text-gray-600 mt-1">A comprehensive guide to getting started with web development...</p>
-                  <button className="mt-2 text-blue-500 text-sm hover:underline">View Details</button>
-                </div>
-                <div className="border rounded p-3">
-                  <h5 className="font-medium">Advanced JavaScript Techniques</h5>
-                  <p className="text-sm text-gray-600 mt-1">Learn advanced JavaScript patterns and best practices...</p>
-                  <button className="mt-2 text-blue-500 text-sm hover:underline">View Details</button>
-                </div>
-                <div className="border rounded p-3">
-                  <h5 className="font-medium">CSS Layout Mastery</h5>
-                  <p className="text-sm text-gray-600 mt-1">Master CSS layout techniques including Flexbox and Grid...</p>
-                  <button className="mt-2 text-blue-500 text-sm hover:underline">View Details</button>
-                </div>
-                <div className="border rounded p-3">
-                  <h5 className="font-medium">React Best Practices</h5>
-                  <p className="text-sm text-gray-600 mt-1">Learn how to structure React applications for maintainability...</p>
-                  <button className="mt-2 text-blue-500 text-sm hover:underline">View Details</button>
-                </div>
+            {/* Upload form */}
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!isSignedIn) { alert("Please sign in first"); return; }
+                if (!pdfFile) { alert("Please select a PDF file"); return; }
+                if (!requirements.trim()) { alert("Enter requirements"); return; }
+                try {
+                  setUploading(true);
+                  const fd = new FormData();
+                  fd.append("pdfFile", pdfFile);
+                  fd.append("requirements", requirements);
+                  fd.append("websiteId", selectedItem._id);
+                  const res = await fetch("/api/my-content", { method: "POST", body: fd });
+                  if (!res.ok) {
+                    let msg = `HTTP ${res.status}`;
+                    try { const j = await res.json(); if (j?.error) msg = j.error; } catch {}
+                    throw new Error(msg);
+                  }
+                  // refresh list
+                  const listRes = await fetch(`/api/my-content?websiteId=${encodeURIComponent(selectedItem._id)}`);
+                  const list = await listRes.json();
+                  setMyUploads(list.items ?? []);
+                  setRequirements("");
+                  setPdfFile(null);
+                  (document.getElementById("pdf-input") as HTMLInputElement | null)?.value && ((document.getElementById("pdf-input") as HTMLInputElement).value = "");
+                  alert("Uploaded successfully");
+                } catch (err: any) {
+                  alert(`Upload failed: ${err?.message ?? "Unknown error"}`);
+                } finally {
+                  setUploading(false);
+                }
+              }}
+              className="space-y-4 mb-6"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Upload PDF</label>
+                <input
+                  id="pdf-input"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => {
+                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                    if (f && f.size > 10 * 1024 * 1024) { alert("File must be <= 10MB"); e.currentTarget.value = ""; setPdfFile(null); return; }
+                    if (f && f.type !== "application/pdf") { alert("Only PDF files are allowed"); e.currentTarget.value = ""; setPdfFile(null); return; }
+                    setPdfFile(f);
+                  }}
+                  className="w-full"
+                />
               </div>
-            </div>
-            
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowContentModal(false)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
-              >
-                Close
-              </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Requirements</label>
+                <textarea
+                  value={requirements}
+                  onChange={(e) => setRequirements(e.target.value)}
+                  placeholder="Enter your requirements"
+                  className="w-full p-2 border rounded-md h-28"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowContentModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+                >
+                  {uploading ? "Uploading..." : "Upload"}
+                </button>
+              </div>
+            </form>
+
+            {/* List of previous uploads */}
+            <div>
+              <h4 className="font-medium mb-2">Your uploads</h4>
+              {myUploads.length === 0 ? (
+                <p className="text-sm text-gray-600">No uploads yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {myUploads.map((u, i) => (
+                    <li key={i} className="border rounded p-3 flex justify-between items-center text-sm">
+                      <div>
+                        <div className="font-medium truncate max-w-xs">{u.pdf?.filename ?? "PDF"}</div>
+                        <div className="text-gray-600">{u.requirements?.slice(0, 80)}{u.requirements && u.requirements.length > 80 ? "…" : ""}</div>
+                      </div>
+                      <div className="text-gray-500">{u.pdf?.size ? `${Math.round(u.pdf.size / 1024)} KB` : ""}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>
