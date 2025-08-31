@@ -9,17 +9,11 @@ interface Website {
   title: string;
   url: string;
   description: string;
-<<<<<<< HEAD
-  status: string;
-=======
-  priceCents?: number;
-  price?: number;
   status: "pending" | "approved" | "rejected";
->>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
+  priceCents: number;
   rejectionReason?: string;
   createdAt: string;
   ownerId: string;
-  priceCents: number;
   category?: string;
   image?: string;
   views?: number;
@@ -53,13 +47,17 @@ interface ContentRequest {
   customerEmail?: string;
   status: string;
   createdAt: string;
-<<<<<<< HEAD
 }
-=======
-  contentRequest?: any; // Additional content request data
-};
 
-type UserContent = {
+interface ConsumerRequest {
+  _id: string;
+  email: string;
+  phone: string;
+  message?: string;
+  createdAt: string;
+}
+
+interface UserContent {
   _id: string;
   userId: string;
   userEmail?: string;
@@ -71,15 +69,6 @@ type UserContent = {
     size: number;
   };
   createdAt: string;
-};
->>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
-
-interface ConsumerRequest {
-  _id: string;
-  email: string;
-  phone: string;
-  message?: string;
-  createdAt: string;
 }
 
 type FilterType = "all" | "pending" | "approved" | "rejected";
@@ -88,26 +77,18 @@ type FilterType = "all" | "pending" | "approved" | "rejected";
 export default function SuperAdminDashboard() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
-<<<<<<< HEAD
   const [contentRequests, setContentRequests] = useState<ContentRequest[]>([]);
   const [consumerRequests, setConsumerRequests] = useState<ConsumerRequest[]>([]);
-=======
-  const [requests, setRequests] = useState<ContentRequest[]>([]);
   const [userContent, setUserContent] = useState<UserContent[]>([]);
->>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
   const [filter, setFilter] = useState<FilterType>("pending");
   const [purchaseFilter, setPurchaseFilter] = useState<FilterType>("pending");
   const [loading, setLoading] = useState({ 
     websites: true, 
     purchases: true,
     content: true,
-    consumer: true
+    consumer: true,
+    userContent: true
   });
-<<<<<<< HEAD
-=======
-  const [contentLoading, setContentLoading] = useState(true);
-  const [userContentLoading, setUserContentLoading] = useState(true);
->>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
   const [selectedWebsite, setSelectedWebsite] = useState<Website | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -124,10 +105,9 @@ export default function SuperAdminDashboard() {
     total: 0
   });
   const [activeTab, setActiveTab] = useState<
-    "websites" | "purchases" | "contentRequests" | "consumerRequests"
+    "websites" | "purchases" | "contentRequests" | "consumerRequests" | "userContent"
   >("websites");
 
-<<<<<<< HEAD
   // Helper function to handle API responses
   const handleApiResponse = async (response: Response) => {
     const contentType = response.headers.get('content-type');
@@ -148,24 +128,6 @@ export default function SuperAdminDashboard() {
 
   // Fetch websites
   async function refreshWebsites() {
-=======
-  const [moderationStats, setModerationStats] = useState({
-    pending: 0,
-    approved: 0,
-    rejected: 0,
-    total: 0
-  });
-  const [activeTab, setActiveTab] = useState<"websites" | "purchases" | "contentRequests" | "userContent">("websites");
-
-  useEffect(() => {
-    refresh();
-    refreshPurchaseRequests();
-    fetchContentRequests();
-    fetchUserContent();
-  }, [filter, purchaseFilter]);
-
-  function refresh() {
->>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
     setLoading(prev => ({ ...prev, websites: true }));
     try {
       const response = await fetch(`/api/websites?status=${filter}&role=superadmin`);
@@ -180,7 +142,6 @@ export default function SuperAdminDashboard() {
     }
   }
 
-<<<<<<< HEAD
   // Fetch purchase requests
   async function refreshPurchaseRequests() {
     setLoading(prev => ({ ...prev, purchases: true }));
@@ -236,10 +197,9 @@ export default function SuperAdminDashboard() {
     }
   }
 
-  // Calculate website stats
-=======
+  // Fetch user content
   async function fetchUserContent() {
-    setUserContentLoading(true);
+    setLoading(prev => ({ ...prev, userContent: true }));
     try {
       const res = await fetch("/api/admin/user-content");
       const data = await res.json();
@@ -249,11 +209,11 @@ export default function SuperAdminDashboard() {
     } catch (err) {
       console.error("Error fetching user content:", err);
     } finally {
-      setUserContentLoading(false);
+      setLoading(prev => ({ ...prev, userContent: false }));
     }
   }
 
->>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
+  // Calculate website stats
   function calculateStats(websites: Website[]) {
     const stats = {
       pending: websites.filter(w => w.status === "pending").length,
@@ -345,6 +305,8 @@ export default function SuperAdminDashboard() {
       fetchContentRequests();
     } else if (activeTab === "consumerRequests") {
       fetchConsumerRequests();
+    } else if (activeTab === "userContent") {
+      fetchUserContent();
     }
   }
 
@@ -358,6 +320,8 @@ export default function SuperAdminDashboard() {
       fetchContentRequests();
     } else if (activeTab === "consumerRequests") {
       fetchConsumerRequests();
+    } else if (activeTab === "userContent") {
+      fetchUserContent();
     }
   }, [activeTab, filter, purchaseFilter]);
 
@@ -367,7 +331,7 @@ export default function SuperAdminDashboard() {
     return request.status === purchaseFilter;
   });
 
-  if (loading.websites && loading.purchases && loading.content && loading.consumer) {
+  if (loading.websites && loading.purchases && loading.content && loading.consumer && loading.userContent) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -475,7 +439,7 @@ export default function SuperAdminDashboard() {
               </svg>
               User Uploaded Content
             </h2>
-            {userContentLoading ? (
+            {loading.userContent ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
               </div>
@@ -879,7 +843,7 @@ export default function SuperAdminDashboard() {
                       <div className="flex flex-col items-end gap-2 min-w-[140px]">
                         <div className="text-right">
                           <span className="text-lg font-bold text-green-600">
-                            ${website.priceCents ? (website.priceCents / 100).toFixed(2) : website.price ? website.price.toFixed(2) : '0.00'}
+                            ${website.priceCents ? (website.priceCents / 100).toFixed(2) : '0.00'}
                           </span>
                         </div>
                         
@@ -928,7 +892,7 @@ export default function SuperAdminDashboard() {
                         )}
                       </div>
                     </div>
-                  </div>
+                    </div>
                 ))}
               </div>
             )}
