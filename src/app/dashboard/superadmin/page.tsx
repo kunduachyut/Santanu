@@ -74,6 +74,13 @@ export default function SuperAdminDashboard() {
     rejected: 0,
     total: 0
   });
+
+  const [moderationStats, setModerationStats] = useState({
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    total: 0
+  });
   const [activeTab, setActiveTab] = useState<"websites" | "purchases" | "contentRequests">("websites");
 
   useEffect(() => {
@@ -216,398 +223,471 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Super Admin Dashboard</h1>
-        <div className="flex gap-2">
-          <button 
-            onClick={activeTab === "websites" ? refresh : activeTab === "purchases" ? refreshPurchaseRequests : fetchContentRequests}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-          >
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex border-b">
-        <button
-          onClick={() => setActiveTab("websites")}
-          className={`px-6 py-3 font-medium ${
-            activeTab === "websites"
-              ? "border-b-2 border-blue-500 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Website Moderation
-        </button>
-        <button
-          onClick={() => setActiveTab("purchases")}
-          className={`px-6 py-3 font-medium ${
-            activeTab === "purchases"
-              ? "border-b-2 border-blue-500 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Purchase Requests ({purchaseStats.total})
-        </button>
-        <button
-          onClick={() => setActiveTab("contentRequests")}
-          className={`px-6 py-3 font-medium ${
-            activeTab === "contentRequests"
-              ? "border-b-2 border-blue-500 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Content Requests ({requests.length})
-        </button>
-      </div>
-
-      {/* Content based on active tab */}
-      {activeTab === "contentRequests" ? (
-        <section className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">📋 Content Requests</h2>
-          {contentLoading ? <p>Loading requests...</p> : requests.length === 0 ? (
-            <p>No content requests found.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border border-gray-200 rounded-lg">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="px-4 py-2 border">Website</th>
-                    <th className="px-4 py-2 border">Topic</th>
-                    <th className="px-4 py-2 border">Word Count</th>
-                    <th className="px-4 py-2 border">Customer</th>
-                    <th className="px-4 py-2 border">Email</th>
-                    <th className="px-4 py-2 border">Status</th>
-                    <th className="px-4 py-2 border">Created At</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {requests.map(req => (
-                    <tr key={req._id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 border">{req.websiteTitle || req.websiteId}</td>
-                      <td className="px-4 py-2 border">{req.topic}</td>
-                      <td className="px-4 py-2 border">{req.wordCount || "-"}</td>
-                      <td className="px-4 py-2 border">{req.customerId}</td>
-                      <td className="px-4 py-2 border">{req.customerEmail || "-"}</td>
-                      <td className="px-4 py-2 border font-semibold">
-                        {req.status === "pending" && <span className="text-yellow-600">Pending</span>}
-                        {req.status === "approved" && <span className="text-green-600">Approved</span>}
-                        {req.status === "rejected" && <span className="text-red-600">Rejected</span>}
-                      </td>
-                      <td className="px-4 py-2 border">{new Date(req.createdAt).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Super Admin Dashboard</h1>
+              <p className="text-sm text-gray-500 mt-1">Manage websites, purchases, and content requests</p>
             </div>
-          )}
-        </section>
-      ) : activeTab === "purchases" ? (
-        /* Purchase Requests Section */
-        <section className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Purchase Requests</h2>
-          
-          {/* Purchase Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <h3 className="text-lg font-semibold text-gray-700">Total Requests</h3>
-              <p className="text-3xl font-bold text-gray-900">{purchaseStats.total}</p>
-            </div>
-            <div className="bg-yellow-50 p-4 rounded-lg shadow border border-yellow-200">
-              <h3 className="text-lg font-semibold text-yellow-700">Pending</h3>
-              <p className="text-3xl font-bold text-yellow-900">{purchaseStats.pending}</p>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg shadow border border-green-200">
-              <h3 className="text-lg font-semibold text-green-700">Approved</h3>
-              <p className="text-3xl font-bold text-green-900">{purchaseStats.approved}</p>
-            </div>
-            <div className="bg-red-50 p-4 rounded-lg shadow border border-red-200">
-              <h3 className="text-lg font-semibold text-red-700">Rejected</h3>
-              <p className="text-3xl font-bold text-red-900">{purchaseStats.rejected}</p>
-            </div>
-          </div>
-
-          {/* Purchase Filter Tabs */}
-          <div className="flex space-x-2 border-b mb-6">
-            {(["all", "pending", "approved", "rejected"] as FilterType[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setPurchaseFilter(tab)}
-                className={`px-4 py-2 rounded-t-md transition-colors ${
-                  purchaseFilter === tab
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+            <div className="flex gap-2">
+              <button 
+                onClick={activeTab === "websites" ? refresh : activeTab === "purchases" ? refreshPurchaseRequests : fetchContentRequests}
+                className="px-3.5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center gap-1.5 shadow-sm"
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                {tab === "pending" && purchaseStats.pending > 0 && (
-                  <span className="ml-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
-                    {purchaseStats.pending}
-                  </span>
-                )}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh Data
               </button>
-            ))}
+            </div>
           </div>
 
-          {/* Purchase Requests List */}
-          {filteredPurchaseRequests.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No purchase requests found with status: {purchaseFilter}</p>
+          {/* Tab Navigation */}
+          <div className="flex border-b mt-5 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab("websites")}
+              className={`px-4 py-2.5 font-medium text-sm whitespace-nowrap flex items-center gap-2 ${
+                activeTab === "websites"
+                  ? "border-b-2 border-blue-500 text-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+              Website Moderation ({stats.total})
+            </button>
+            <button
+              onClick={() => setActiveTab("purchases")}
+              className={`px-4 py-2.5 font-medium text-sm whitespace-nowrap flex items-center gap-2 ${
+                activeTab === "purchases"
+                  ? "border-b-2 border-blue-500 text-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              Purchase Requests ({purchaseStats.total})
+            </button>
+            <button
+              onClick={() => setActiveTab("contentRequests")}
+              className={`px-4 py-2.5 font-medium text-sm whitespace-nowrap flex items-center gap-2 ${
+                activeTab === "contentRequests"
+                  ? "border-b-2 border-blue-500 text-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Content Requests ({requests.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Content based on active tab */}
+        {activeTab === "contentRequests" ? (
+          <section className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Content Requests
+            </h2>
+            {contentLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              </div>
+            ) : requests.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-gray-500 mt-2">No content requests found.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border rounded-lg">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Website</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Topic</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Word Count</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Customer</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Email</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Status</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Created At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {requests.map(req => (
+                      <tr key={req._id} className="hover:bg-gray-50 even:bg-gray-50/50">
+                        <td className="px-4 py-3 border-b">{req.websiteTitle || req.websiteId}</td>
+                        <td className="px-4 py-3 border-b">{req.topic}</td>
+                        <td className="px-4 py-3 border-b">{req.wordCount || "-"}</td>
+                        <td className="px-4 py-3 border-b">{req.customerId}</td>
+                        <td className="px-4 py-3 border-b">{req.customerEmail || "-"}</td>
+                        <td className="px-4 py-3 border-b">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            req.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                            req.status === "approved" ? "bg-green-100 text-green-800" :
+                            "bg-red-100 text-red-800"
+                          }`}>
+                            {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 border-b">{new Date(req.createdAt).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        ) : activeTab === "purchases" ? (
+          /* Purchase Requests Section */
+          <section className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              Purchase Requests
+            </h2>
+            
+            {/* Purchase Statistics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+              <div className="bg-white p-4 rounded-lg border shadow-sm">
+                <h3 className="text-sm font-medium text-gray-600">Total Requests</h3>
+                <p className="text-xl font-bold text-gray-800">{purchaseStats.total}</p>
+              </div>
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm">
+                <h3 className="text-sm font-medium text-yellow-700">Pending</h3>
+                <p className="text-xl font-bold text-yellow-800">{purchaseStats.pending}</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200 shadow-sm">
+                <h3 className="text-sm font-medium text-green-700">Approved</h3>
+                <p className="text-xl font-bold text-green-800">{purchaseStats.approved}</p>
+              </div>
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200 shadow-sm">
+                <h3 className="text-sm font-medium text-red-700">Rejected</h3>
+                <p className="text-xl font-bold text-red-800">{purchaseStats.rejected}</p>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredPurchaseRequests.map((request) => (
-                <div key={request.id} className="border rounded-lg p-6 bg-white shadow-sm">
-                  <div className="flex flex-col md:flex-row justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        {request.websiteTitle}
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                        <div>
-                          <p><strong>Price:</strong> {formatCurrency(request.priceCents)}</p>
-                          <p><strong>Total:</strong> {formatCurrency(request.totalCents)}</p>
-                        </div>
-                        <div>
-                          <p><strong>Customer:</strong> {request.customerEmail}</p>
-                          <p><strong>Requested:</strong> {formatDate(request.createdAt)}</p>
-                          <p>
-                            <strong>Status:</strong> 
-                            <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                              request.status === 'pending' 
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : request.status === 'approved'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {request.status.toUpperCase()}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {request.status === 'pending' && (
-                      <div className="flex flex-col gap-2 min-w-[200px]">
-                        <button
-                          onClick={() => updatePurchaseStatus(request.id, "approved")}
-                          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
-                        >
-                          Approve Purchase
-                        </button>
-                        <button
-                          onClick={() => updatePurchaseStatus(request.id, "rejected")}
-                          className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-                        >
-                          Reject Purchase
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+
+            {/* Purchase Filter Tabs */}
+            <div className="flex space-x-1 border-b mb-4 overflow-x-auto">
+              {(["all", "pending", "approved", "rejected"] as FilterType[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setPurchaseFilter(tab)}
+                  className={`px-3 py-2 rounded-t text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
+                    purchaseFilter === tab
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab === "pending" && purchaseStats.pending > 0 && (
+                    <span className="bg-white text-blue-500 text-xs px-1.5 py-0.5 rounded-full">
+                      {purchaseStats.pending}
+                    </span>
+                  )}
+                </button>
               ))}
             </div>
-          )}
-        </section>
-      ) : (
-        /* Website Moderation Section */
-        <section className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Website Moderation</h2>
-          
-          {/* Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <h3 className="text-lg font-semibold text-gray-700">Total Websites</h3>
-              <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-            </div>
-            <div className="bg-yellow-50 p-4 rounded-lg shadow border border-yellow-200">
-              <h3 className="text-lg font-semibold text-yellow-700">Pending</h3>
-              <p className="text-3xl font-bold text-yellow-900">{stats.pending}</p>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg shadow border border-green-200">
-              <h3 className="text-lg font-semibold text-green-700">Approved</h3>
-              <p className="text-3xl font-bold text-green-900">{stats.approved}</p>
-            </div>
-            <div className="bg-red-50 p-4 rounded-lg shadow border border-red-200">
-              <h3 className="text-lg font-semibold text-red-700">Rejected</h3>
-              <p className="text-3xl font-bold text-red-900">{stats.rejected}</p>
-            </div>
-          </div>
 
-          {/* Filter Tabs */}
-          <div className="flex space-x-2 border-b mb-6">
-            {(["all", "pending", "approved", "rejected"] as FilterType[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setFilter(tab)}
-                className={`px-4 py-2 rounded-t-md transition-colors ${
-                  filter === tab
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                {tab === "pending" && stats.pending > 0 && (
-                  <span className="ml-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
-                    {stats.pending}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Websites List */}
-          {websites.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No websites found with status: {filter}</p>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {websites.map((website, idx) => (
-                <div key={website.id || idx} className="border rounded-lg p-6 bg-white shadow-sm">
-                  <div className="flex flex-col md:flex-row justify-between gap-4">
-                    {/* Website Info */}
-                    <div className="flex-1">
-                      <div className="flex items-start gap-4">
-                        {website.image && (
-                          <img
-                            src={website.image}
-                            alt={website.title}
-                            className="w-20 h-20 object-cover rounded-md"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                            {website.title}
-                          </h3>
-                          <a
-                            href={website.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:underline text-sm"
-                          >
-                            {website.url}
-                          </a>
-                          <p className="text-gray-600 mt-2">{website.description}</p>
-                          
-                          <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
-                            <span>Owner: {website.ownerId}</span>
-                            {website.category && (
-                              <span>Category: {website.category}</span>
-                            )}
-                            <span>Created: {formatDate(website.createdAt)}</span>
-                            {website.views !== undefined && (
-                              <span>Views: {website.views}</span>
-                            )}
+            {/* Purchase Requests List */}
+            {filteredPurchaseRequests.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <p className="text-gray-500 mt-2">No purchase requests found with status: {purchaseFilter}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredPurchaseRequests.map((request) => (
+                  <div key={request.id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex flex-col md:flex-row justify-between gap-3">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                          {request.websiteTitle}
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-600">
+                          <div className="space-y-1">
+                            <p><span className="font-medium">Price:</span> {formatCurrency(request.priceCents)}</p>
+                            <p><span className="font-medium">Total:</span> {formatCurrency(request.totalCents)}</p>
                           </div>
-                          
-                          {website.rejectionReason && (
-                            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
-                              <p className="text-red-700 text-sm">
-                                <strong>Rejection Reason:</strong> {website.rejectionReason}
-                              </p>
-                            </div>
-                          )}
+                          <div className="space-y-1">
+                            <p><span className="font-medium">Customer:</span> {request.customerEmail}</p>
+                            <p><span className="font-medium">Requested:</span> {formatDate(request.createdAt)}</p>
+                            <p className="flex items-center gap-1.5">
+                              <span className="font-medium">Status:</span> 
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                request.status === 'pending' 
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : request.status === 'approved'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {request.status.toUpperCase()}
+                              </span>
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Actions and Status */}
-                    <div className="flex flex-col items-end gap-3 min-w-[200px]">
-                      <div className="text-right">
-                        <span className="text-2xl font-bold text-green-600">
-                          ${(website.priceCents / 100).toFixed(2)}
-                        </span>
-                      </div>
                       
-                      <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          website.status === 'approved' 
-                            ? 'bg-green-100 text-green-800'
-                            : website.status === 'rejected'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {website.status.toUpperCase()}
-                        </span>
-                      </div>
-
-                      {/* Action Buttons */}
-                      {website.status === 'pending' && (
-                        <div className="flex gap-2 mt-2">
+                      {request.status === 'pending' && (
+                        <div className="flex flex-col gap-2 min-w-[140px]">
                           <button
-                            onClick={() => updateWebsiteStatus(website.id, "approved")}
-                            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
+                            onClick={() => updatePurchaseStatus(request.id, "approved")}
+                            className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                           >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
                             Approve
                           </button>
                           <button
-                            onClick={() => openRejectModal(website)}
-                            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                            onClick={() => updatePurchaseStatus(request.id, "rejected")}
+                            className="px-3 py-1.5 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                           >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                             Reject
                           </button>
                         </div>
                       )}
-
-                      {/* Additional info for approved/rejected websites */}
-                      {website.status === 'approved' && website.approvedAt && (
-                        <p className="text-sm text-green-600">
-                          Approved on {formatDate(website.approvedAt)}
-                        </p>
-                      )}
-                      {website.status === 'rejected' && website.rejectedAt && (
-                        <p className="text-sm text-red-600">
-                          Rejected on {formatDate(website.rejectedAt)}
-                        </p>
-                      )}
                     </div>
                   </div>
-                </div>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : (
+          /* Website Moderation Section */
+          <section className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+              Website Moderation
+            </h2>
+            
+            {/* Statistics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+              <div className="bg-white p-4 rounded-lg border shadow-sm">
+                <h3 className="text-sm font-medium text-gray-600">Total Websites</h3>
+                <p className="text-xl font-bold text-gray-800">{stats.total}</p>
+              </div>
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm">
+                <h3 className="text-sm font-medium text-yellow-700">Pending</h3>
+                <p className="text-xl font-bold text-yellow-800">{stats.pending}</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200 shadow-sm">
+                <h3 className="text-sm font-medium text-green-700">Approved</h3>
+                <p className="text-xl font-bold text-green-800">{stats.approved}</p>
+              </div>
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200 shadow-sm">
+                <h3 className="text-sm font-medium text-red-700">Rejected</h3>
+                <p className="text-xl font-bold text-red-800">{stats.rejected}</p>
+              </div>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex space-x-1 border-b mb-4 overflow-x-auto">
+              {(["all", "pending", "approved", "rejected"] as FilterType[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setFilter(tab)}
+                  className={`px-3 py-2 rounded-t text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
+                    filter === tab
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab === "pending" && stats.pending > 0 && (
+                    <span className="bg-white text-blue-500 text-xs px-1.5 py-0.5 rounded-full">
+                      {stats.pending}
+                    </span>
+                  )}
+                </button>
               ))}
             </div>
-          )}
-        </section>
-      )}
 
-      {/* Rejection Modal */}
-      {showRejectModal && selectedWebsite && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Reject Website</h3>
-            <p className="text-gray-600 mb-2">
-              Please provide a reason for rejecting "{selectedWebsite.title}":
-            </p>
-            <textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="Enter rejection reason..."
-              className="w-full p-3 border rounded-md h-24 resize-none"
-            />
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setRejectionReason("");
-                }}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => updateWebsiteStatus(selectedWebsite.id, "rejected", rejectionReason)}
-                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                disabled={!rejectionReason.trim()}
-              >
-                Confirm Reject
-              </button>
+            {/* Websites List */}
+            {websites.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+                <p className="text-gray-500 mt-2">No websites found with status: {filter}</p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {websites.map((website, idx) => (
+                  <div key={website.id || idx} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex flex-col md:flex-row justify-between gap-3">
+                      {/* Website Info */}
+                      <div className="flex-1">
+                        <div className="flex items-start gap-3">
+                          {website.image && (
+                            <img
+                              src={website.image}
+                              alt={website.title}
+                              className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-1 truncate">
+                              {website.title}
+                            </h3>
+                            <a
+                              href={website.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:underline text-xs truncate block"
+                            >
+                              {website.url}
+                            </a>
+                            <p className="text-gray-600 text-sm mt-1 line-clamp-2">{website.description}</p>
+                            
+                            <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
+                              <span className="truncate">Owner: {website.ownerId}</span>
+                              {website.category && (
+                                <span>Category: {website.category}</span>
+                              )}
+                              <span>Created: {formatDate(website.createdAt)}</span>
+                              {website.views !== undefined && (
+                                <span>Views: {website.views}</span>
+                              )}
+                            </div>
+                            
+                            {website.rejectionReason && (
+                              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md text-xs">
+                                <p className="text-red-700">
+                                  <strong>Rejection Reason:</strong> {website.rejectionReason}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions and Status */}
+                      <div className="flex flex-col items-end gap-2 min-w-[140px]">
+                        <div className="text-right">
+                          <span className="text-lg font-bold text-green-600">
+                            ${(website.priceCents / 100).toFixed(2)}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            website.status === 'approved' 
+                              ? 'bg-green-100 text-green-800'
+                              : website.status === 'rejected'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {website.status.toUpperCase()}
+                          </span>
+                        </div>
+
+                        {/* Action Buttons */}
+                        {website.status === 'pending' && (
+                          <div className="flex gap-2 mt-1">
+                            <button
+                              onClick={() => updateWebsiteStatus(website.id, "approved")}
+                              className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors flex items-center gap-1.5 shadow-sm"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => openRejectModal(website)}
+                              className="px-3 py-1.5 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors flex items-center gap-1.5 shadow-sm"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              Reject
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Additional info for approved/rejected websites */}
+                        {website.status === 'approved' && website.approvedAt && (
+                          <p className="text-xs text-green-600">
+                            Approved on {formatDate(website.approvedAt)}
+                          </p>
+                        )}
+                        {website.status === 'rejected' && website.rejectedAt && (
+                          <p className="text-xs text-red-600">
+                            Rejected on {formatDate(website.rejectedAt)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Rejection Modal */}
+        {showRejectModal && selectedWebsite && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-5 rounded-xl w-full max-w-md shadow-lg border border-gray-200">
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Reject Website
+              </h3>
+              <p className="text-gray-600 text-sm mb-3">
+                Please provide a reason for rejecting "{selectedWebsite.title}":
+              </p>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Enter rejection reason..."
+                className="w-full p-3 border rounded-lg h-24 resize-none text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setRejectionReason("");
+                  }}
+                  className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => updateWebsiteStatus(selectedWebsite.id, "rejected", rejectionReason)}
+                  className="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors flex items-center gap-1.5 shadow-sm"
+                  disabled={!rejectionReason.trim()}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Confirm Reject
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
