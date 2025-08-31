@@ -61,6 +61,11 @@ type UserContent = {
   createdAt: string;
 };
 
+type ConsumerRequest = {
+  _id : string;
+  customerEmail?: string;
+}
+
 type FilterType = "all" | "pending" | "approved" | "rejected";
 
 export default function SuperAdminDashboard() {
