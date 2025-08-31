@@ -9,7 +9,13 @@ interface Website {
   title: string;
   url: string;
   description: string;
+<<<<<<< HEAD
   status: string;
+=======
+  priceCents?: number;
+  price?: number;
+  status: "pending" | "approved" | "rejected";
+>>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
   rejectionReason?: string;
   createdAt: string;
   ownerId: string;
@@ -47,7 +53,26 @@ interface ContentRequest {
   customerEmail?: string;
   status: string;
   createdAt: string;
+<<<<<<< HEAD
 }
+=======
+  contentRequest?: any; // Additional content request data
+};
+
+type UserContent = {
+  _id: string;
+  userId: string;
+  userEmail?: string;
+  websiteId?: string;
+  websiteTitle?: string;
+  requirements: string;
+  pdf?: {
+    filename: string;
+    size: number;
+  };
+  createdAt: string;
+};
+>>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
 
 interface ConsumerRequest {
   _id: string;
@@ -63,8 +88,13 @@ type FilterType = "all" | "pending" | "approved" | "rejected";
 export default function SuperAdminDashboard() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
+<<<<<<< HEAD
   const [contentRequests, setContentRequests] = useState<ContentRequest[]>([]);
   const [consumerRequests, setConsumerRequests] = useState<ConsumerRequest[]>([]);
+=======
+  const [requests, setRequests] = useState<ContentRequest[]>([]);
+  const [userContent, setUserContent] = useState<UserContent[]>([]);
+>>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
   const [filter, setFilter] = useState<FilterType>("pending");
   const [purchaseFilter, setPurchaseFilter] = useState<FilterType>("pending");
   const [loading, setLoading] = useState({ 
@@ -73,6 +103,11 @@ export default function SuperAdminDashboard() {
     content: true,
     consumer: true
   });
+<<<<<<< HEAD
+=======
+  const [contentLoading, setContentLoading] = useState(true);
+  const [userContentLoading, setUserContentLoading] = useState(true);
+>>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
   const [selectedWebsite, setSelectedWebsite] = useState<Website | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -92,6 +127,7 @@ export default function SuperAdminDashboard() {
     "websites" | "purchases" | "contentRequests" | "consumerRequests"
   >("websites");
 
+<<<<<<< HEAD
   // Helper function to handle API responses
   const handleApiResponse = async (response: Response) => {
     const contentType = response.headers.get('content-type');
@@ -112,6 +148,24 @@ export default function SuperAdminDashboard() {
 
   // Fetch websites
   async function refreshWebsites() {
+=======
+  const [moderationStats, setModerationStats] = useState({
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    total: 0
+  });
+  const [activeTab, setActiveTab] = useState<"websites" | "purchases" | "contentRequests" | "userContent">("websites");
+
+  useEffect(() => {
+    refresh();
+    refreshPurchaseRequests();
+    fetchContentRequests();
+    fetchUserContent();
+  }, [filter, purchaseFilter]);
+
+  function refresh() {
+>>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
     setLoading(prev => ({ ...prev, websites: true }));
     try {
       const response = await fetch(`/api/websites?status=${filter}&role=superadmin`);
@@ -126,6 +180,7 @@ export default function SuperAdminDashboard() {
     }
   }
 
+<<<<<<< HEAD
   // Fetch purchase requests
   async function refreshPurchaseRequests() {
     setLoading(prev => ({ ...prev, purchases: true }));
@@ -182,6 +237,23 @@ export default function SuperAdminDashboard() {
   }
 
   // Calculate website stats
+=======
+  async function fetchUserContent() {
+    setUserContentLoading(true);
+    try {
+      const res = await fetch("/api/admin/user-content");
+      const data = await res.json();
+      if (data.items) {
+        setUserContent(data.items);
+      }
+    } catch (err) {
+      console.error("Error fetching user content:", err);
+    } finally {
+      setUserContentLoading(false);
+    }
+  }
+
+>>>>>>> f2bbf74a12a8ef0f6aa4bd1271f2da0f9f253e96
   function calculateStats(websites: Website[]) {
     const stats = {
       pending: websites.filter(w => w.status === "pending").length,
@@ -378,11 +450,92 @@ export default function SuperAdminDashboard() {
               </svg>
               Consumer Requests ({consumerRequests.length})
             </button>
+            <button
+              onClick={() => setActiveTab("userContent")}
+              className={`px-4 py-2.5 font-medium text-sm whitespace-nowrap flex items-center gap-2 ${
+                activeTab === "userContent"
+                  ? "border-b-2 border-blue-500 text-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              User Uploads ({userContent.length})
+            </button>
           </div>
         </div>
 
         {/* Content based on active tab */}
-        {activeTab === "contentRequests" ? (
+        {activeTab === "userContent" ? (
+          <section className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              User Uploaded Content
+            </h2>
+            {userContentLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              </div>
+            ) : userContent.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                <p className="text-gray-500 mt-2">No user content uploads found.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border rounded-lg">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">User Email</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Website</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">PDF Filename</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">File Size</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Requirements</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Uploaded At</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Content Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userContent.map(content => (
+                      <tr key={content._id} className="hover:bg-gray-50 even:bg-gray-50/50">
+                        <td className="px-4 py-3 border-b">{content.userEmail || content.userId}</td>
+                        <td className="px-4 py-3 border-b">{content.websiteTitle || content.websiteId || "-"}</td>
+                        <td className="px-4 py-3 border-b">
+                          <a 
+                            href={`/api/admin/pdf/${content._id}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline hover:text-blue-800 flex items-center gap-1"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            {content.pdf?.filename || "PDF Document"}
+                          </a>
+                        </td>
+                        <td className="px-4 py-3 border-b">{content.pdf?.size ? `${(content.pdf.size / 1024).toFixed(1)} KB` : "-"}</td>
+                        <td className="px-4 py-3 border-b">
+                          <div className="max-w-xs truncate">{content.requirements}</div>
+                        </td>
+                        <td className="px-4 py-3 border-b">{new Date(content.createdAt).toLocaleString()}</td>
+                        <td className="px-4 py-3 border-b">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            My Content
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        ) : activeTab === "contentRequests" ? (
           <section className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
             <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -413,6 +566,7 @@ export default function SuperAdminDashboard() {
                       <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Email</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Status</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Created At</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Content Type</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -433,6 +587,11 @@ export default function SuperAdminDashboard() {
                           </span>
                         </td>
                         <td className="px-4 py-3 border-b">{new Date(req.createdAt).toLocaleString()}</td>
+                        <td className="px-4 py-3 border-b">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Request Content
+                          </span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -720,7 +879,7 @@ export default function SuperAdminDashboard() {
                       <div className="flex flex-col items-end gap-2 min-w-[140px]">
                         <div className="text-right">
                           <span className="text-lg font-bold text-green-600">
-                            ${(website.priceCents / 100).toFixed(2)}
+                            ${website.priceCents ? (website.priceCents / 100).toFixed(2) : website.price ? website.price.toFixed(2) : '0.00'}
                           </span>
                         </div>
                         
