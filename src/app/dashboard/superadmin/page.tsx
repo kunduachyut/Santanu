@@ -8,7 +8,8 @@ type Website = {
   title: string;
   url: string;
   description: string;
-  priceCents: number;
+  priceCents?: number;
+  price?: number;
   status: "pending" | "approved" | "rejected";
   rejectionReason?: string;
   approvedAt?: string;
@@ -709,7 +710,7 @@ export default function SuperAdminDashboard() {
                       <div className="flex flex-col items-end gap-2 min-w-[140px]">
                         <div className="text-right">
                           <span className="text-lg font-bold text-green-600">
-                            ${(website.priceCents / 100).toFixed(2)}
+                            ${website.priceCents ? (website.priceCents / 100).toFixed(2) : website.price ? website.price.toFixed(2) : '0.00'}
                           </span>
                         </div>
                         
