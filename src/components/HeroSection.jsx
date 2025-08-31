@@ -117,11 +117,10 @@ function LoginForm({ isSignup }) {
 
   const handleLogin = (e) => {
     e.preventDefault();
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (emailRegex.test(email) && password.trim() !== "") {
-      router.push("/dashboard/consumer"); // ✅ redirect
+      router.push("/dashboard/consumer");
     } else {
       alert("Enter a valid email and password");
     }
@@ -169,38 +168,43 @@ function AccessRequestForm() {
   const [formData, setFormData] = useState({
     email: "",
     phone: "",
-    message: ""
+    message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState("idle");
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
+  // ✅ FIXED handleSubmit (calls API)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate API call
+
     try {
-      // In a real application, you would send this data to your backend
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate successful submission
-      setSubmitStatus("success");
-      
-      // Reset form after successful submission
-      setTimeout(() => {
+      const res = await fetch("/api/request-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (res.ok) {
+        setSubmitStatus("success");
         setFormData({ email: "", phone: "", message: "" });
-        setIsModalOpen(false);
-        setSubmitStatus("idle");
-      }, 2000);
-    } catch (error) {
+        setTimeout(() => {
+          setIsModalOpen(false);
+          setSubmitStatus("idle");
+        }, 2000);
+      } else {
+        setSubmitStatus("error");
+      }
+    } catch (err) {
+      console.error(err);
       setSubmitStatus("error");
     } finally {
       setIsSubmitting(false);
@@ -227,38 +231,85 @@ function AccessRequestForm() {
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md">
             <div className="p-5 border-b border-gray-200">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-800">Request Consumer Access</h3>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Request Consumer Access
+                </h3>
                 <button
                   onClick={() => setIsModalOpen(false)}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
-              <p className="text-sm text-gray-500 mt-1">Fill out the form below to request consumer access</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Fill out the form below to request consumer access
+              </p>
             </div>
-            
+
+            {/* Success / Error / Form */}
             {submitStatus === "success" ? (
               <div className="p-6 text-center">
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 </div>
-                <h4 className="text-lg font-medium text-gray-800 mb-1">Request Submitted</h4>
-                <p className="text-gray-600">Your request has been sent successfully. We'll contact you shortly.</p>
+                <h4 className="text-lg font-medium text-gray-800 mb-1">
+                  Request Submitted
+                </h4>
+                <p className="text-gray-600">
+                  Your request has been sent successfully. We'll contact you
+                  shortly.
+                </p>
               </div>
             ) : submitStatus === "error" ? (
               <div className="p-6 text-center">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6 text-red-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </div>
-                <h4 className="text-lg font-medium text-gray-800 mb-1">Submission Failed</h4>
-                <p className="text-gray-600">There was an error submitting your request. Please try again.</p>
+                <h4 className="text-lg font-medium text-gray-800 mb-1">
+                  Submission Failed
+                </h4>
+                <p className="text-gray-600">
+                  There was an error submitting your request. Please try again.
+                </p>
                 <button
                   onClick={() => setSubmitStatus("idle")}
                   className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
@@ -270,7 +321,10 @@ function AccessRequestForm() {
               <form onSubmit={handleSubmit} className="p-5">
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       Email Address
                     </label>
                     <input
@@ -284,9 +338,12 @@ function AccessRequestForm() {
                       placeholder="your.email@example.com"
                     />
                   </div>
-                  
+
                   <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="phone"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       Phone Number
                     </label>
                     <input
@@ -300,9 +357,12 @@ function AccessRequestForm() {
                       placeholder="(123) 456-7890"
                     />
                   </div>
-                  
+
                   <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="message"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       Additional Information (Optional)
                     </label>
                     <textarea
@@ -316,7 +376,7 @@ function AccessRequestForm() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="mt-6 flex justify-end space-x-3">
                   <button
                     type="button"
@@ -332,13 +392,31 @@ function AccessRequestForm() {
                   >
                     {isSubmitting ? (
                       <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
                         </svg>
                         Submitting...
                       </>
-                    ) : "Submit Request"}
+                    ) : (
+                      "Submit Request"
+                    )}
                   </button>
                 </div>
               </form>

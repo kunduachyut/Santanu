@@ -1,69 +1,78 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FaSync, FaCheck, FaTimes } from "react-icons/fa";
 
-type Website = {
-  id: string;
-  ownerId: string;
+// --- Types ---
+interface Website {
+  _id: string;
   title: string;
   url: string;
   description: string;
-  priceCents: number;
-  status: "pending" | "approved" | "rejected";
+  status: string;
   rejectionReason?: string;
-  approvedAt?: string;
-  rejectedAt?: string;
   createdAt: string;
-  updatedAt: string;
+  ownerId: string;
+  priceCents: number;
   category?: string;
   image?: string;
   views?: number;
-  clicks?: number;
-};
+  approvedAt?: string;
+  rejectedAt?: string;
+}
 
-type PurchaseRequest = {
-  id: string;
+interface PurchaseRequest {
+  _id: string;
   websiteId: string;
   websiteTitle: string;
+  userId: string;
+  status: string;
   priceCents: number;
   totalCents: number;
-  customerId: string;
+  customerName: string;
   customerEmail: string;
-  status: "pending" | "approved" | "rejected";
   createdAt: string;
-  updatedAt?: string;
-};
+}
 
-type ContentRequest = {
+interface ContentRequest {
   _id: string;
   websiteId: string;
   websiteTitle?: string;
+  name: string;
+  email: string;
+  request: string;
   topic: string;
   wordCount?: number;
   customerId: string;
   customerEmail?: string;
-  status: "pending" | "approved" | "rejected";
+  status: string;
   createdAt: string;
-};
+}
 
-type ConsumerRequest = {
-  _id : string;
-  customerEmail?: string;
+interface ConsumerRequest {
+  _id: string;
+  email: string;
+  phone: string;
+  message?: string;
+  createdAt: string;
 }
 
 type FilterType = "all" | "pending" | "approved" | "rejected";
 
+// --- Component ---
 export default function SuperAdminDashboard() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
-  const [requests, setRequests] = useState<ContentRequest[]>([]);
+  const [contentRequests, setContentRequests] = useState<ContentRequest[]>([]);
+  const [consumerRequests, setConsumerRequests] = useState<ConsumerRequest[]>([]);
   const [filter, setFilter] = useState<FilterType>("pending");
   const [purchaseFilter, setPurchaseFilter] = useState<FilterType>("pending");
   const [loading, setLoading] = useState({ 
     websites: true, 
-    purchases: true 
+    purchases: true,
+    content: true,
+    consumer: true
   });
-  const [contentLoading, setContentLoading] = useState(true);
   const [selectedWebsite, setSelectedWebsite] = useState<Website | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -79,66 +88,100 @@ export default function SuperAdminDashboard() {
     rejected: 0,
     total: 0
   });
+  const [activeTab, setActiveTab] = useState<
+    "websites" | "purchases" | "contentRequests" | "consumerRequests"
+  >("websites");
 
-  const [moderationStats, setModerationStats] = useState({
-    pending: 0,
-    approved: 0,
-    rejected: 0,
-    total: 0
-  });
-  const [activeTab, setActiveTab] = useState<"websites" | "purchases" | "contentRequests">("websites");
+  // Helper function to handle API responses
+  const handleApiResponse = async (response: Response) => {
+    const contentType = response.headers.get('content-type');
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json();
+    } else {
+      // If it's not JSON, it might be HTML (error page)
+      const text = await response.text();
+      console.error('Expected JSON but got:', text.substring(0, 200));
+      throw new Error('Server returned non-JSON response');
+    }
+  };
 
-  useEffect(() => {
-    refresh();
-    refreshPurchaseRequests();
-    fetchContentRequests();
-  }, [filter, purchaseFilter]);
-
-  function refresh() {
+  // Fetch websites
+  async function refreshWebsites() {
     setLoading(prev => ({ ...prev, websites: true }));
-    fetch(`/api/websites?status=${filter}&role=superadmin`)
-      .then(r => r.json())
-      .then(data => {
-        setWebsites(data.websites || data);
-        calculateStats(data.websites || data);
-      })
-      .catch(err => {
-        console.error("Failed to fetch websites:", err);
-        alert("Failed to load websites");
-      })
-      .finally(() => setLoading(prev => ({ ...prev, websites: false })));
-  }
-
-  function refreshPurchaseRequests() {
-    setLoading(prev => ({ ...prev, purchases: true }));
-    fetch("/api/purchases?role=superadmin")
-      .then(r => r.json())
-      .then(data => {
-        setPurchaseRequests(data);
-        calculatePurchaseStats(data);
-      })
-      .catch(err => {
-        console.error("Failed to fetch purchase requests:", err);
-        alert("Failed to load purchase requests");
-      })
-      .finally(() => setLoading(prev => ({ ...prev, purchases: false })));
-  }
-
-  async function fetchContentRequests() {
-    setContentLoading(true);
     try {
-      const res = await fetch("/api/content-requests");
-      const data = await res.json();
-      if (data.success) {
-        setRequests(data.items);
-      }
+      const response = await fetch(`/api/websites?status=${filter}&role=superadmin`);
+      const data = await handleApiResponse(response);
+      setWebsites(data.websites || data);
+      calculateStats(data.websites || data);
     } catch (err) {
-      console.error("Error fetching content requests:", err);
+      console.error("Failed to fetch websites:", err);
+      alert("Failed to load websites. Please check if the API endpoint is correct.");
     } finally {
-      setContentLoading(false);
+      setLoading(prev => ({ ...prev, websites: false }));
     }
   }
 
+  // Fetch purchase requests
+  async function refreshPurchaseRequests() {
+    setLoading(prev => ({ ...prev, purchases: true }));
+    try {
+      const response = await fetch("/api/purchases?role=superadmin");
+      const data = await handleApiResponse(response);
+      setPurchaseRequests(data);
+      calculatePurchaseStats(data);
+    } catch (err) {
+      console.error("Failed to fetch purchase requests:", err);
+      alert("Failed to load purchase requests. Please check if the API endpoint is correct.");
+    } finally {
+      setLoading(prev => ({ ...prev, purchases: false }));
+    }
+  }
+
+  // Fetch content requests
+  async function fetchContentRequests() {
+    setLoading(prev => ({ ...prev, content: true }));
+    try {
+      const response = await fetch("/api/content-requests");
+      const data = await handleApiResponse(response);
+      if (data.success) {
+        setContentRequests(data.items);
+      } else {
+        setContentRequests(data); // Fallback if success property doesn't exist
+      }
+    } catch (err) {
+      console.error("Error fetching content requests:", err);
+      alert("Failed to load content requests. Please check if the API endpoint is correct.");
+    } finally {
+      setLoading(prev => ({ ...prev, content: false }));
+    }
+  }
+
+  // Fetch consumer requests
+  async function fetchConsumerRequests() {
+    setLoading(prev => ({ ...prev, consumer: true }));
+    try {
+      const response = await fetch("/api/request-assess");
+      const data = await handleApiResponse(response);
+      if (Array.isArray(data)) {
+        setConsumerRequests(data);
+      } else {
+        console.error("Unexpected consumer data format:", data);
+        setConsumerRequests([]);
+      }
+    } catch (err) {
+      console.error("Error fetching consumer requests:", err);
+      alert("Failed to load consumer requests. Please check if the API endpoint is correct.");
+    } finally {
+      setLoading(prev => ({ ...prev, consumer: false }));
+    }
+  }
+
+  // Calculate website stats
   function calculateStats(websites: Website[]) {
     const stats = {
       pending: websites.filter(w => w.status === "pending").length,
@@ -149,6 +192,7 @@ export default function SuperAdminDashboard() {
     setStats(stats);
   }
 
+  // Calculate purchase stats
   function calculatePurchaseStats(requests: PurchaseRequest[]) {
     const stats = {
       pending: requests.filter(r => r.status === "pending").length,
@@ -159,67 +203,99 @@ export default function SuperAdminDashboard() {
     setPurchaseStats(stats);
   }
 
+  // Update website status
   async function updateWebsiteStatus(id: string, status: "approved" | "rejected", reason?: string) {
-    const res = await fetch(`/api/websites/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        action: status === "approved" ? "approve" : "reject",
-        ...(reason && { reason }) 
-      }),
-    });
-
-    if (res.ok) {
-      refresh();
+    try {
+      const response = await fetch(`/api/websites/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          action: status === "approved" ? "approve" : "reject",
+          ...(reason && { reason }) 
+        }),
+      });
+      
+      await handleApiResponse(response);
+      refreshWebsites();
       setShowRejectModal(false);
       setRejectionReason("");
-    } else {
-      const err = await res.json();
+    } catch (err) {
       console.error("Failed to update status:", err);
-      alert("Failed to update status: " + JSON.stringify(err));
+      alert("Failed to update website status. Please check if the API endpoint is correct.");
     }
   }
 
+  // Update purchase status
   async function updatePurchaseStatus(purchaseId: string, status: "approved" | "rejected") {
-    const res = await fetch("/api/purchases", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        purchaseId,
-        status
-      }),
-    });
-
-    if (res.ok) {
+    try {
+      const response = await fetch("/api/purchases", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          purchaseId,
+          status
+        }),
+      });
+      
+      await handleApiResponse(response);
       refreshPurchaseRequests();
       alert("Purchase status updated successfully");
-    } else {
-      const err = await res.json();
+    } catch (err) {
       console.error("Failed to update purchase status:", err);
-      alert("Failed to update purchase status: " + JSON.stringify(err));
+      alert("Failed to update purchase status. Please check if the API endpoint is correct.");
     }
   }
 
+  // Open reject modal
   function openRejectModal(website: Website) {
     setSelectedWebsite(website);
     setRejectionReason(website.rejectionReason || "");
     setShowRejectModal(true);
   }
 
+  // Format date
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString();
   }
 
+  // Format currency
   function formatCurrency(cents: number) {
     return `$${(cents / 100).toFixed(2)}`;
   }
 
+  // Refresh all data based on active tab
+  function refreshAll() {
+    if (activeTab === "websites") {
+      refreshWebsites();
+    } else if (activeTab === "purchases") {
+      refreshPurchaseRequests();
+    } else if (activeTab === "contentRequests") {
+      fetchContentRequests();
+    } else if (activeTab === "consumerRequests") {
+      fetchConsumerRequests();
+    }
+  }
+
+  // Effect to load data when tab changes
+  useEffect(() => {
+    if (activeTab === "websites") {
+      refreshWebsites();
+    } else if (activeTab === "purchases") {
+      refreshPurchaseRequests();
+    } else if (activeTab === "contentRequests") {
+      fetchContentRequests();
+    } else if (activeTab === "consumerRequests") {
+      fetchConsumerRequests();
+    }
+  }, [activeTab, filter, purchaseFilter]);
+
+  // Filter purchase requests
   const filteredPurchaseRequests = purchaseRequests.filter(request => {
     if (purchaseFilter === "all") return true;
     return request.status === purchaseFilter;
   });
 
-  if (loading.websites && loading.purchases && contentLoading) {
+  if (loading.websites && loading.purchases && loading.content && loading.consumer) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -239,12 +315,10 @@ export default function SuperAdminDashboard() {
             </div>
             <div className="flex gap-2">
               <button 
-                onClick={activeTab === "websites" ? refresh : activeTab === "purchases" ? refreshPurchaseRequests : fetchContentRequests}
+                onClick={refreshAll}
                 className="px-3.5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center gap-1.5 shadow-sm"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+                <FaSync className="h-4 w-4" />
                 Refresh Data
               </button>
             </div>
@@ -289,7 +363,20 @@ export default function SuperAdminDashboard() {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Content Requests ({requests.length})
+              Content Requests ({contentRequests.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("consumerRequests")}
+              className={`px-4 py-2.5 font-medium text-sm whitespace-nowrap flex items-center gap-2 ${
+                activeTab === "consumerRequests"
+                  ? "border-b-2 border-blue-500 text-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Consumer Requests ({consumerRequests.length})
             </button>
           </div>
         </div>
@@ -303,11 +390,11 @@ export default function SuperAdminDashboard() {
               </svg>
               Content Requests
             </h2>
-            {contentLoading ? (
+            {loading.content ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
               </div>
-            ) : requests.length === 0 ? (
+            ) : contentRequests.length === 0 ? (
               <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -329,7 +416,7 @@ export default function SuperAdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {requests.map(req => (
+                    {contentRequests.map(req => (
                       <tr key={req._id} className="hover:bg-gray-50 even:bg-gray-50/50">
                         <td className="px-4 py-3 border-b">{req.websiteTitle || req.websiteId}</td>
                         <td className="px-4 py-3 border-b">{req.topic}</td>
@@ -416,7 +503,7 @@ export default function SuperAdminDashboard() {
             ) : (
               <div className="space-y-3">
                 {filteredPurchaseRequests.map((request) => (
-                  <div key={request.id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                  <div key={request._id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-col md:flex-row justify-between gap-3">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-800 mb-1">
@@ -449,21 +536,17 @@ export default function SuperAdminDashboard() {
                       {request.status === 'pending' && (
                         <div className="flex flex-col gap-2 min-w-[140px]">
                           <button
-                            onClick={() => updatePurchaseStatus(request.id, "approved")}
+                            onClick={() => updatePurchaseStatus(request._id, "approved")}
                             className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
+                            <FaCheck className="h-4 w-4" />
                             Approve
                           </button>
                           <button
-                            onClick={() => updatePurchaseStatus(request.id, "rejected")}
+                            onClick={() => updatePurchaseStatus(request._id, "rejected")}
                             className="px-3 py-1.5 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <FaTimes className="h-4 w-4" />
                             Reject
                           </button>
                         </div>
@@ -471,6 +554,54 @@ export default function SuperAdminDashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </section>
+        ) : activeTab === "consumerRequests" ? (
+          /* Consumer Requests Section */
+          <section className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Consumer Access Requests
+            </h2>
+            
+            {loading.consumer ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              </div>
+            ) : consumerRequests.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <p className="text-gray-500 mt-2">No consumer requests found.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border rounded-lg">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Email</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Phone</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Message</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Created At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {consumerRequests.map((req) => (
+                      <tr key={req._id} className="hover:bg-gray-50 even:bg-gray-50/50">
+                        <td className="px-4 py-3 border-b">{req.email}</td>
+                        <td className="px-4 py-3 border-b">{req.phone}</td>
+                        <td className="px-4 py-3 border-b">{req.message || "-"}</td>
+                        <td className="px-4 py-3 border-b">
+                          {new Date(req.createdAt).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </section>
@@ -537,7 +668,7 @@ export default function SuperAdminDashboard() {
             ) : (
               <div className="grid gap-3">
                 {websites.map((website, idx) => (
-                  <div key={website.id || idx} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                  <div key={website._id || idx} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-col md:flex-row justify-between gap-3">
                       {/* Website Info */}
                       <div className="flex-1">
@@ -609,21 +740,17 @@ export default function SuperAdminDashboard() {
                         {website.status === 'pending' && (
                           <div className="flex gap-2 mt-1">
                             <button
-                              onClick={() => updateWebsiteStatus(website.id, "approved")}
+                              onClick={() => updateWebsiteStatus(website._id, "approved")}
                               className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors flex items-center gap-1.5 shadow-sm"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
+                              <FaCheck className="h-4 w-4" />
                               Approve
                             </button>
                             <button
                               onClick={() => openRejectModal(website)}
                               className="px-3 py-1.5 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors flex items-center gap-1.5 shadow-sm"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
+                              <FaTimes className="h-4 w-4" />
                               Reject
                             </button>
                           </div>
@@ -679,13 +806,11 @@ export default function SuperAdminDashboard() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => updateWebsiteStatus(selectedWebsite.id, "rejected", rejectionReason)}
+                  onClick={() => updateWebsiteStatus(selectedWebsite._id, "rejected", rejectionReason)}
                   className="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors flex items-center gap-1.5 shadow-sm"
                   disabled={!rejectionReason.trim()}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <FaTimes className="h-4 w-4" />
                   Confirm Reject
                 </button>
               </div>
