@@ -48,7 +48,7 @@ export default function RootLayout({
                   Name
                 </a>
                 <a href="/dashboard/consumer" className="text-gray-700">
-                  Consumer
+                  Advertiser
                 </a>
                 <a href="/dashboard/publisher" className="text-gray-700">
                   Publisher

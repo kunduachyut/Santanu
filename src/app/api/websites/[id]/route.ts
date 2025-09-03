@@ -6,12 +6,21 @@ import mongoose from "mongoose";
 
 export async function GET(
   req: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
-  const { id } = await context.params; 
-  console.log("GET request for website with ID:");
-  console.log("Fetching website with ID:", id);
+  
+  // Await the params promise and extract the id
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
+  
+  console.log("GET request for website with ID:", id);
+  
+  // Validate ObjectId first
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ error: "Invalid website ID" }, { status: 400 });
+  }
+
   const website = await Website.findById(id);
   if (!website) {
     return NextResponse.json({ error: "Website not found" }, { status: 404 });
@@ -42,10 +51,20 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
-  const { id } = await context.params; // <-- Await params
+  
+  // Await the params promise and extract the id
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
+  
+  console.log("PATCH request for website with ID:", id);
+
+  // Validate ObjectId first
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ error: "Invalid website ID" }, { status: 400 });
+  }
 
   const authResult = await requireAuth();
   if (authResult instanceof NextResponse) return authResult;
@@ -93,10 +112,15 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
-  const { id } = await context.params; // <-- Await params
+  
+  // Await the params promise and extract the id
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
+  
+  console.log("DELETE request for website with ID:", id);
 
   // Validate ObjectId
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
