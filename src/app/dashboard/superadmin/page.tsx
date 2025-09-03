@@ -20,6 +20,12 @@ type Website = {
   image?: string;
   views?: number;
   clicks?: number;
+   DA?: number;              
+  PA?: number;               
+  Spam?: number;             
+  OrganicTraffic?: number;   
+  DR?: number;               
+  RD?: string;   
 };
 
 type PurchaseRequest = {
