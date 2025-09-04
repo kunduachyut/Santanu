@@ -38,16 +38,27 @@ export default function PublisherDashboard() {
     DR: "",
     RD: "",
   });
+  const [editingSite, setEditingSite] = useState<Website | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "pending" | "approved" | "rejected"
   >("all");
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"add" | "list">("list");
 
   useEffect(() => {
     refresh();
   }, []);
+
+  // Debug function to log website data
+  useEffect(() => {
+    if (mySites.length > 0) {
+      console.log('Website data:', mySites);
+      console.log('First website ID:', mySites[0]._id);
+    }
+  }, [mySites]);
 
   function refresh() {
     setLoading(true);
@@ -55,20 +66,58 @@ export default function PublisherDashboard() {
       .then((r) => r.json())
       .then((sitesData) => {
         const rawSites = sitesData.websites || sitesData || [];
+        
+        // Log the raw data structure to understand what we're working with
+        console.log('Raw API response:', JSON.stringify(sitesData, null, 2));
+        
+        // Process and normalize the sites data
         const normalizedSites = Array.isArray(rawSites)
-          ? rawSites.map((s: any) => ({
-              ...s,
-              priceCents:
-                typeof s.priceCents === "number" &&
-                !Number.isNaN(s.priceCents)
-                  ? s.priceCents
-                  : typeof s.price === "number" &&
-                    !Number.isNaN(s.price)
-                  ? Math.round(s.price * 100)
-                  : 0,
-            }))
+          ? rawSites
+              .map((s: any) => {
+                // Extract the MongoDB ID from the response
+                let siteId = null;
+                
+                // Handle different ID formats
+                if (s._id) {
+                  if (typeof s._id === 'string') {
+                    siteId = s._id;
+                  } else if (typeof s._id === 'object') {
+                    // Handle MongoDB ObjectId format {$oid: "..."}
+                    if (s._id.$oid) {
+                      siteId = s._id.$oid;
+                    } else if (s._id.toString) {
+                      // Try using toString() method if available
+                      siteId = s._id.toString();
+                    }
+                  }
+                } else if (s.id) {
+                  siteId = s.id;
+                }
+                
+                console.log(`Site ${s.title || 'unknown'} - Raw ID:`, s._id);
+                console.log(`Site ${s.title || 'unknown'} - Extracted ID:`, siteId);
+                
+                if (!siteId) {
+                  console.error('Warning: Site is missing ID:', JSON.stringify(s));
+                  return null; // Will be filtered out below
+                }
+                
+                return {
+                  ...s,
+                  _id: siteId, // Ensure _id is set
+                  priceCents:
+                    typeof s.priceCents === "number" &&
+                    !Number.isNaN(s.priceCents)
+                      ? s.priceCents
+                      : typeof s.price === "number" &&
+                        !Number.isNaN(s.price)
+                      ? Math.round(s.price * 100)
+                      : 0,
+                };
+              })
+              .filter(Boolean) // Remove null entries (sites without valid IDs)
           : [];
-        setMySites(normalizedSites);
+        setMySites(normalizedSites.filter(site => site._id));
       })
       .catch((err) => {
         console.error("Failed to fetch data:", err);
@@ -164,10 +213,29 @@ export default function PublisherDashboard() {
   }
 
   async function removeSite(id: string) {
+    console.log('removeSite function received ID:', id);
+    
+    // Validate ID before proceeding
+    if (!id || id === 'undefined' || id === 'null') {
+      console.error('Invalid ID provided to removeSite:', id);
+      alert('Cannot delete: Invalid website ID');
+      return;
+    }
+    
+    // Ensure ID is a valid MongoDB ObjectId format
+    const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+    if (!isValidObjectId) {
+      console.error('ID is not a valid MongoDB ObjectId format:', id);
+      alert('Cannot delete: Invalid website ID format');
+      return;
+    }
+    
     if (!confirm("Are you sure you want to delete this website?")) return;
     setDeleteLoading(id);
     try {
-      const res = await fetch(`/api/websites/${id}`, { method: "DELETE" });
+      const deleteUrl = `/api/websites/${id}`;
+      console.log('Sending DELETE request to:', deleteUrl);
+      const res = await fetch(deleteUrl, { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
         setMySites((prevSites) =>
@@ -274,369 +342,806 @@ export default function PublisherDashboard() {
     );
   }
 
+  // Function to handle website editing
+  async function editSite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSite || !editingSite._id) {
+      console.error('No site selected for editing');
+      alert('Error: No website selected for editing');
+      return;
+    }
+
+    try {
+      setEditLoading(editingSite._id);
+      
+      // Ensure URL has a protocol
+      let formattedUrl = editingSite.url;
+      if (formattedUrl && !formattedUrl.match(/^https?:\/\//)) {
+        formattedUrl = `https://${formattedUrl}`;
+      }
+
+      // Prepare tags array from string
+      const tagsArray = typeof editingSite.tags === 'string' 
+        ? editingSite.tags
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag)
+        : Array.isArray(editingSite.tags) 
+          ? editingSite.tags 
+          : [];
+
+      const res = await fetch(`/api/websites/${editingSite._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editingSite.title,
+          url: formattedUrl,
+          description: editingSite.description,
+          priceCents: Number(editingSite.priceCents),
+          category: editingSite.category,
+          tags: tagsArray,
+          DA: editingSite.DA ? Number(editingSite.DA) : undefined,
+          PA: editingSite.PA ? Number(editingSite.PA) : undefined,
+          Spam: editingSite.Spam ? Number(editingSite.Spam) : undefined,
+          OrganicTraffic: editingSite.OrganicTraffic
+            ? Number(editingSite.OrganicTraffic)
+            : undefined,
+          DR: editingSite.DR ? Number(editingSite.DR) : undefined,
+          RD: editingSite.RD || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        // Close the modal and refresh the website list
+        setIsEditModalOpen(false);
+        setEditingSite(null);
+        refresh();
+        alert("Website updated successfully! It will be reviewed by an admin.");
+      } else {
+        const err = await res.json();
+        console.error("Edit site error:", err);
+        let errorMessage = "Error: ";
+        
+        if (err.error && typeof err.error === 'object') {
+          // Handle Zod validation errors
+          if (err.error.fieldErrors) {
+            const fieldErrors = Object.entries(err.error.fieldErrors)
+              .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
+              .join('\n');
+            errorMessage += `Validation failed:\n${fieldErrors}`;
+          } else {
+            errorMessage += JSON.stringify(err.error);
+          }
+        } else {
+          errorMessage += (err.error || JSON.stringify(err));
+        }
+        
+        alert(errorMessage);
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+      alert("Network error occurred. Please try again.");
+    } finally {
+      setEditLoading(null);
+    }
+  }
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Publisher Dashboard
-        </h1>
-        <button
-          onClick={refresh}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center gap-2"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          Refresh
-        </button>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="flex border-b">
-        <button
-          onClick={() => setActiveTab("add")}
-          className={`px-6 py-3 font-medium ${
-            activeTab === "add"
-              ? "border-b-2 border-blue-500 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Add New Website
-        </button>
-        <button
-          onClick={() => setActiveTab("list")}
-          className={`px-6 py-3 font-medium ${
-            activeTab === "list"
-              ? "border-b-2 border-blue-500 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          My Websites ({mySites.length})
-        </button>
-      </div>
-
-      {/* Add Website Form */}
-      {activeTab === "add" && (
-        <section className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-800">
-            Add New Website
-          </h2>
-          <form
-            onSubmit={createSite}
-            className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl"
-          >
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-2">
-                Title
-              </label>
-              <input
-                className="w-full border rounded-lg px-4 py-2.5"
-                placeholder="Website Title"
-                value={form.title}
-                onChange={(e) =>
-                  setForm({ ...form, title: e.target.value })
-                }
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                URL
-              </label>
-              <input
-                type="url"
-                className="w-full border rounded-lg px-4 py-2.5"
-                placeholder="https://example.com"
-                value={form.url}
-                onChange={(e) =>
-                  setForm({ ...form, url: e.target.value })
-                }
-                required
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Enter a valid URL (e.g., example.com or https://example.com)
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Price ($)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className="w-full border rounded-lg px-4 py-2.5"
-                placeholder="0.00"
-                value={
-                  form.priceCents
-                    ? (form.priceCents / 100).toFixed(2)
-                    : ""
-                }
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    priceCents: Math.round(
-                      parseFloat(e.target.value || "0") * 100
-                    ),
-                  })
-                }
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Category
-              </label>
-              <select
-                className="w-full border rounded-lg px-4 py-2.5"
-                value={form.category}
-                onChange={(e) =>
-                  setForm({ ...form, category: e.target.value })
-                }
-              >
-                <option value="">Select Category</option>
-                <option value="ecommerce">E-commerce</option>
-                <option value="blog">Blog</option>
-                <option value="portfolio">Portfolio</option>
-                <option value="business">Business</option>
-                <option value="educational">Educational</option>
-                <option value="entertainment">Entertainment</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Tags (comma separated)
-              </label>
-              <input
-                className="w-full border rounded-lg px-4 py-2.5"
-                placeholder="tag1, tag2"
-                value={form.tags}
-                onChange={(e) =>
-                  setForm({ ...form, tags: e.target.value })
-                }
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-2">
-                Description
-              </label>
-              <textarea
-                rows={3}
-                className="w-full border rounded-lg px-4 py-2.5"
-                placeholder="Describe your website..."
-                value={form.description}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    description: e.target.value,
-                  })
-                }
-                required
-              />
-            </div>
-
-            {/* New SEO / Metrics Fields */}
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                DA (Domain Authority)
-              </label>
-              <input
-                type="number"
-                className="w-full border rounded-lg px-4 py-2.5"
-                value={form.DA}
-                onChange={(e) =>
-                  setForm({ ...form, DA: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                PA (Page Authority)
-              </label>
-              <input
-                type="number"
-                className="w-full border rounded-lg px-4 py-2.5"
-                value={form.PA}
-                onChange={(e) =>
-                  setForm({ ...form, PA: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Spam Score
-              </label>
-              <input
-                type="number"
-                className="w-full border rounded-lg px-4 py-2.5"
-                value={form.Spam}
-                onChange={(e) =>
-                  setForm({ ...form, Spam: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Organic Traffic
-              </label>
-              <input
-                type="number"
-                className="w-full border rounded-lg px-4 py-2.5"
-                value={form.OrganicTraffic}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    OrganicTraffic: e.target.value,
-                  })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                DR (Domain Rating)
-              </label>
-              <input
-                type="number"
-                className="w-full border rounded-lg px-4 py-2.5"
-                value={form.DR}
-                onChange={(e) =>
-                  setForm({ ...form, DR: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                RD (Referring Domain URL)
-              </label>
-              <input
-                type="url"
-                className="w-full border rounded-lg px-4 py-2.5"
-                placeholder="https://example.com"
-                value={form.RD}
-                onChange={(e) =>
-                  setForm({ ...form, RD: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <button
-                type="submit"
-                className="px-6 py-3 bg-blue-500 text-white rounded-lg"
-              >
-                Submit for Approval
-              </button>
-            </div>
-          </form>
-        </section>
-      )}
-
-      {/* Websites List */}
-      {activeTab === "list" && (
-        <section className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-800">
-            My Websites ({mySites.length})
-          </h2>
-          {filteredSites.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 border border-dashed border-gray-300 rounded-lg">
-              <p className="mt-4 text-lg">
-                No {statusFilter} websites found.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-5">
-              {filteredSites.map((site, index) => (
-                <div
-                  key={site._id || index}
-                  className="border p-6 rounded-lg"
-                >
-                  <div className="flex justify-between">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Edit Website Modal */}
+        {isEditModalOpen && editingSite && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900">Edit Website</h2>
+                  <button 
+                    onClick={() => {
+                      setIsEditModalOpen(false);
+                      setEditingSite(null);
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <form onSubmit={editSite} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h3 className="text-xl font-semibold">
-                        {site.title}
-                      </h3>
-                      <a
-                        href={site.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500"
-                      >
-                        {site.url}
-                      </a>
-                      <p className="text-gray-600">
-                        {site.description}
+                      <label className="block text-sm font-medium mb-2 text-gray-700">
+                        Title
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        value={editingSite.title}
+                        onChange={(e) =>
+                          setEditingSite({ ...editingSite, title: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">
+                        URL
+                      </label>
+                      <input
+                        type="url"
+                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        placeholder="https://example.com"
+                        value={editingSite.url}
+                        onChange={(e) =>
+                          setEditingSite({ ...editingSite, url: e.target.value })
+                        }
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Enter a valid URL (e.g., example.com or https://example.com)
                       </p>
-                      <div>
-                        {getStatusBadge(
-                          site.status,
-                          site.rejectionReason
-                        )}
-                      </div>
                     </div>
-                    <div className="text-green-600 font-bold">
-                      {formatPrice(site.priceCents)}
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">
+                        Price (USD)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        value={editingSite.priceCents / 100}
+                        onChange={(e) =>
+                          setEditingSite({
+                            ...editingSite,
+                            priceCents: Math.round(
+                              parseFloat(e.target.value) * 100
+                            ),
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">
+                        Category
+                      </label>
+                      <select
+                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        value={editingSite.category}
+                        onChange={(e) =>
+                          setEditingSite({ ...editingSite, category: e.target.value })
+                        }
+                        required
+                      >
+                        <option value="">Select a category</option>
+                        <option value="ecommerce">E-commerce</option>
+                        <option value="blog">Blog</option>
+                        <option value="portfolio">Portfolio</option>
+                        <option value="business">Business</option>
+                        <option value="educational">Educational</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="other">Other</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Show SEO/Metrics */}
-                  <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-700">
-                    {site.DA !== undefined && <div>DA: {site.DA}</div>}
-                    {site.PA !== undefined && <div>PA: {site.PA}</div>}
-                    {site.Spam !== undefined && (
-                      <div>Spam: {site.Spam}</div>
-                    )}
-                    {site.OrganicTraffic !== undefined && (
-                      <div>Organic Traffic: {site.OrganicTraffic}</div>
-                    )}
-                    {site.DR !== undefined && <div>DR: {site.DR}</div>}
-                    {site.RD && (
-                      <div>
-                        RD:{" "}
-                        <a
-                          href={site.RD}
-                          className="text-blue-500"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {site.RD}
-                        </a>
-                      </div>
-                    )}
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">
+                      Description
+                    </label>
+                    <textarea
+                      className="w-full border rounded-lg px-4 py-2.5 h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      value={editingSite.description}
+                      onChange={(e) =>
+                        setEditingSite({ ...editingSite, description: e.target.value })
+                      }
+                      required
+                    ></textarea>
                   </div>
 
-                  <div className="mt-2 text-sm text-gray-500">
-                    Added: {formatDate(site.createdAt)}
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">
+                      Tags (comma separated)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="blog, news, tech"
+                      value={Array.isArray(editingSite.tags) ? editingSite.tags.join(', ') : editingSite.tags || ''}
+                      onChange={(e) => setEditingSite({ ...editingSite, tags: e.target.value })}
+                    />
                   </div>
-                  {site.status === "pending" && (
+
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-medium mb-4 text-gray-800">SEO Metrics (Optional)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">DA</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editingSite.DA || ''}
+                          onChange={(e) =>
+                            setEditingSite({ ...editingSite, DA: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">PA</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editingSite.PA || ''}
+                          onChange={(e) =>
+                            setEditingSite({ ...editingSite, PA: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">Spam Score</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editingSite.Spam || ''}
+                          onChange={(e) =>
+                            setEditingSite({ ...editingSite, Spam: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">Organic Traffic</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editingSite.OrganicTraffic || ''}
+                          onChange={(e) =>
+                            setEditingSite({ ...editingSite, OrganicTraffic: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">DR</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editingSite.DR || ''}
+                          onChange={(e) =>
+                            setEditingSite({ ...editingSite, DR: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">RD</label>
+                        <input
+                          type="url"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editingSite.RD || ''}
+                          onChange={(e) =>
+                            setEditingSite({ ...editingSite, RD: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
                     <button
-                      onClick={() => removeSite(site._id)}
-                      disabled={deleteLoading === site._id}
-                      className="mt-2 px-4 py-2 bg-red-500 text-white rounded-lg"
+                      type="button"
+                      onClick={() => {
+                        setIsEditModalOpen(false);
+                        setEditingSite(null);
+                      }}
+                      className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                     >
-                      {deleteLoading === site._id
-                        ? "Deleting..."
-                        : "Delete"}
+                      Cancel
                     </button>
+                    <button
+                      type="submit"
+                      disabled={editLoading === editingSite._id}
+                      className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition-colors flex items-center gap-2"
+                    >
+                      {editLoading === editingSite._id ? (
+                        <>
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                          Updating...
+                        </>
+                      ) : (
+                        "Update Website"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modern Header */}
+        <div className="mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+                Publisher Dashboard
+              </h1>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px space-x-8">
+              <button
+                onClick={() => setActiveTab("list")}
+                className={`py-4 px-1 font-medium text-sm border-b-2 ${activeTab === "list" 
+                  ? "border-blue-600 text-blue-600" 
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}
+              >
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  <span>My Sites</span>
+                  {mySites.length > 0 && (
+                    <span className="ml-1 px-2 py-0.5 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
+                      {mySites.length}
+                    </span>
                   )}
                 </div>
-              ))}
+              </button>
+              <button
+                onClick={() => setActiveTab("add")}
+                className={`py-4 px-1 font-medium text-sm border-b-2 ${activeTab === "add" 
+                  ? "border-blue-600 text-blue-600" 
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}
+              >
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <span>Add New Site</span>
+                </div>
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* My Sites Tab */}
+        {activeTab === "list" && (
+          <div>
+            {/* Table Header */}
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={refresh}
+                  className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+                <span className="text-sm font-medium text-gray-500">{mySites.length} websites</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(
+                      e.target.value as "all" | "pending" | "approved" | "rejected"
+                    )
+                  }
+                  className="pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
             </div>
-          )}
-        </section>
-      )}
+            
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="flex flex-col items-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+                  <p className="text-gray-600 text-sm">Loading your sites...</p>
+                </div>
+              </div>
+            ) : mySites.length === 0 ? (
+              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 text-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Websites Found</h3>
+                <p className="text-gray-600 mb-4">You haven't added any websites yet. Get started by adding your first website!</p>
+                <button
+                  onClick={() => setActiveTab("add")}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-sm inline-flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add Website
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6">
+                {filteredSites.map((site) => (
+                  <div
+                    key={site._id}
+                    className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow bg-white"
+                  >
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                      <div className="flex-grow">
+                        <h3 className="font-semibold text-lg text-gray-900">{site.title}</h3>
+                        <a
+                          href={site.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline text-sm inline-block mt-1"
+                        >
+                          {site.url}
+                        </a>
+                        <p className="text-gray-600 mt-2 text-sm">
+                          {site.description}
+                        </p>
+                        <div className="mt-3">
+                          {getStatusBadge(
+                            site.status,
+                            site.rejectionReason
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-green-600 font-bold text-lg">
+                        {formatPrice(site.priceCents)}
+                      </div>
+                    </div>
+
+                    {/* Show SEO/Metrics */}
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                      {site.DA !== undefined && (
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">DA:</span> {site.DA}
+                        </div>
+                      )}
+                      {site.PA !== undefined && (
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">PA:</span> {site.PA}
+                        </div>
+                      )}
+                      {site.Spam !== undefined && (
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">Spam:</span> {site.Spam}
+                        </div>
+                      )}
+                      {site.OrganicTraffic !== undefined && (
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">Organic Traffic:</span> {site.OrganicTraffic}
+                        </div>
+                      )}
+                      {site.DR !== undefined && (
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">DR:</span> {site.DR}
+                        </div>
+                      )}
+                      {site.RD && (
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">RD:</span>{" "}
+                          <a
+                            href={site.RD}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {site.RD}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                        onClick={() => {
+                          // Ensure we have a valid ID before proceeding
+                          if (!site._id) {
+                            console.error('Edit failed: Site has no _id property', site);
+                            alert('Cannot edit: Site ID is missing');
+                            return;
+                          }
+                          
+                          // Set the site to be edited and open the modal
+                          setEditingSite(site);
+                          setIsEditModalOpen(true);
+                        }}
+                        disabled={editLoading === site._id}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 text-sm font-medium transition-colors flex items-center gap-1"
+                      >
+                        {editLoading === site._id ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-1"></div>
+                            Updating...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Ensure we have a valid ID before proceeding
+                          if (!site._id) {
+                            console.error('Delete failed: Site has no _id property', site);
+                            alert('Cannot delete: Site ID is missing');
+                            return;
+                          }
+                          
+                          // Log detailed information for debugging
+                          console.log('Deleting site:', {
+                            title: site.title,
+                            id: site._id,
+                            idType: typeof site._id,
+                            fullSite: site
+                          });
+                          
+                          // The _id should already be normalized in the refresh function
+                          // But we'll double-check it's a string here
+                          const siteId = String(site._id);
+                          
+                          if (siteId && siteId !== 'undefined') {
+                            console.log('Calling removeSite with ID:', siteId);
+                            removeSite(siteId);
+                          } else {
+                            console.error('Cannot delete: Invalid ID format:', siteId);
+                            alert('Cannot delete: Site ID is invalid');
+                          }
+                        }}
+                        disabled={deleteLoading === site._id}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-300 text-sm font-medium transition-colors flex items-center gap-1"
+                      >
+                        {deleteLoading === site._id ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-1"></div>
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Add New Site Tab */}
+        {activeTab === "add" && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold mb-6 text-gray-900">Add New Website</h2>
+            <form onSubmit={createSite} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    value={form.title}
+                    onChange={(e) =>
+                      setForm({ ...form, title: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    URL
+                  </label>
+                  <input
+                    type="url"
+                    className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="https://example.com"
+                    value={form.url}
+                    onChange={(e) =>
+                      setForm({ ...form, url: e.target.value })
+                    }
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter a valid URL (e.g., example.com or https://example.com)
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    Price (USD)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    value={form.priceCents / 100}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        priceCents: Math.round(
+                          parseFloat(e.target.value) * 100
+                        ),
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    Category
+                  </label>
+                  <select
+                    className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    value={form.category}
+                    onChange={(e) =>
+                      setForm({ ...form, category: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="">Select a category</option>
+                    <option value="ecommerce">E-commerce</option>
+                    <option value="blog">Blog</option>
+                    <option value="portfolio">Portfolio</option>
+                    <option value="business">Business</option>
+                    <option value="educational">Educational</option>
+                    <option value="entertainment">Entertainment</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700">
+                  Description
+                </label>
+                <textarea
+                  className="w-full border rounded-lg px-4 py-2.5 h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
+                  required
+                ></textarea>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700">
+                  Tags (comma separated)
+                </label>
+                <input
+                  type="text"
+                  className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="blog, news, tech"
+                  value={form.tags}
+                  onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                />
+              </div>
+
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium mb-4 text-gray-800">SEO Metrics (Optional)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">DA</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      value={form.DA}
+                      onChange={(e) =>
+                        setForm({ ...form, DA: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">PA</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      value={form.PA}
+                      onChange={(e) =>
+                        setForm({ ...form, PA: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">Spam Score</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      value={form.Spam}
+                      onChange={(e) =>
+                        setForm({ ...form, Spam: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">Organic Traffic</label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      value={form.OrganicTraffic}
+                      onChange={(e) =>
+                        setForm({ ...form, OrganicTraffic: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">DR</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      value={form.DR}
+                      onChange={(e) =>
+                        setForm({ ...form, DR: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">RD</label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      value={form.RD}
+                      onChange={(e) =>
+                        setForm({ ...form, RD: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Submit Website
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

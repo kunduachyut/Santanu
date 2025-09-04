@@ -96,12 +96,24 @@ export async function PATCH(
 
   // Owners can update their own pending websites
   if (website.userId.toString() === userId && website.status === 'pending') {
-    const allowedUpdates = ['title', 'description', 'url', 'image', 'category', 'price', 'priceCents', 'tags', 'DA', 'PA', 'Spam', 'OrganicTraffic', 'DR', 'RD'];
+    const allowedUpdates = ['title', 'description', 'url', 'image', 'category', 'price', 'tags'];
     Object.keys(json).forEach(key => {
       if (allowedUpdates.includes(key)) {
+        // Check if this is an important field and if it's being changed
+        if (importantFields.includes(key) && website[key] !== json[key]) {
+          importantFieldChanged = true;
+        }
         website[key] = json[key];
       }
     });
+    
+    // If important fields were changed and the site was previously approved, set it back to pending
+    if (importantFieldChanged && website.status === 'approved') {
+      website.status = 'pending';
+      website.approvedAt = undefined;
+      website.rejectionReason = '';
+      console.log('Website status changed to pending due to important field updates');
+    }
 
     await website.save();
     return NextResponse.json(website.toJSON());
@@ -121,10 +133,18 @@ export async function DELETE(
   const { id } = resolvedParams;
   
   console.log("DELETE request for website with ID:", id);
+  console.log("DELETE params type:", typeof params);
+  console.log("DELETE resolvedParams:", resolvedParams);
 
   // Validate ObjectId
-  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-    return NextResponse.json({ error: "Invalid website ID" }, { status: 400 });
+  if (!id) {
+    console.error("Missing ID in DELETE request");
+    return NextResponse.json({ error: "Missing website ID" }, { status: 400 });
+  }
+  
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    console.error("Invalid ObjectId format:", id);
+    return NextResponse.json({ error: "Invalid website ID format" }, { status: 400 });
   }
 
   const authResult = await requireAuth();

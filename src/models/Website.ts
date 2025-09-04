@@ -51,8 +51,8 @@ interface WebsiteModel extends mongoose.Model<IWebsite> {
   findByUser(userId: string, status?: string): mongoose.Query<IWebsite[], IWebsite>;
 }
 
-// Schema definition
-const WebsiteSchema = new mongoose.Schema<IWebsite, WebsiteModel>({
+const WebsiteSchema = new mongoose.Schema({
+  // Existing fields
   title: {
     type: String,
     required: [true, 'Title is required'],
