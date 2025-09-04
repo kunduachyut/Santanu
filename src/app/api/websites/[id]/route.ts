@@ -121,10 +121,18 @@ export async function DELETE(
   const { id } = resolvedParams;
   
   console.log("DELETE request for website with ID:", id);
+  console.log("DELETE params type:", typeof params);
+  console.log("DELETE resolvedParams:", resolvedParams);
 
   // Validate ObjectId
-  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-    return NextResponse.json({ error: "Invalid website ID" }, { status: 400 });
+  if (!id) {
+    console.error("Missing ID in DELETE request");
+    return NextResponse.json({ error: "Missing website ID" }, { status: 400 });
+  }
+  
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    console.error("Invalid ObjectId format:", id);
+    return NextResponse.json({ error: "Invalid website ID format" }, { status: 400 });
   }
 
   const authResult = await requireAuth();

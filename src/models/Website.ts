@@ -44,6 +44,11 @@ interface WebsiteModel extends mongoose.Model<IWebsite> {
 }
 
 const WebsiteSchema = new mongoose.Schema({
+  // Explicitly define _id field to ensure it's properly serialized
+  _id: {
+    type: mongoose.Schema.Types.ObjectId,
+    auto: true,
+  },
   // Existing fields
   title: {
     type: String,
