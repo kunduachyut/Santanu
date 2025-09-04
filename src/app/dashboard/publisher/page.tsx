@@ -80,12 +80,18 @@ export default function PublisherDashboard() {
   async function createSite(e: React.FormEvent) {
     e.preventDefault();
     try {
+      // Ensure URL has a protocol
+      let formattedUrl = form.url;
+      if (formattedUrl && !formattedUrl.match(/^https?:\/\//)) {
+        formattedUrl = `https://${formattedUrl}`;
+      }
+
       const res = await fetch("/api/websites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: form.title,
-          url: form.url,
+          url: formattedUrl,
           description: form.description,
           priceCents: Number(form.priceCents),
           category: form.category,
@@ -125,7 +131,23 @@ export default function PublisherDashboard() {
       } else {
         const err = await res.json();
         console.error("Create site error:", err);
-        alert("Error: " + (err.error || JSON.stringify(err)));
+        let errorMessage = "Error: ";
+        
+        if (err.error && typeof err.error === 'object') {
+          // Handle Zod validation errors
+          if (err.error.fieldErrors) {
+            const fieldErrors = Object.entries(err.error.fieldErrors)
+              .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
+              .join('\n');
+            errorMessage += `Validation failed:\n${fieldErrors}`;
+          } else {
+            errorMessage += JSON.stringify(err.error);
+          }
+        } else {
+          errorMessage += (err.error || JSON.stringify(err));
+        }
+        
+        alert(errorMessage);
       }
     } catch (error) {
       console.error("Network error:", error);
@@ -335,6 +357,9 @@ export default function PublisherDashboard() {
                 }
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Enter a valid URL (e.g., example.com or https://example.com)
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">

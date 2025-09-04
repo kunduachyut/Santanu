@@ -56,7 +56,19 @@ const WebsiteSchema = new mongoose.Schema({
     required: [true, 'URL is required'],
     validate: {
       validator: function(v: string) {
-        return /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(v);
+        // More permissive URL validation
+        // Accept URLs that start with http://, https://, or just domain names
+        if (!v) return false;
+        
+        // If it doesn't have a protocol, add https:// temporarily for validation
+        const urlToTest = v.match(/^https?:\/\//) ? v : `https://${v}`;
+        
+        try {
+          new URL(urlToTest);
+          return true;
+        } catch (e) {
+          return false;
+        }
       },
       message: 'Please enter a valid URL'
     }
