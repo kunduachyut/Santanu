@@ -38,14 +38,11 @@ export default function PublisherDashboard() {
     DR: "",
     RD: "",
   });
-  const [editingSite, setEditingSite] = useState<Website | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "pending" | "approved" | "rejected"
   >("all");
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
-  const [editLoading, setEditLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"add" | "list">("list");
 
   useEffect(() => {
@@ -182,27 +179,19 @@ export default function PublisherDashboard() {
         console.error("Create site error:", err);
         let errorMessage = "Error: ";
         
-        if (err.error && typeof err.error === "object") {
-  // Handle Zod validation errors
-  const maybeFieldErrors = (err.error as any).fieldErrors;
-  if (maybeFieldErrors && typeof maybeFieldErrors === "object") {
-    const fieldErrors = Object.entries(maybeFieldErrors)
-      .map(([field, errors]) => {
-        if (Array.isArray(errors)) {
-          return `${field}: ${errors.join(", ")}`;
+        if (err.error && typeof err.error === 'object') {
+          // Handle Zod validation errors
+          if (err.error.fieldErrors) {
+            const fieldErrors = Object.entries(err.error.fieldErrors)
+              .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
+              .join('\n');
+            errorMessage += `Validation failed:\n${fieldErrors}`;
+          } else {
+            errorMessage += JSON.stringify(err.error);
+          }
+        } else {
+          errorMessage += (err.error || JSON.stringify(err));
         }
-        return `${field}: ${String(errors)}`;
-      })
-      .join("\n");
-
-    errorMessage += `Validation failed:\n${fieldErrors}`;
-  } else {
-    errorMessage += JSON.stringify(err.error);
-  }
-} else {
-  errorMessage += err.error ?? JSON.stringify(err);
-}
-
         
         alert(errorMessage);
       }
@@ -342,332 +331,9 @@ export default function PublisherDashboard() {
     );
   }
 
-  // Function to handle website editing
-  async function editSite(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingSite || !editingSite._id) {
-      console.error('No site selected for editing');
-      alert('Error: No website selected for editing');
-      return;
-    }
-
-    try {
-      setEditLoading(editingSite._id);
-      
-      // Ensure URL has a protocol
-      let formattedUrl = editingSite.url;
-      if (formattedUrl && !formattedUrl.match(/^https?:\/\//)) {
-        formattedUrl = `https://${formattedUrl}`;
-      }
-
-      // Prepare tags array from string
-      const tagsArray = typeof editingSite.tags === 'string' 
-        ? editingSite.tags
-            .split(',')
-            .map((tag) => tag.trim())
-            .filter((tag) => tag)
-        : Array.isArray(editingSite.tags) 
-          ? editingSite.tags 
-          : [];
-
-      const res = await fetch(`/api/websites/${editingSite._id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: editingSite.title,
-          url: formattedUrl,
-          description: editingSite.description,
-          priceCents: Number(editingSite.priceCents),
-          category: editingSite.category,
-          tags: tagsArray,
-          DA: editingSite.DA ? Number(editingSite.DA) : undefined,
-          PA: editingSite.PA ? Number(editingSite.PA) : undefined,
-          Spam: editingSite.Spam ? Number(editingSite.Spam) : undefined,
-          OrganicTraffic: editingSite.OrganicTraffic
-            ? Number(editingSite.OrganicTraffic)
-            : undefined,
-          DR: editingSite.DR ? Number(editingSite.DR) : undefined,
-          RD: editingSite.RD || undefined,
-        }),
-      });
-
-      if (res.ok) {
-        // Close the modal and refresh the website list
-        setIsEditModalOpen(false);
-        setEditingSite(null);
-        refresh();
-        alert("Website updated successfully! It will be reviewed by an admin.");
-      } else {
-        const err = await res.json();
-        console.error("Edit site error:", err);
-        let errorMessage = "Error: ";
-        
-        if (err.error && typeof err.error === 'object') {
-          // Handle Zod validation errors
-          if (err.error.fieldErrors) {
-            const fieldErrors = Object.entries(err.error.fieldErrors)
-              .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
-              .join('\n');
-            errorMessage += `Validation failed:\n${fieldErrors}`;
-          } else {
-            errorMessage += JSON.stringify(err.error);
-          }
-        } else {
-          errorMessage += (err.error || JSON.stringify(err));
-        }
-        
-        alert(errorMessage);
-      }
-    } catch (error) {
-      console.error("Network error:", error);
-      alert("Network error occurred. Please try again.");
-    } finally {
-      setEditLoading(null);
-    }
-  }
-
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Edit Website Modal */}
-        {isEditModalOpen && editingSite && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Edit Website</h2>
-                  <button 
-                    onClick={() => {
-                      setIsEditModalOpen(false);
-                      setEditingSite(null);
-                    }}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                
-                <form onSubmit={editSite} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-gray-700">
-                        Title
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        value={editingSite.title}
-                        onChange={(e) =>
-                          setEditingSite({ ...editingSite, title: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-gray-700">
-                        URL
-                      </label>
-                      <input
-                        type="url"
-                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        placeholder="https://example.com"
-                        value={editingSite.url}
-                        onChange={(e) =>
-                          setEditingSite({ ...editingSite, url: e.target.value })
-                        }
-                        required
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Enter a valid URL (e.g., example.com or https://example.com)
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-gray-700">
-                        Price (USD)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        value={editingSite.priceCents / 100}
-                        onChange={(e) =>
-                          setEditingSite({
-                            ...editingSite,
-                            priceCents: Math.round(
-                              parseFloat(e.target.value) * 100
-                            ),
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-gray-700">
-                        Category
-                      </label>
-                      <select
-                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        value={editingSite.category}
-                        onChange={(e) =>
-                          setEditingSite({ ...editingSite, category: e.target.value })
-                        }
-                        required
-                      >
-                        <option value="">Select a category</option>
-                        <option value="ecommerce">E-commerce</option>
-                        <option value="blog">Blog</option>
-                        <option value="portfolio">Portfolio</option>
-                        <option value="business">Business</option>
-                        <option value="educational">Educational</option>
-                        <option value="entertainment">Entertainment</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-700">
-                      Description
-                    </label>
-                    <textarea
-                      className="w-full border rounded-lg px-4 py-2.5 h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      value={editingSite.description}
-                      onChange={(e) =>
-                        setEditingSite({ ...editingSite, description: e.target.value })
-                      }
-                      required
-                    ></textarea>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-700">
-                      Tags (comma separated)
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      placeholder="blog, news, tech"
-                      value={Array.isArray(editingSite.tags) ? editingSite.tags.join(', ') : editingSite.tags || ''}
-                      onChange={(e) => setEditingSite({ ...editingSite, tags: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="border-t pt-6">
-                    <h3 className="text-lg font-medium mb-4 text-gray-800">SEO Metrics (Optional)</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2 text-gray-700">DA</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                          value={editingSite.DA || ''}
-                          onChange={(e) =>
-                            setEditingSite({ ...editingSite, DA: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2 text-gray-700">PA</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                          value={editingSite.PA || ''}
-                          onChange={(e) =>
-                            setEditingSite({ ...editingSite, PA: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2 text-gray-700">Spam Score</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                          value={editingSite.Spam || ''}
-                          onChange={(e) =>
-                            setEditingSite({ ...editingSite, Spam: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2 text-gray-700">Organic Traffic</label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                          value={editingSite.OrganicTraffic || ''}
-                          onChange={(e) =>
-                            setEditingSite({ ...editingSite, OrganicTraffic: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2 text-gray-700">DR</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                          value={editingSite.DR || ''}
-                          onChange={(e) =>
-                            setEditingSite({ ...editingSite, DR: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2 text-gray-700">RD</label>
-                        <input
-                          type="url"
-                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                          value={editingSite.RD || ''}
-                          onChange={(e) =>
-                            setEditingSite({ ...editingSite, RD: e.target.value })
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditModalOpen(false);
-                        setEditingSite(null);
-                      }}
-                      className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={editLoading === editingSite._id}
-                      className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition-colors flex items-center gap-2"
-                    >
-                      {editLoading === editingSite._id ? (
-                        <>
-                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                          Updating...
-                        </>
-                      ) : (
-                        "Update Website"
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Modern Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -779,7 +445,7 @@ export default function PublisherDashboard() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 gap-14">
                 {filteredSites.map((site) => (
                   <div
                     key={site._id}
@@ -854,37 +520,7 @@ export default function PublisherDashboard() {
                     </div>
 
                     {/* Actions */}
-                    <div className="mt-4 flex justify-end space-x-2">
-                      <button
-                        onClick={() => {
-                          // Ensure we have a valid ID before proceeding
-                          if (!site._id) {
-                            console.error('Edit failed: Site has no _id property', site);
-                            alert('Cannot edit: Site ID is missing');
-                            return;
-                          }
-                          
-                          // Set the site to be edited and open the modal
-                          setEditingSite(site);
-                          setIsEditModalOpen(true);
-                        }}
-                        disabled={editLoading === site._id}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 text-sm font-medium transition-colors flex items-center gap-1"
-                      >
-                        {editLoading === site._id ? (
-                          <>
-                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-1"></div>
-                            Updating...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Edit
-                          </>
-                        )}
-                      </button>
+                    <div className="mt-4 flex justify-end">
                       <button
                         onClick={() => {
                           // Ensure we have a valid ID before proceeding

@@ -438,8 +438,8 @@ export default function ConsumerDashboard() {
                 ) : (
                   <div>
                     {/* Table Header */}
-                    <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <div className="col-span-1">
+                    <div className="grid grid-cols-22 gap-14 px-6 py-3 bg-gray-50 border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="col-span-1 flex justify-center">
                         <input 
                           type="checkbox" 
                           checked={selectAll}
@@ -456,10 +456,15 @@ export default function ConsumerDashboard() {
                           className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                         />
                       </div>
-                      <div className="col-span-4">WEBSITE NAME</div>
-                      <div className="col-span-2">PRICE</div>
-                      <div className="col-span-2">STATUS</div>
-                      <div className="col-span-2">ACTIONS</div>
+                      <div className="col-span-4 flex items-center">WEBSITE NAME</div>
+                      <div className="col-span-2 flex justify-center">PRICE</div>
+                      <div className="col-span-1 flex justify-center">DA</div>
+                      <div className="col-span-1 flex justify-center">DR</div>
+                      <div className="col-span-2 flex justify-center">ORGANIC TRAFFIC</div>
+                      <div className="col-span-1 flex justify-center">SPAM</div>
+                      <div className="col-span-2 flex justify-center">RD LINK</div>
+                      <div className="col-span-2 flex justify-center">STATUS</div>
+                      <div className="col-span-2 flex justify-center">ACTIONS</div>
                       <div className="col-span-1"></div>
                     </div>
                     
@@ -476,9 +481,9 @@ export default function ConsumerDashboard() {
                         const isPurchased = paidSiteIds.has(stableId);
                         
                         return (
-                          <div key={stableId} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 items-center">
+                          <div key={stableId} className="grid grid-cols-22 gap-14 px-6 py-4 hover:bg-gray-50 items-center">
                             {/* Checkbox */}
-                            <div className="col-span-1">
+                            <div className="col-span-1 flex justify-center">
                               <input 
                                 type="checkbox" 
                                 checked={selectedItems[stableId] || false}
@@ -507,27 +512,56 @@ export default function ConsumerDashboard() {
                                   <div className="text-xs text-gray-500 truncate max-w-[150px]" title={w.url}>
                                     {w.url.length > 30 ? `${w.url.substring(0, 30)}...` : w.url}
                                   </div>
-                                  {/* Display new metrics if available */}
-                                  {(w.DA || w.DR) && (
-                                    <div className="flex gap-2 mt-1">
-                                      {w.DA && <span className="text-xs text-gray-400">DA: {w.DA}</span>}
-                                      {w.DR && <span className="text-xs text-gray-400">DR: {w.DR}</span>}
-                                      {w.OrganicTraffic && <span className="text-xs text-gray-400">OrganicTraffic: {w.OrganicTraffic}</span>}
-                                      {w.Spam && <span className="text-xs text-gray-400">Spam: {w.Spam}</span>}
-                                      {w.RD && <span className="text-xs text-gray-400">RD: {w.RD}</span>}
-                                       </div>
-                                  )}
                                 </div>
                               </div>
                             </div>
                             
                             {/* Price */}
-                            <div className="col-span-2">
+                            <div className="col-span-2 flex justify-center">
                               <div className="text-sm font-medium text-gray-900">${(w.priceCents / 100).toFixed(2)}</div>
                             </div>
                             
+                            {/* DA */}
+                            <div className="col-span-1 flex justify-center">
+                              <div className="text-sm font-medium text-gray-900">{w.DA || 0}</div>
+                            </div>
+                            
+                            {/* DR */}
+                            <div className="col-span-1 flex justify-center">
+                              <div className="text-sm font-medium text-gray-900">{w.DR || 0}</div>
+                            </div>
+                            
+                            {/* Organic Traffic */}
+                            <div className="col-span-2 flex justify-center">
+                              <div className="text-sm font-medium text-gray-900">{w.OrganicTraffic || 0}</div>
+                            </div>
+                            
+                            {/* Spam */}
+                            <div className="col-span-1 flex justify-center">
+                              <div className="text-sm font-medium text-gray-900">{w.Spam || 0}</div>
+                            </div>
+                            
+                            {/* RD */}
+                            <div className="col-span-2 flex justify-center">
+                              {w.RD ? (
+                                <a 
+                                  href={w.RD} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-blue-600 hover:text-blue-800"
+                                  title="Open RD Link"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                              ) : (
+                                <span className="text-sm font-medium text-gray-400">0</span>
+                              )}
+                            </div>
+                            
                             {/* Status */}
-                            <div className="col-span-2">
+                            <div className="col-span-2 flex justify-center">
                               {isPurchased ? (
                                 <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                   Purchased
@@ -540,7 +574,7 @@ export default function ConsumerDashboard() {
                             </div>
                             
                             {/* Actions */}
-                            <div className="col-span-2">
+                            <div className="col-span-2 flex justify-center">
                               <div className="flex space-x-2">
                                 <a
                                   href={w.url}
@@ -562,6 +596,9 @@ export default function ConsumerDashboard() {
                                     // Include new fields
                                     DA: w.DA,
                                     DR: w.DR,
+                                    OrganicTraffic: w.OrganicTraffic,
+                                    Spam: w.Spam,
+                                    RD: w.RD
                                   })}
                                   disabled={isPurchased}
                                   className={`p-1 ${isPurchased ? 'text-green-500 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}
@@ -581,7 +618,7 @@ export default function ConsumerDashboard() {
                             </div>
                             
                             {/* More Options */}
-                            <div className="col-span-1 text-right">
+                            <div className="col-span-1 flex justify-end">
                               <button className="text-gray-400 hover:text-gray-500">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />

@@ -99,21 +99,9 @@ export async function PATCH(
     const allowedUpdates = ['title', 'description', 'url', 'image', 'category', 'price', 'tags'];
     Object.keys(json).forEach(key => {
       if (allowedUpdates.includes(key)) {
-        // Check if this is an important field and if it's being changed
-        if (importantFields.includes(key) && website[key] !== json[key]) {
-          importantFieldChanged = true;
-        }
         website[key] = json[key];
       }
     });
-    
-    // If important fields were changed and the site was previously approved, set it back to pending
-    if (importantFieldChanged && website.status === 'approved') {
-      website.status = 'pending';
-      website.approvedAt = undefined;
-      website.rejectionReason = '';
-      console.log('Website status changed to pending due to important field updates');
-    }
 
     await website.save();
     return NextResponse.json(website.toJSON());
