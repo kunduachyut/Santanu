@@ -812,6 +812,7 @@ export default function ConsumerDashboard() {
                                 className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                   isPaid ? "bg-green-100 text-green-800" :
                                   p.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                                  p.status === "rejected" ? "bg-red-100 text-red-800" :
                                   "bg-green-100 text-green-800"
                                 }`}
                               >

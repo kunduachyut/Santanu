@@ -44,6 +44,23 @@ export default function PublisherDashboard() {
   >("all");
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"add" | "list">("list");
+  const [editingSite, setEditingSite] = useState<Website | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    url: "",
+    description: "",
+    priceCents: 0,
+    category: "",
+    tags: "",
+    DA: "",
+    PA: "",
+    Spam: "",
+    OrganicTraffic: "",
+    DR: "",
+    RD: "",
+  });
+  const [updateLoading, setUpdateLoading] = useState(false);
 
   useEffect(() => {
     refresh();
@@ -256,6 +273,86 @@ export default function PublisherDashboard() {
     }
   }
 
+  function handleEditSite(site: Website) {
+    setEditingSite(site);
+    setEditForm({
+      title: site.title || "",
+      url: site.url || "",
+      description: site.description || "",
+      priceCents: site.priceCents || 0,
+      category: site.category || "",
+      tags: Array.isArray(site.tags) ? site.tags.join(", ") : "",
+      DA: site.DA?.toString() || "",
+      PA: site.PA?.toString() || "",
+      Spam: site.Spam?.toString() || "",
+      OrganicTraffic: site.OrganicTraffic?.toString() || "",
+      DR: site.DR?.toString() || "",
+      RD: site.RD || "",
+    });
+    setIsEditModalOpen(true);
+  }
+
+  async function updateSite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSite?._id) {
+      console.error('Cannot update site: Missing ID');
+      return;
+    }
+
+    setUpdateLoading(true);
+    try {
+      // Ensure URL has a protocol
+      let formattedUrl = editForm.url;
+      if (formattedUrl && !formattedUrl.match(/^https?:\/\//)) {
+        formattedUrl = `https://${formattedUrl}`;
+      }
+
+      const res = await fetch(`/api/websites/${editingSite._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editForm.title,
+          description: editForm.description,
+          url: formattedUrl,
+          category: editForm.category,
+          status: "pending", // Set status to pending for admin approval
+          priceCents: editForm.priceCents,
+          tags: editForm.tags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter((tag) => tag),
+          DA: editForm.DA ? Number(editForm.DA) : undefined,
+          PA: editForm.PA ? Number(editForm.PA) : undefined,
+          Spam: editForm.Spam ? Number(editForm.Spam) : undefined,
+          OrganicTraffic: editForm.OrganicTraffic
+            ? Number(editForm.OrganicTraffic)
+            : undefined,
+          DR: editForm.DR ? Number(editForm.DR) : undefined,
+          RD: editForm.RD || undefined,
+          _forceStatusUpdate: true, // Add a flag to force status update
+        }),
+      });
+
+      if (res.ok) {
+        // Close modal and refresh the list
+        setIsEditModalOpen(false);
+        setEditingSite(null);
+        alert("Website updated successfully! It will be reviewed by an admin.");
+        // Force a complete page refresh to ensure we get the latest data
+        window.location.reload();
+      } else {
+        const error = await res.json();
+        console.error("Update error:", error);
+        alert(`Failed to update: ${error.error || "Unknown error"}`);
+      }
+    } catch (err) {
+      console.error("Update network error:", err);
+      alert("Network error occurred. Please try again.");
+    } finally {
+      setUpdateLoading(false);
+    }
+  }
+
   function getStatusBadge(status: string, rejectionReason?: string) {
     const baseClass =
       "px-3 py-1 rounded-full text-xs font-semibold";
@@ -334,6 +431,245 @@ export default function PublisherDashboard() {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Edit Modal */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">Edit Website</h2>
+                    <p className="text-sm text-yellow-600 mt-1">
+                      <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      After editing, your website will require admin approval again.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <form onSubmit={updateSite} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">
+                        Title
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        value={editForm.title}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, title: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">
+                        URL
+                      </label>
+                      <input
+                        type="url"
+                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        placeholder="https://example.com"
+                        value={editForm.url}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, url: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">
+                        Price (USD)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        value={editForm.priceCents / 100}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            priceCents: Math.round(
+                              parseFloat(e.target.value) * 100
+                            ),
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">
+                        Category
+                      </label>
+                      <select
+                        className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        value={editForm.category}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, category: e.target.value })
+                        }
+                        required
+                      >
+                        <option value="">Select a category</option>
+                        <option value="ecommerce">E-commerce</option>
+                        <option value="blog">Blog</option>
+                        <option value="portfolio">Portfolio</option>
+                        <option value="business">Business</option>
+                        <option value="educational">Educational</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">
+                      Description
+                    </label>
+                    <textarea
+                      className="w-full border rounded-lg px-4 py-2.5 h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      value={editForm.description}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, description: e.target.value })
+                      }
+                      required
+                    ></textarea>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">
+                      Tags (comma separated)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="blog, news, tech"
+                      value={editForm.tags}
+                      onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-medium mb-4 text-gray-800">SEO Metrics (Optional)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">DA</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editForm.DA}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, DA: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">PA</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editForm.PA}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, PA: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">Spam Score</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editForm.Spam}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, Spam: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">Organic Traffic</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editForm.OrganicTraffic}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, OrganicTraffic: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">DR</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          value={editForm.DR}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, DR: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-700">RD Link</label>
+                        <input
+                          type="url"
+                          className="w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          placeholder="https://example.com/rd"
+                          value={editForm.RD}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, RD: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditModalOpen(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={updateLoading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition-colors flex items-center gap-2"
+                    >
+                      {updateLoading ? (
+                        <>
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                          Updating...
+                        </>
+                      ) : (
+                        "Update Website"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Modern Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -520,7 +856,16 @@ export default function PublisherDashboard() {
                     </div>
 
                     {/* Actions */}
-                    <div className="mt-4 flex justify-end">
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleEditSite(site)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit
+                      </button>
                       <button
                         onClick={() => {
                           // Ensure we have a valid ID before proceeding

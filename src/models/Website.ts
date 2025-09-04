@@ -173,6 +173,26 @@ WebsiteSchema.virtual('isNew').get(function(this: IWebsite) {
   return this.createdAt > sevenDaysAgo;
 });
 
+// Pre-save hook to ensure status is set to pending when website is updated
+WebsiteSchema.pre('save', function(this: IWebsite, next) {
+  // If this is an update operation (not a new document) and any field other than status is modified
+  if (!this.isNew && this.isModified()) {
+    // Check if any field other than status, approvedAt, rejectedAt, or rejectionReason is modified
+    const modifiedPaths = this.modifiedPaths();
+    const contentFieldsModified = modifiedPaths.some(path => 
+      !['status', 'approvedAt', 'rejectedAt', 'rejectionReason', '_id', 'updatedAt', 'createdAt'].includes(path)
+    );
+    
+    // If content fields are modified and status is not explicitly set to 'approved' or 'rejected'
+    // (which would only happen in admin actions), set status to 'pending'
+    if (contentFieldsModified && this.status !== 'rejected' && this.status !== 'approved') {
+      console.log('Setting website status to pending due to content field modifications');
+      this.status = 'pending';
+    }
+  }
+  next();
+});
+
 // Methods
 WebsiteSchema.methods.approve = function(this: IWebsite, reason?: string) {
   this.status = 'approved';

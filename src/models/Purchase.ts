@@ -5,7 +5,7 @@ export interface IPurchase extends Document {
   websiteId: Types.ObjectId | IWebsite;
   buyerId: string;
   amountCents: number;
-  status: "pending" | "paid";
+  status: "pending" | "paid" | "rejected";
   stripeSessionId?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -15,7 +15,7 @@ const PurchaseSchema = new Schema<IPurchase>({
   websiteId: { type: Schema.Types.ObjectId, ref: "Website", required: true },
   buyerId: { type: String, required: true },
   amountCents: { type: Number, required: true },
-  status: { type: String, enum: ["pending", "paid"], required: true },
+  status: { type: String, enum: ["pending", "paid", "rejected"], required: true },
   stripeSessionId: { type: String },
 }, { timestamps: true });
 

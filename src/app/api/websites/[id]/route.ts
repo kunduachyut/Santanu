@@ -94,17 +94,45 @@ export async function PATCH(
     return NextResponse.json(website.toJSON());
   }
 
-  // Owners can update their own pending websites
-  if (website.userId.toString() === userId && website.status === 'pending') {
-    const allowedUpdates = ['title', 'description', 'url', 'image', 'category', 'price', 'tags'];
+  // Owners can update their own websites (approved or pending)
+  if (website.userId.toString() === userId) {
+    // First set status to pending explicitly
+    website.status = 'pending';
+    
+    // Log the current status to debug
+    console.log(`Setting website ${id} status to pending before updates`);
+    
+    const allowedUpdates = ['title', 'description', 'url', 'image', 'category', 'price', 'priceCents', 'tags', 'DA', 'PA', 'Spam', 'OrganicTraffic', 'DR', 'RD'];
     Object.keys(json).forEach(key => {
       if (allowedUpdates.includes(key)) {
         website[key] = json[key];
       }
     });
+    
+    // Check for force status update flag
+    const forceStatusUpdate = json._forceStatusUpdate === true;
+    
+    // Ensure status is set to pending again after all updates
+    website.status = 'pending';
+    console.log(`Final website status before save: ${website.status}, forceStatusUpdate: ${forceStatusUpdate}`);
 
-    await website.save();
-    return NextResponse.json(website.toJSON());
+    // Use markModified to ensure Mongoose knows the status field changed
+    website.markModified('status');
+    
+    // Use updateOne directly to bypass any middleware if force flag is set
+    if (forceStatusUpdate) {
+      console.log('Using direct update to force status change');
+      await Website.updateOne({ _id: id }, { $set: { status: 'pending' } });
+      // Reload the website to get the updated version
+      const updatedWebsite = await Website.findById(id);
+      console.log(`Website directly updated with status: ${updatedWebsite?.status}`);
+      return NextResponse.json(updatedWebsite?.toJSON());
+    } else {
+      // Normal save through middleware
+      await website.save();
+      console.log(`Website saved with status: ${website.status}`);
+      return NextResponse.json(website.toJSON());
+    }
   }
 
   return NextResponse.json({ error: "Access denied" }, { status: 403 });
