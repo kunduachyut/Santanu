@@ -94,14 +94,31 @@ export async function PATCH(
     return NextResponse.json(website.toJSON());
   }
 
-  // Owners can update their own pending websites
-  if (website.userId.toString() === userId && website.status === 'pending') {
-    const allowedUpdates = ['title', 'description', 'url', 'image', 'category', 'price', 'tags'];
+  // Owners can update their own websites
+  if (website.userId.toString() === userId) {
+    const allowedUpdates = ['title', 'description', 'url', 'image', 'category', 'price', 'priceCents', 'tags', 'DA', 'PA', 'Spam', 'OrganicTraffic', 'DR', 'RD'];
+    
+    // Track if any important fields were changed
+    const importantFields = ['title', 'description', 'url', 'category', 'priceCents', 'price'];
+    let importantFieldChanged = false;
+    
     Object.keys(json).forEach(key => {
       if (allowedUpdates.includes(key)) {
+        // Check if this is an important field and if it's being changed
+        if (importantFields.includes(key) && website[key] !== json[key]) {
+          importantFieldChanged = true;
+        }
         website[key] = json[key];
       }
     });
+    
+    // If important fields were changed and the site was previously approved, set it back to pending
+    if (importantFieldChanged && website.status === 'approved') {
+      website.status = 'pending';
+      website.approvedAt = undefined;
+      website.rejectionReason = '';
+      console.log('Website status changed to pending due to important field updates');
+    }
 
     await website.save();
     return NextResponse.json(website.toJSON());
