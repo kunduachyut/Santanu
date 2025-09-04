@@ -20,6 +20,8 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
+  category?: string;
+  tags?: string;
 };
 
 export default function PublisherDashboard() {
@@ -80,56 +82,56 @@ export default function PublisherDashboard() {
       .then((r) => r.json())
       .then((sitesData) => {
         const rawSites = sitesData.websites || sitesData || [];
-        
+
         // Log the raw data structure to understand what we're working with
         console.log('Raw API response:', JSON.stringify(sitesData, null, 2));
-        
+
         // Process and normalize the sites data
         const normalizedSites = Array.isArray(rawSites)
           ? rawSites
-              .map((s: any) => {
-                // Extract the MongoDB ID from the response
-                let siteId = null;
-                
-                // Handle different ID formats
-                if (s._id) {
-                  if (typeof s._id === 'string') {
-                    siteId = s._id;
-                  } else if (typeof s._id === 'object') {
-                    // Handle MongoDB ObjectId format {$oid: "..."}
-                    if (s._id.$oid) {
-                      siteId = s._id.$oid;
-                    } else if (s._id.toString) {
-                      // Try using toString() method if available
-                      siteId = s._id.toString();
-                    }
+            .map((s: any) => {
+              // Extract the MongoDB ID from the response
+              let siteId = null;
+
+              // Handle different ID formats
+              if (s._id) {
+                if (typeof s._id === 'string') {
+                  siteId = s._id;
+                } else if (typeof s._id === 'object') {
+                  // Handle MongoDB ObjectId format {$oid: "..."}
+                  if (s._id.$oid) {
+                    siteId = s._id.$oid;
+                  } else if (s._id.toString) {
+                    // Try using toString() method if available
+                    siteId = s._id.toString();
                   }
-                } else if (s.id) {
-                  siteId = s.id;
                 }
-                
-                console.log(`Site ${s.title || 'unknown'} - Raw ID:`, s._id);
-                console.log(`Site ${s.title || 'unknown'} - Extracted ID:`, siteId);
-                
-                if (!siteId) {
-                  console.error('Warning: Site is missing ID:', JSON.stringify(s));
-                  return null; // Will be filtered out below
-                }
-                
-                return {
-                  ...s,
-                  _id: siteId, // Ensure _id is set
-                  priceCents:
-                    typeof s.priceCents === "number" &&
+              } else if (s.id) {
+                siteId = s.id;
+              }
+
+              console.log(`Site ${s.title || 'unknown'} - Raw ID:`, s._id);
+              console.log(`Site ${s.title || 'unknown'} - Extracted ID:`, siteId);
+
+              if (!siteId) {
+                console.error('Warning: Site is missing ID:', JSON.stringify(s));
+                return null; // Will be filtered out below
+              }
+
+              return {
+                ...s,
+                _id: siteId, // Ensure _id is set
+                priceCents:
+                  typeof s.priceCents === "number" &&
                     !Number.isNaN(s.priceCents)
-                      ? s.priceCents
-                      : typeof s.price === "number" &&
-                        !Number.isNaN(s.price)
+                    ? s.priceCents
+                    : typeof s.price === "number" &&
+                      !Number.isNaN(s.price)
                       ? Math.round(s.price * 100)
                       : 0,
-                };
-              })
-              .filter(Boolean) // Remove null entries (sites without valid IDs)
+              };
+            })
+            .filter(Boolean) // Remove null entries (sites without valid IDs)
           : [];
         setMySites(normalizedSites.filter(site => site._id));
       })
@@ -195,13 +197,13 @@ export default function PublisherDashboard() {
         const err = await res.json();
         console.error("Create site error:", err);
         let errorMessage = "Error: ";
-        
+
         if (err.error && typeof err.error === 'object') {
           // Handle Zod validation errors
           if (err.error.fieldErrors) {
             const fieldErrors = Object.entries(err.error.fieldErrors)
-              .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
-              .join('\n');
+              .map(([field, errors]) => `${field}: ${(errors as string[]).join(", ")}`)
+              .join("\n");
             errorMessage += `Validation failed:\n${fieldErrors}`;
           } else {
             errorMessage += JSON.stringify(err.error);
@@ -209,7 +211,7 @@ export default function PublisherDashboard() {
         } else {
           errorMessage += (err.error || JSON.stringify(err));
         }
-        
+
         alert(errorMessage);
       }
     } catch (error) {
@@ -220,14 +222,14 @@ export default function PublisherDashboard() {
 
   async function removeSite(id: string) {
     console.log('removeSite function received ID:', id);
-    
+
     // Validate ID before proceeding
     if (!id || id === 'undefined' || id === 'null') {
       console.error('Invalid ID provided to removeSite:', id);
       alert('Cannot delete: Invalid website ID');
       return;
     }
-    
+
     // Ensure ID is a valid MongoDB ObjectId format
     const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     if (!isValidObjectId) {
@@ -235,7 +237,7 @@ export default function PublisherDashboard() {
       alert('Cannot delete: Invalid website ID format');
       return;
     }
-    
+
     if (!confirm("Are you sure you want to delete this website?")) return;
     setDeleteLoading(id);
     try {
@@ -455,7 +457,7 @@ export default function PublisherDashboard() {
                     </svg>
                   </button>
                 </div>
-                
+
                 <form onSubmit={updateSite} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -669,7 +671,7 @@ export default function PublisherDashboard() {
             </div>
           </div>
         )}
-        
+
         {/* Modern Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -687,8 +689,8 @@ export default function PublisherDashboard() {
             <nav className="flex -mb-px space-x-8">
               <button
                 onClick={() => setActiveTab("list")}
-                className={`py-4 px-1 font-medium text-sm border-b-2 ${activeTab === "list" 
-                  ? "border-blue-600 text-blue-600" 
+                className={`py-4 px-1 font-medium text-sm border-b-2 ${activeTab === "list"
+                  ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}
               >
                 <div className="flex items-center gap-2">
@@ -705,8 +707,8 @@ export default function PublisherDashboard() {
               </button>
               <button
                 onClick={() => setActiveTab("add")}
-                className={`py-4 px-1 font-medium text-sm border-b-2 ${activeTab === "add" 
-                  ? "border-blue-600 text-blue-600" 
+                className={`py-4 px-1 font-medium text-sm border-b-2 ${activeTab === "add"
+                  ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}
               >
                 <div className="flex items-center gap-2">
@@ -753,7 +755,7 @@ export default function PublisherDashboard() {
                 </select>
               </div>
             </div>
-            
+
             {loading ? (
               <div className="flex justify-center py-12">
                 <div className="flex flex-col items-center">
@@ -874,7 +876,7 @@ export default function PublisherDashboard() {
                             alert('Cannot delete: Site ID is missing');
                             return;
                           }
-                          
+
                           // Log detailed information for debugging
                           console.log('Deleting site:', {
                             title: site.title,
@@ -882,11 +884,11 @@ export default function PublisherDashboard() {
                             idType: typeof site._id,
                             fullSite: site
                           });
-                          
+
                           // The _id should already be normalized in the refresh function
                           // But we'll double-check it's a string here
                           const siteId = String(site._id);
-                          
+
                           if (siteId && siteId !== 'undefined') {
                             console.log('Calling removeSite with ID:', siteId);
                             removeSite(siteId);
