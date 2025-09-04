@@ -19,13 +19,21 @@ export interface IWebsite extends mongoose.Document {
   tags: string[];
   metaTitle?: string;
   metaDescription?: string;
+
+  // SEO Metrics
+  DA?: number;
+  PA?: number;
+  Spam?: number;
+  OrganicTraffic?: number;
+  DR?: number;
+  RD?: string;
+
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Virtuals
-  formattedCreatedAt: string;
   isNew: boolean;
-  
+
   // Methods
   approve(reason?: string): Promise<IWebsite>;
   reject(reason: string): Promise<IWebsite>;
@@ -34,7 +42,7 @@ export interface IWebsite extends mongoose.Document {
   isRejected(): boolean;
 }
 
-// Define the static methods
+// Define the static methods interface
 interface WebsiteModel extends mongoose.Model<IWebsite> {
   findByStatus(status: string): mongoose.Query<IWebsite[], IWebsite>;
   findPending(): mongoose.Query<IWebsite[], IWebsite>;
@@ -43,8 +51,8 @@ interface WebsiteModel extends mongoose.Model<IWebsite> {
   findByUser(userId: string, status?: string): mongoose.Query<IWebsite[], IWebsite>;
 }
 
-const WebsiteSchema = new mongoose.Schema({
-  // Existing fields
+// Schema definition
+const WebsiteSchema = new mongoose.Schema<IWebsite, WebsiteModel>({
   title: {
     type: String,
     required: [true, 'Title is required'],
@@ -54,15 +62,11 @@ const WebsiteSchema = new mongoose.Schema({
   url: {
     type: String,
     required: [true, 'URL is required'],
+    unique: true,
     validate: {
       validator: function(v: string) {
-        // More permissive URL validation
-        // Accept URLs that start with http://, https://, or just domain names
         if (!v) return false;
-        
-        // If it doesn't have a protocol, add https:// temporarily for validation
         const urlToTest = v.match(/^https?:\/\//) ? v : `https://${v}`;
-        
         try {
           new URL(urlToTest);
           return true;
@@ -81,7 +85,15 @@ const WebsiteSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Category is required'],
-    enum: ['ecommerce', 'blog', 'portfolio', 'business', 'educational', 'entertainment', 'other']
+    enum: [
+      'ecommerce',
+      'blog',
+      'portfolio',
+      'business',
+      'educational',
+      'entertainment',
+      'other'
+    ]
   },
   price: {
     type: Number,
@@ -90,14 +102,14 @@ const WebsiteSchema = new mongoose.Schema({
   },
   image: {
     type: String,
-    required: false, // Change to false
     default: '/default-website-image.png'
   },
   userId: {
     type: String,
     required: true
   },
-  // New approval workflow fields
+
+  // Approval workflow
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],
@@ -117,23 +129,13 @@ const WebsiteSchema = new mongoose.Schema({
     maxlength: [500, 'Rejection reason cannot exceed 500 characters'],
     default: ''
   },
-  // Additional metadata
-  views: {
-    type: Number,
-    default: 0
-  },
-  clicks: {
-    type: Number,
-    default: 0
-  },
-  featured: {
-    type: Boolean,
-    default: false
-  },
-  tags: [{
-    type: String,
-    trim: true
-  }],
+
+  // Analytics
+  views: { type: Number, default: 0 },
+  clicks: { type: Number, default: 0 },
+  featured: { type: Boolean, default: false },
+  tags: [{ type: String, trim: true }],
+
   // SEO fields
   metaTitle: {
     type: String,
@@ -144,31 +146,34 @@ const WebsiteSchema = new mongoose.Schema({
     type: String,
     trim: true,
     maxlength: [160, 'Meta description cannot exceed 160 characters']
-  }
+  },
+
+  // SEO Metrics
+  DA: { type: Number },
+  PA: { type: Number },
+  Spam: { type: Number },
+  OrganicTraffic: { type: Number },
+  DR: { type: Number },
+  RD: { type: String }
 }, { 
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
-// Index for better query performance
+// Indexes for performance
 WebsiteSchema.index({ userId: 1, status: 1 });
 WebsiteSchema.index({ status: 1, createdAt: -1 });
 WebsiteSchema.index({ category: 1, status: 1 });
 
-// Virtual for formatted date
-// WebsiteSchema.virtual('formattedCreatedAt').get(function(this: IWebsite) {
-//   return this.createdAt.toLocaleDateString();
-// });
-
-// Virtual for isNew (less than 7 days old)
+// Virtual: isNew (less than 7 days old)
 WebsiteSchema.virtual('isNew').get(function(this: IWebsite) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   return this.createdAt > sevenDaysAgo;
 });
 
-// Method to approve website
+// Methods
 WebsiteSchema.methods.approve = function(this: IWebsite, reason?: string) {
   this.status = 'approved';
   this.approvedAt = new Date();
@@ -176,7 +181,6 @@ WebsiteSchema.methods.approve = function(this: IWebsite, reason?: string) {
   return this.save();
 };
 
-// Method to reject website
 WebsiteSchema.methods.reject = function(this: IWebsite, reason: string = '') {
   this.status = 'rejected';
   this.rejectedAt = new Date();
@@ -184,63 +188,47 @@ WebsiteSchema.methods.reject = function(this: IWebsite, reason: string = '') {
   return this.save();
 };
 
-// Method to check if website is pending
 WebsiteSchema.methods.isPending = function(this: IWebsite) {
   return this.status === 'pending';
 };
-
-// Method to check if website is approved
 WebsiteSchema.methods.isApproved = function(this: IWebsite) {
   return this.status === 'approved';
 };
-
-// Method to check if website is rejected
 WebsiteSchema.methods.isRejected = function(this: IWebsite) {
   return this.status === 'rejected';
 };
 
-// Static method to get websites by status
+// Statics
 WebsiteSchema.statics.findByStatus = function(status: string) {
   return this.find({ status }).sort({ createdAt: -1 });
 };
-
-// Static method to get pending websites
 WebsiteSchema.statics.findPending = function() {
   return this.find({ status: 'pending' }).sort({ createdAt: -1 });
 };
-
-// Static method to get approved websites
 WebsiteSchema.statics.findApproved = function() {
   return this.find({ status: 'approved' }).sort({ createdAt: -1 });
 };
-
-// Static method to get rejected websites
 WebsiteSchema.statics.findRejected = function() {
   return this.find({ status: 'rejected' }).sort({ createdAt: -1 });
 };
-
-// Static method to get websites by user with status filter
 WebsiteSchema.statics.findByUser = function(userId: string, status?: string) {
   const query: any = { userId };
-  if (status) {
-    query.status = status;
-  }
+  if (status) query.status = status;
   return this.find(query).sort({ createdAt: -1 });
 };
 
-// Transform output to remove __v and convert _id to id
+// Transform output
 WebsiteSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
   transform: function(doc, ret) {
-    // Create id property from _id
-    ret.id = ret._id ? ret._id.toString() : ret._id;
+    ret.id = ret._id?.toString();
     delete ret._id;
-    delete ret.__v;
   }
 });
 
-// Apply the interface to the model
-const Website = mongoose.models.Website as WebsiteModel || mongoose.model<IWebsite, WebsiteModel>('Website', WebsiteSchema);
+// Final model
+const Website = mongoose.models.Website as WebsiteModel 
+  || mongoose.model<IWebsite, WebsiteModel>('Website', WebsiteSchema);
 
 export default Website;

@@ -133,19 +133,27 @@ export default function PublisherDashboard() {
         console.error("Create site error:", err);
         let errorMessage = "Error: ";
         
-        if (err.error && typeof err.error === 'object') {
-          // Handle Zod validation errors
-          if (err.error.fieldErrors) {
-            const fieldErrors = Object.entries(err.error.fieldErrors)
-              .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
-              .join('\n');
-            errorMessage += `Validation failed:\n${fieldErrors}`;
-          } else {
-            errorMessage += JSON.stringify(err.error);
-          }
-        } else {
-          errorMessage += (err.error || JSON.stringify(err));
+        if (err.error && typeof err.error === "object") {
+  // Handle Zod validation errors
+  const maybeFieldErrors = (err.error as any).fieldErrors;
+  if (maybeFieldErrors && typeof maybeFieldErrors === "object") {
+    const fieldErrors = Object.entries(maybeFieldErrors)
+      .map(([field, errors]) => {
+        if (Array.isArray(errors)) {
+          return `${field}: ${errors.join(", ")}`;
         }
+        return `${field}: ${String(errors)}`;
+      })
+      .join("\n");
+
+    errorMessage += `Validation failed:\n${fieldErrors}`;
+  } else {
+    errorMessage += JSON.stringify(err.error);
+  }
+} else {
+  errorMessage += err.error ?? JSON.stringify(err);
+}
+
         
         alert(errorMessage);
       }

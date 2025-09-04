@@ -96,7 +96,7 @@ export async function PATCH(
 
   // Owners can update their own pending websites
   if (website.userId.toString() === userId && website.status === 'pending') {
-    const allowedUpdates = ['title', 'description', 'url', 'image', 'category', 'price', 'tags'];
+    const allowedUpdates = ['title', 'description', 'url', 'image', 'category', 'price', 'priceCents', 'tags', 'DA', 'PA', 'Spam', 'OrganicTraffic', 'DR', 'RD'];
     Object.keys(json).forEach(key => {
       if (allowedUpdates.includes(key)) {
         website[key] = json[key];

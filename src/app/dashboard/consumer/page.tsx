@@ -1,6 +1,4 @@
-// app/dashboard/consumer/page.tsx (modernized design)
 "use client";
-
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "../../context/CartContext";
@@ -12,9 +10,18 @@ type Website = {
   url: string;
   description: string;
   priceCents: number;
-  price?: number;
-  ownerId: string;
-  status?: string;
+  status: "pending" | "approved" | "rejected";
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  views?: number;
+  clicks?: number;
+  DA?: number;
+  PA?: number;
+  Spam?: number;
+  OrganicTraffic?: number;
+  DR?: number;
+  RD?: string;
 };
 
 type Purchase = {
@@ -74,9 +81,18 @@ export default function ConsumerDashboard() {
           : typeof w.price === 'number' && !Number.isNaN(w.price)
             ? Math.round(w.price * 100)
             : 0,
-        price: w.price,
-        ownerId: w.ownerId,
         status: w.status,
+        // Handle new fields
+        views: w.views || 0,
+        clicks: w.clicks || 0,
+        DA: w.DA || 0,
+        PA: w.PA || 0,
+        Spam: w.Spam || 0,
+        OrganicTraffic: w.OrganicTraffic || 0,
+        DR: w.DR || 0,
+        RD: w.RD || "",
+        createdAt: w.createdAt || new Date().toISOString(),
+        updatedAt: w.updatedAt || new Date().toISOString(),
       }));
       const approvedWebsites = websitesData.filter(
         (w: Website) => w.status === undefined || w.status === "approved"
@@ -337,7 +353,11 @@ export default function ConsumerDashboard() {
                         addToCart({
                           _id: id,
                           title: w.title,
-                          priceCents: w.priceCents
+                          priceCents: w.priceCents,
+                          // Include new fields if needed
+                          DA: w.DA,
+                          DR: w.DR,
+                          // Add other fields as needed
                         });
                       }
                     });
@@ -487,6 +507,16 @@ export default function ConsumerDashboard() {
                                   <div className="text-xs text-gray-500 truncate max-w-[150px]" title={w.url}>
                                     {w.url.length > 30 ? `${w.url.substring(0, 30)}...` : w.url}
                                   </div>
+                                  {/* Display new metrics if available */}
+                                  {(w.DA || w.DR) && (
+                                    <div className="flex gap-2 mt-1">
+                                      {w.DA && <span className="text-xs text-gray-400">DA: {w.DA}</span>}
+                                      {w.DR && <span className="text-xs text-gray-400">DR: {w.DR}</span>}
+                                      {w.OrganicTraffic && <span className="text-xs text-gray-400">OrganicTraffic: {w.OrganicTraffic}</span>}
+                                      {w.Spam && <span className="text-xs text-gray-400">Spam: {w.Spam}</span>}
+                                      {w.RD && <span className="text-xs text-gray-400">RD: {w.RD}</span>}
+                                       </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -528,7 +558,10 @@ export default function ConsumerDashboard() {
                                   onClick={() => addToCart({
                                     _id: stableId,
                                     title: w.title,
-                                    priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.price || 0) * 100)
+                                    priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.priceCents || 0) * 100),
+                                    // Include new fields
+                                    DA: w.DA,
+                                    DR: w.DR,
                                   })}
                                   disabled={isPurchased}
                                   className={`p-1 ${isPurchased ? 'text-green-500 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}

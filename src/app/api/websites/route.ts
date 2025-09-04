@@ -17,7 +17,7 @@ async function safeCountDocuments(filter: any): Promise<number> {
 
 export async function GET(req: Request) {
   await dbConnect();
-  
+
   const { searchParams } = new URL(req.url);
   const owner = searchParams.get("owner");
   const status = searchParams.get("status");
@@ -29,172 +29,158 @@ export async function GET(req: Request) {
   // Build filter object
   let filter: any = {};
 
-  // Handle status filtering
-  if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+  if (status && ["pending", "approved", "rejected"].includes(status)) {
     filter.status = status;
   }
 
-  // Handle category filtering
   if (category) {
     filter.category = category;
   }
 
-  // Check if user is authenticated
   const authCheck = await requireAuth();
   const isAuthenticated = !(authCheck instanceof NextResponse);
-  
+
   try {
     if (owner === "me") {
       if (!isAuthenticated) {
         return NextResponse.json({ error: "Authentication required" }, { status: 401 });
       }
       const userId = authCheck;
-      console.log("Authenticated user ID:", userId);
-      // Users can only see their own websites with optional status filter
       filter.userId = userId;
+
       const websites = await Website.find(filter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec();
-      
+
       const total = await safeCountDocuments(filter);
-      
+
       return NextResponse.json({
         websites,
         pagination: {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+        },
       });
     }
 
-    // Public access - only show approved websites
+    // Public access → only approved websites
     if (!isAuthenticated) {
-      filter.status = 'approved';
-      
+      filter.status = "approved";
+
       const websites = await Website.find(filter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec();
-      
+
       const total = await safeCountDocuments(filter);
-      
+
       return NextResponse.json({
         websites,
         pagination: {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+        },
       });
     }
 
-    // Authenticated user with specific role-based filtering
+    // Authenticated user role handling
     const userId = authCheck;
     const userRole = await getUserRole(userId);
-    console.log("Authenticated user role:", userRole);
-            console.log("Filter for authenticated user:", filter);
-    if (userRole === 'superadmin') {
-      // Superadmins can see all websites with any status
-            // console.log("Filter for authenticated user:", filter);
+
+    if (userRole === "superadmin") {
       const websites = await Website.find(filter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec();
-      
+
       const total = await safeCountDocuments(filter);
-      
+
       return NextResponse.json({
         websites,
         pagination: {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+        },
       });
-    } else if (userRole === 'consumer') {
-      // Consumers can only see approved websites
-      filter.status = 'approved';
-      
+    } else if (userRole === "consumer") {
+      filter.status = "approved";
+
       const websites = await Website.find(filter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec();
-      
+
       const total = await safeCountDocuments(filter);
-      
+
       return NextResponse.json({
         websites,
         pagination: {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+        },
       });
-    } else if (userRole === 'publisher') {
-      // Publishers can see their own websites and approved ones
+    } else if (userRole === "publisher") {
       const orFilter = {
-        $or: [
-          { ownerId: userId },
-          { status: 'approved' }
-        ]
+        $or: [{ ownerId: userId }, { status: "approved" }],
       };
-      
+
       const websites = await Website.find(orFilter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec();
-      
+
       const total = await safeCountDocuments(orFilter);
-      
+
       return NextResponse.json({
         websites,
         pagination: {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+        },
       });
     }
 
-    // Default fallback - only approved websites
-    filter.status = 'approved';
+    // Default fallback → only approved
+    filter.status = "approved";
     const websites = await Website.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .exec();
-    
+
     const total = await safeCountDocuments(filter);
-    
+
     return NextResponse.json({
       websites,
       pagination: {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     console.error("Error in websites API:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
 export async function POST(req: Request) {
   await dbConnect();
   const authResult = await requireAuth();
@@ -203,33 +189,60 @@ export async function POST(req: Request) {
 
   try {
     const json = await req.json();
-    
-    const parsed = WebsiteCreateSchema.safeParse(json);
-    
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    const { title, url, description, priceCents, category, tags, DA, PA, Spam, OrganicTraffic, DR, RD } = json;
+
+    if (!title || !url || !description || priceCents === undefined) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Create website with pending status by default
-    const site = await Website.create({ 
-      ...parsed.data,
-      userId: userId, // Keep as string - update schema to accept string
-      price: parsed.data.priceCents / 100, // Convert cents to dollars
-      image: parsed.data.image || '/default-website-image.png', // Provide default image if not provided
-      status: 'pending'
+    // ✅ Normalize tags into array of strings
+    let normalizedTags: string[] = [];
+    if (typeof tags === "string") {
+      normalizedTags = tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag);
+    } else if (Array.isArray(tags)) {
+      normalizedTags = tags.map((tag) => String(tag).trim()).filter((tag) => tag);
+    }
+
+    const site = await Website.create({
+      title,
+      url,
+      description,
+      priceCents: Number(priceCents),
+      price: Number(priceCents) / 100,
+      category: category || "",
+      tags: normalizedTags,
+      DA: DA ? Number(DA) : undefined,
+      PA: PA ? Number(PA) : undefined,
+      Spam: Spam ? Number(Spam) : undefined,
+      OrganicTraffic: OrganicTraffic ? Number(OrganicTraffic) : undefined,
+      DR: DR ? Number(DR) : undefined,
+      RD: RD || undefined,
+      userId: userId,
+      image: "/default-website-image.png",
+      status: "pending",
     });
-    
+
     return NextResponse.json(site, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating website:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((err: any) => err.message);
+      return NextResponse.json({ error: "Validation failed", details: errors }, { status: 400 });
+    }
+
+    if (error.code === 11000) {
+      return NextResponse.json({ error: "Website with this URL already exists" }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 async function getUserRole(userId: string): Promise<string> {
-  // Implement based on your user model
-  return 'superadmin';
+  // implement with your user model
+  return "superadmin";
 }
