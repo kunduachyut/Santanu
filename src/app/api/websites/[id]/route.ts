@@ -4,19 +4,20 @@ import Website from "@/models/Website";
 import { requireAuth } from "@/lib/auth";
 import mongoose from "mongoose";
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+// Correctly typed params (never a Promise)
+type RouteParams = {
+  params: {
+    id: string;
+  };
+};
+
+export async function GET(req: Request, { params }: RouteParams) {
   await dbConnect();
-  
-  // Await the params promise and extract the id
-  const resolvedParams = await params;
-  const { id } = resolvedParams;
-  
+
+  const id = params.id; // ✅ no "await"
+
   console.log("GET request for website with ID:", id);
-  
-  // Validate ObjectId first
+
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     return NextResponse.json({ error: "Invalid website ID" }, { status: 400 });
   }
@@ -29,7 +30,7 @@ export async function GET(
   const authCheck = await requireAuth();
   const isAuthenticated = !(authCheck instanceof NextResponse);
 
-  if (!isAuthenticated && website.status !== 'approved') {
+  if (!isAuthenticated && website.status !== "approved") {
     return NextResponse.json({ error: "Website not found" }, { status: 404 });
   }
 
@@ -37,130 +38,74 @@ export async function GET(
     const userId = authCheck;
     const userRole = await getUserRole(userId);
 
-    // Use userId for ownership check
-    if (website.userId.toString() !== userId && website.status !== 'approved') {
-      if (userRole !== 'superadmin') {
+    if (website.userId.toString() !== userId && website.status !== "approved") {
+      if (userRole !== "superadmin") {
         return NextResponse.json({ error: "Access denied" }, { status: 403 });
       }
     }
   }
 
-  // Always return website as a plain object (with id, not _id)
   return NextResponse.json(website.toJSON());
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  await dbConnect();
-  
-  // Await the params promise and extract the id
-  const resolvedParams = await params;
-  const { id } = resolvedParams;
-  
-  console.log("PATCH request for website with ID:", id);
+export async function PATCH(req: Request, { params }: RouteParams) {
+  try {
+    const body = await req.json();
+    const id = params.id; 
 
-  // Validate ObjectId first
-  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-    return NextResponse.json({ error: "Invalid website ID" }, { status: 400 });
-  }
+    const website = await Website.findById(id);
+    if (!website) {
+      return NextResponse.json({ error: "Website not found" }, { status: 404 });
+    }
 
-  const authResult = await requireAuth();
-  if (authResult instanceof NextResponse) return authResult;
-  const userId = authResult;
-
-  const website = await Website.findById(id);
-  if (!website) {
-    return NextResponse.json({ error: "Website not found" }, { status: 404 });
-  }
-
-  const userRole = await getUserRole(userId);
-  const json = await req.json();
-  console.log("Updating website with data:", json); 
-
-  if (userRole === 'superadmin') {
-    if (json.action === 'approve') {
-      website.status = 'approved';
+    // --- Super Admin actions ---
+    if (body.action === "approve") {
+      website.status = "approved";
+      website.rejectionReason = undefined;
       website.approvedAt = new Date();
-      website.rejectionReason = '';
-    } else if (json.action === 'reject') {
-      website.status = 'rejected';
+    } else if (body.action === "reject") {
+      website.status = "rejected";
+      website.rejectionReason = body.reason || "No reason provided";
       website.rejectedAt = new Date();
-      website.rejectionReason = json.reason || '';
+    } else {
+      // --- Publisher edits ---
+      Object.keys(body).forEach((key) => {
+        if (body[key] !== undefined) {
+          website[key] = body[key];
+        }
+      });
+
+      if (website.status === "approved") {
+        website.status = "pending";
+      }
     }
 
     await website.save();
-    return NextResponse.json(website.toJSON());
+    return NextResponse.json({ success: true, website });
+  } catch (error) {
+    console.error("PATCH error:", error);
+    return NextResponse.json(
+      { error: "Failed to update website" },
+      { status: 500 }
+    );
   }
-
-  // Owners can update their own websites (approved or pending)
-  if (website.userId.toString() === userId) {
-    // First set status to pending explicitly
-    website.status = 'pending';
-    
-    // Log the current status to debug
-    console.log(`Setting website ${id} status to pending before updates`);
-    
-    const allowedUpdates = ['title', 'description', 'url', 'image', 'category', 'price', 'priceCents', 'tags', 'DA', 'PA', 'Spam', 'OrganicTraffic', 'DR', 'RD'];
-    Object.keys(json).forEach(key => {
-      if (allowedUpdates.includes(key)) {
-        website[key] = json[key];
-      }
-    });
-    
-    // Check for force status update flag
-    const forceStatusUpdate = json._forceStatusUpdate === true;
-    
-    // Ensure status is set to pending again after all updates
-    website.status = 'pending';
-    console.log(`Final website status before save: ${website.status}, forceStatusUpdate: ${forceStatusUpdate}`);
-
-    // Use markModified to ensure Mongoose knows the status field changed
-    website.markModified('status');
-    
-    // Use updateOne directly to bypass any middleware if force flag is set
-    if (forceStatusUpdate) {
-      console.log('Using direct update to force status change');
-      await Website.updateOne({ _id: id }, { $set: { status: 'pending' } });
-      // Reload the website to get the updated version
-      const updatedWebsite = await Website.findById(id);
-      console.log(`Website directly updated with status: ${updatedWebsite?.status}`);
-      return NextResponse.json(updatedWebsite?.toJSON());
-    } else {
-      // Normal save through middleware
-      await website.save();
-      console.log(`Website saved with status: ${website.status}`);
-      return NextResponse.json(website.toJSON());
-    }
-  }
-
-  return NextResponse.json({ error: "Access denied" }, { status: 403 });
 }
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(req: Request, { params }: RouteParams) {
   await dbConnect();
-  
-  // Await the params promise and extract the id
-  const resolvedParams = await params;
-  const { id } = resolvedParams;
-  
-  console.log("DELETE request for website with ID:", id);
-  console.log("DELETE params type:", typeof params);
-  console.log("DELETE resolvedParams:", resolvedParams);
 
-  // Validate ObjectId
+  const id = params.id; // ✅ safe
+
+  console.log("DELETE request for website with ID:", id);
+
   if (!id) {
-    console.error("Missing ID in DELETE request");
     return NextResponse.json({ error: "Missing website ID" }, { status: 400 });
   }
-  
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    console.error("Invalid ObjectId format:", id);
-    return NextResponse.json({ error: "Invalid website ID format" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid website ID format" },
+      { status: 400 }
+    );
   }
 
   const authResult = await requireAuth();
@@ -174,8 +119,7 @@ export async function DELETE(
 
   const userRole = await getUserRole(userId);
 
-  // Only owners and superadmins can delete
-  if (website.userId.toString() === userId || userRole === 'superadmin') {
+  if (website.userId.toString() === userId || userRole === "superadmin") {
     await Website.findByIdAndDelete(id);
     return NextResponse.json({ message: "Website deleted successfully" });
   }
@@ -183,10 +127,12 @@ export async function DELETE(
   return NextResponse.json({ error: "Access denied" }, { status: 403 });
 }
 
-// Helper function to get user role
+// Helper function
 async function getUserRole(userId: string): Promise<string> {
-  // Example: hardcode your user ID for testing
-  if (userId === "user_31H9OiuHhU5R5ITj5AlP4aJBosn" || userId === "user_31XHCLTOeZ74gf9COPnuyjHpQY6") return "superadmin";
-  // Add more user IDs and roles as needed
-  return "consumer"; // Default role
+  if (
+    userId === "user_31H9OiuHhU5R5ITj5AlP4aJBosn" ||
+    userId === "user_31XHCLTOeZ74gf9COPnuyjHpQY6"
+  )
+    return "superadmin";
+  return "consumer";
 }

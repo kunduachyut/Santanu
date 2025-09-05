@@ -294,66 +294,53 @@ export default function PublisherDashboard() {
     setIsEditModalOpen(true);
   }
 
-  async function updateSite(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingSite?._id) {
-      console.error('Cannot update site: Missing ID');
-      return;
+async function updateSite(e: React.FormEvent) {
+  e.preventDefault();
+  if (!editingSite?._id) return;
+
+  setUpdateLoading(true);
+  try {
+    let formattedUrl = editForm.url;
+    if (formattedUrl && !formattedUrl.match(/^https?:\/\//)) {
+      formattedUrl = `https://${formattedUrl}`;
     }
 
-    setUpdateLoading(true);
-    try {
-      // Ensure URL has a protocol
-      let formattedUrl = editForm.url;
-      if (formattedUrl && !formattedUrl.match(/^https?:\/\//)) {
-        formattedUrl = `https://${formattedUrl}`;
-      }
+    const res = await fetch(`/api/websites/${editingSite._id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: editForm.title,
+        description: editForm.description,
+        url: formattedUrl,
+        category: editForm.category,
+        priceCents: editForm.priceCents,
+        tags: editForm.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        DA: editForm.DA ? Number(editForm.DA) : undefined,
+        PA: editForm.PA ? Number(editForm.PA) : undefined,
+        Spam: editForm.Spam ? Number(editForm.Spam) : undefined,
+        OrganicTraffic: editForm.OrganicTraffic ? Number(editForm.OrganicTraffic) : undefined,
+        DR: editForm.DR ? Number(editForm.DR) : undefined,
+        RD: editForm.RD || undefined,
+      }),
+    });
 
-      const res = await fetch(`/api/websites/${editingSite._id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: editForm.title,
-          description: editForm.description,
-          url: formattedUrl,
-          category: editForm.category,
-          status: "pending", // Set status to pending for admin approval
-          priceCents: editForm.priceCents,
-          tags: editForm.tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter((tag) => tag),
-          DA: editForm.DA ? Number(editForm.DA) : undefined,
-          PA: editForm.PA ? Number(editForm.PA) : undefined,
-          Spam: editForm.Spam ? Number(editForm.Spam) : undefined,
-          OrganicTraffic: editForm.OrganicTraffic
-            ? Number(editForm.OrganicTraffic)
-            : undefined,
-          DR: editForm.DR ? Number(editForm.DR) : undefined,
-          RD: editForm.RD || undefined,
-          _forceStatusUpdate: true, // Add a flag to force status update
-        }),
-      });
-
-      if (res.ok) {
-        // Close modal and refresh the list
-        setIsEditModalOpen(false);
-        setEditingSite(null);
-        alert("Website updated successfully! It will be reviewed by an admin.");
-        // Force a complete page refresh to ensure we get the latest data
-        window.location.reload();
-      } else {
-        const error = await res.json();
-        console.error("Update error:", error);
-        alert(`Failed to update: ${error.error || "Unknown error"}`);
-      }
-    } catch (err) {
-      console.error("Update network error:", err);
-      alert("Network error occurred. Please try again.");
-    } finally {
-      setUpdateLoading(false);
+    if (res.ok) {
+      setIsEditModalOpen(false);
+      setEditingSite(null);
+      alert("Website updated! It will be reviewed by admin again.");
+      refresh();
+    } else {
+      const error = await res.json();
+      alert(`Failed to update: ${error.error || "Unknown error"}`);
     }
+  } catch (err) {
+    alert("Network error occurred. Please try again.");
+  } finally {
+    setUpdateLoading(false);
   }
+}
+
+
 
   function getStatusBadge(status: string, rejectionReason?: string) {
     const baseClass =
