@@ -246,9 +246,12 @@ export default function SuperAdminDashboard() {
     setShowRejectModal(true);
   }
 
-  function formatDate(dateString: string) {
-    return new Date(dateString).toLocaleDateString();
-  }
+  function formatDate(dateString?: string) {
+  if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "N/A";
+  return date.toLocaleDateString("en-GB"); // dd/mm/yyyy
+}
 
   function formatCurrency(cents: number) {
     return `$${(cents / 100).toFixed(2)}`;
