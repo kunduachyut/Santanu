@@ -72,7 +72,9 @@ type FilterType = "all" | "pending" | "approved" | "rejected";
 
 export default function SuperAdminDashboard() {
   const [selectedWebsites, setSelectedWebsites] = useState<string[]>([]);
-  const [isAllSelected, setIsAllSelected] = useState(false);
+  const [selectedPurchases, setSelectedPurchases] = useState<string[]>([]);
+  const [isAllWebsitesSelected, setIsAllWebsitesSelected] = useState(false);
+  const [isAllPurchasesSelected, setIsAllPurchasesSelected] = useState(false);
   const [websites, setWebsites] = useState<Website[]>([]);
   const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
   const [requests, setRequests] = useState<ContentRequest[]>([]);
@@ -109,13 +111,26 @@ export default function SuperAdminDashboard() {
     fetchUserContent();
   }, [filter, purchaseFilter]);
 
-  const toggleSelectAll = () => {
-    if (isAllSelected) {
+  const toggleSelectAllWebsites = () => {
+    if (isAllWebsitesSelected) {
       setSelectedWebsites([]);
     } else {
       setSelectedWebsites(websites.filter(w => w.status === "pending").map(website => website.id));
     }
-    setIsAllSelected(!isAllSelected);
+    setIsAllWebsitesSelected(!isAllWebsitesSelected);
+  };
+
+  const toggleSelectAllPurchases = () => {
+    if (isAllPurchasesSelected) {
+      setSelectedPurchases([]);
+    } else {
+      setSelectedPurchases(
+        purchaseRequests
+          .filter(p => p.status === "pending")
+          .map(purchase => purchase.id)
+      );
+    }
+    setIsAllPurchasesSelected(!isAllPurchasesSelected);
   };
 
   const toggleWebsiteSelection = (id: string) => {
@@ -123,6 +138,14 @@ export default function SuperAdminDashboard() {
       setSelectedWebsites(selectedWebsites.filter(websiteId => websiteId !== id));
     } else {
       setSelectedWebsites([...selectedWebsites, id]);
+    }
+  };
+
+  const togglePurchaseSelection = (id: string) => {
+    if (selectedPurchases.includes(id)) {
+      setSelectedPurchases(selectedPurchases.filter(purchaseId => purchaseId !== id));
+    } else {
+      setSelectedPurchases([...selectedPurchases, id]);
     }
   };
 
@@ -139,11 +162,32 @@ export default function SuperAdminDashboard() {
       }
       
       setSelectedWebsites([]);
-      setIsAllSelected(false);
+      setIsAllWebsitesSelected(false);
       
     } catch (error) {
       console.error("Failed to approve websites in bulk:", error);
       alert("Failed to approve some websites. Please try again.");
+    }
+  };
+
+  const approveSelectedPurchases = async () => {
+    if (selectedPurchases.length === 0) return;
+    
+    try {
+      if (!confirm(`Are you sure you want to approve ${selectedPurchases.length} purchase request(s)?`)) {
+        return;
+      }
+      
+      for (const purchaseId of selectedPurchases) {
+        await updatePurchaseStatus(purchaseId, "approved");
+      }
+      
+      setSelectedPurchases([]);
+      setIsAllPurchasesSelected(false);
+      
+    } catch (error) {
+      console.error("Failed to approve purchase requests in bulk:", error);
+      alert("Failed to approve some purchase requests. Please try again.");
     }
   };
 
@@ -159,7 +203,7 @@ export default function SuperAdminDashboard() {
         // Reset selection when filter changes
         if (filter !== "pending") {
           setSelectedWebsites([]);
-          setIsAllSelected(false);
+          setIsAllWebsitesSelected(false);
         }
       })
       .catch(err => {
@@ -176,6 +220,12 @@ export default function SuperAdminDashboard() {
       .then(data => {
         setPurchaseRequests(data);
         calculatePurchaseStats(data);
+        
+        // Reset selection when filter changes
+        if (purchaseFilter !== "pending") {
+          setSelectedPurchases([]);
+          setIsAllPurchasesSelected(false);
+        }
       })
       .catch(err => {
         console.error("Failed to fetch purchase requests:", err);
@@ -528,6 +578,38 @@ export default function SuperAdminDashboard() {
               Purchase Requests
             </h2>
             
+            {/* Bulk Actions Toolbar - Only show for pending purchases */}
+            {purchaseFilter === "pending" && filteredPurchaseRequests.length > 0 && (
+              <div className="flex items-center justify-between mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isAllPurchasesSelected}
+                    onChange={toggleSelectAllPurchases}
+                    className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {selectedPurchases.length > 0 
+                      ? `${selectedPurchases.length} purchase(s) selected` 
+                      : "Select all"}
+                  </span>
+                </div>
+                
+                {selectedPurchases.length > 0 && (
+                  <button
+                    onClick={approveSelectedPurchases}
+                    disabled={selectedPurchases.length === 0}
+                    className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Approve Selected ({selectedPurchases.length})
+                  </button>
+                )}
+              </div>
+            )}
+            
             {/* Purchase Statistics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
               <div className="bg-white p-4 rounded-lg border shadow-sm">
@@ -583,6 +665,18 @@ export default function SuperAdminDashboard() {
                 {filteredPurchaseRequests.map((request) => (
                   <div key={request.id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-col md:flex-row justify-between gap-3">
+                      {/* Selection Checkbox - Only show for pending purchases */}
+                      {request.status === 'pending' && (
+                        <div className="flex items-start">
+                          <input
+                            type="checkbox"
+                            checked={selectedPurchases.includes(request.id)}
+                            onChange={() => togglePurchaseSelection(request.id)}
+                            className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500 mt-1"
+                          />
+                        </div>
+                      )}
+                      
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-800 mb-1">
                           {request.websiteTitle}
@@ -655,8 +749,8 @@ export default function SuperAdminDashboard() {
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    checked={isAllSelected}
-                    onChange={toggleSelectAll}
+                    checked={isAllWebsitesSelected}
+                    onChange={toggleSelectAllWebsites}
                     className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
                   />
                   <span className="text-sm font-medium text-gray-700">
@@ -851,7 +945,7 @@ export default function SuperAdminDashboard() {
                         )}
                       </div>
                     </div>
-                  </div>
+                    </div>
                 ))}
               </div>
             )}
