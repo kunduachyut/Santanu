@@ -20,7 +20,7 @@ type Website = {
   image?: string;
   views?: number;
   clicks?: number;
-   DA?: number;              
+  DA?: number;              
   PA?: number;               
   Spam?: number;             
   OrganicTraffic?: number;   
@@ -51,7 +51,7 @@ type ContentRequest = {
   customerEmail?: string;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
-  contentRequest?: any; // Additional content request data
+  contentRequest?: any;
 };
 
 type UserContent = {
@@ -68,14 +68,11 @@ type UserContent = {
   createdAt: string;
 };
 
-type ConsumerRequest = {
-  _id : string;
-  customerEmail?: string;
-}
-
 type FilterType = "all" | "pending" | "approved" | "rejected";
 
 export default function SuperAdminDashboard() {
+  const [selectedWebsites, setSelectedWebsites] = useState<string[]>([]);
+  const [isAllSelected, setIsAllSelected] = useState(false);
   const [websites, setWebsites] = useState<Website[]>([]);
   const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
   const [requests, setRequests] = useState<ContentRequest[]>([]);
@@ -103,13 +100,6 @@ export default function SuperAdminDashboard() {
     rejected: 0,
     total: 0
   });
-
-  const [moderationStats, setModerationStats] = useState({
-    pending: 0,
-    approved: 0,
-    rejected: 0,
-    total: 0
-  });
   const [activeTab, setActiveTab] = useState<"websites" | "purchases" | "contentRequests" | "userContent">("websites");
 
   useEffect(() => {
@@ -119,13 +109,58 @@ export default function SuperAdminDashboard() {
     fetchUserContent();
   }, [filter, purchaseFilter]);
 
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedWebsites([]);
+    } else {
+      setSelectedWebsites(websites.filter(w => w.status === "pending").map(website => website.id));
+    }
+    setIsAllSelected(!isAllSelected);
+  };
+
+  const toggleWebsiteSelection = (id: string) => {
+    if (selectedWebsites.includes(id)) {
+      setSelectedWebsites(selectedWebsites.filter(websiteId => websiteId !== id));
+    } else {
+      setSelectedWebsites([...selectedWebsites, id]);
+    }
+  };
+
+  const approveSelectedWebsites = async () => {
+    if (selectedWebsites.length === 0) return;
+    
+    try {
+      if (!confirm(`Are you sure you want to approve ${selectedWebsites.length} website(s)?`)) {
+        return;
+      }
+      
+      for (const websiteId of selectedWebsites) {
+        await updateWebsiteStatus(websiteId, "approved");
+      }
+      
+      setSelectedWebsites([]);
+      setIsAllSelected(false);
+      
+    } catch (error) {
+      console.error("Failed to approve websites in bulk:", error);
+      alert("Failed to approve some websites. Please try again.");
+    }
+  };
+
   function refresh() {
     setLoading(prev => ({ ...prev, websites: true }));
     fetch(`/api/websites?status=${filter}&role=superadmin`)
       .then(r => r.json())
       .then(data => {
-        setWebsites(data.websites || data);
-        calculateStats(data.websites || data);
+        const websitesData = data.websites || data;
+        setWebsites(websitesData);
+        calculateStats(websitesData);
+        
+        // Reset selection when filter changes
+        if (filter !== "pending") {
+          setSelectedWebsites([]);
+          setIsAllSelected(false);
+        }
       })
       .catch(err => {
         console.error("Failed to fetch websites:", err);
@@ -247,11 +282,11 @@ export default function SuperAdminDashboard() {
   }
 
   function formatDate(dateString?: string) {
-  if (!dateString) return "N/A";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "N/A";
-  return date.toLocaleDateString("en-GB"); // dd/mm/yyyy
-}
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    return date.toLocaleDateString("en-GB"); 
+  }
 
   function formatCurrency(cents: number) {
     return `$${(cents / 100).toFixed(2)}`;
@@ -437,7 +472,7 @@ export default function SuperAdminDashboard() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <p className="text-gray-500 mt-2">No content requests found.</p>
-              </div>
+                </div>
             ) : (
               <div className="overflow-x-auto border rounded-lg">
                 <table className="w-full text-sm">
@@ -614,6 +649,38 @@ export default function SuperAdminDashboard() {
               Website Moderation
             </h2>
             
+            {/* Bulk Actions Toolbar - Only show for pending websites */}
+            {filter === "pending" && websites.length > 0 && (
+              <div className="flex items-center justify-between mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {selectedWebsites.length > 0 
+                      ? `${selectedWebsites.length} website(s) selected` 
+                      : "Select all"}
+                  </span>
+                </div>
+                
+                {selectedWebsites.length > 0 && (
+                  <button
+                    onClick={approveSelectedWebsites}
+                    disabled={selectedWebsites.length === 0}
+                    className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Approve Selected ({selectedWebsites.length})
+                  </button>
+                )}
+              </div>
+            )}
+            
             {/* Statistics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
               <div className="bg-white p-4 rounded-lg border shadow-sm">
@@ -669,6 +736,18 @@ export default function SuperAdminDashboard() {
                 {websites.map((website, idx) => (
                   <div key={website.id || idx} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-col md:flex-row justify-between gap-3">
+                      {/* Selection Checkbox - Only show for pending websites */}
+                      {website.status === 'pending' && (
+                        <div className="flex items-start">
+                          <input
+                            type="checkbox"
+                            checked={selectedWebsites.includes(website.id)}
+                            onChange={() => toggleWebsiteSelection(website.id)}
+                            className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500 mt-1"
+                          />
+                        </div>
+                      )}
+                      
                       {/* Website Info */}
                       <div className="flex-1">
                         <div className="flex items-start gap-3">
