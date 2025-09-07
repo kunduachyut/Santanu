@@ -206,7 +206,7 @@ export default function SuperAdminDashboard() {
     if (isAllWebsitesSelected) {
       setSelectedWebsites([]);
     } else {
-      setSelectedWebsites(websites.filter(w => w.status === "pending").map(website => website.id));
+      setSelectedWebsites((websites || []).filter(w => w.status === "pending").map(website => website.id));
     }
     setIsAllWebsitesSelected(!isAllWebsitesSelected);
   };
@@ -216,7 +216,7 @@ export default function SuperAdminDashboard() {
       setSelectedPurchases([]);
     } else {
       setSelectedPurchases(
-        purchaseRequests
+        (purchaseRequests || [])
           .filter(p => p.status === "pending")
           .map(purchase => purchase.id)
       );
@@ -225,30 +225,33 @@ export default function SuperAdminDashboard() {
   };
 
   const toggleWebsiteSelection = (id: string) => {
-    if (selectedWebsites.includes(id)) {
-      setSelectedWebsites(selectedWebsites.filter(websiteId => websiteId !== id));
+    const currentSelected = selectedWebsites || [];
+    if (currentSelected.includes(id)) {
+      setSelectedWebsites(currentSelected.filter(websiteId => websiteId !== id));
     } else {
-      setSelectedWebsites([...selectedWebsites, id]);
+      setSelectedWebsites([...currentSelected, id]);
     }
   };
 
   const togglePurchaseSelection = (id: string) => {
-    if (selectedPurchases.includes(id)) {
-      setSelectedPurchases(selectedPurchases.filter(purchaseId => purchaseId !== id));
+    const currentSelected = selectedPurchases || [];
+    if (currentSelected.includes(id)) {
+      setSelectedPurchases(currentSelected.filter(purchaseId => purchaseId !== id));
     } else {
-      setSelectedPurchases([...selectedPurchases, id]);
+      setSelectedPurchases([...currentSelected, id]);
     }
   };
 
   const approveSelectedWebsites = async () => {
-    if (selectedWebsites.length === 0) return;
+    const currentSelected = selectedWebsites || [];
+    if (currentSelected.length === 0) return;
     
     try {
-      if (!confirm(`Are you sure you want to approve ${selectedWebsites.length} website(s)?`)) {
+      if (!confirm(`Are you sure you want to approve ${currentSelected.length} website(s)?`)) {
         return;
       }
       
-      for (const websiteId of selectedWebsites) {
+      for (const websiteId of currentSelected) {
         await updateWebsiteStatus(websiteId, "approved");
       }
       
@@ -262,14 +265,15 @@ export default function SuperAdminDashboard() {
   };
 
   const approveSelectedPurchases = async () => {
-    if (selectedPurchases.length === 0) return;
+    const currentSelected = selectedPurchases || [];
+    if (currentSelected.length === 0) return;
     
     try {
-      if (!confirm(`Are you sure you want to approve ${selectedPurchases.length} purchase request(s)?`)) {
+      if (!confirm(`Are you sure you want to approve ${currentSelected.length} purchase request(s)?`)) {
         return;
       }
       
-      for (const purchaseId of selectedPurchases) {
+      for (const purchaseId of currentSelected) {
         await updatePurchaseStatus(purchaseId, "approved");
       }
       
@@ -287,9 +291,9 @@ export default function SuperAdminDashboard() {
     fetch(`/api/websites?status=${filter}&role=superadmin`)
       .then(r => r.json())
       .then(data => {
-        const websitesData = data.websites || data;
-        setWebsites(websitesData);
-        calculateStats(websitesData);
+        const websitesData = data.websites || data || [];
+        setWebsites(Array.isArray(websitesData) ? websitesData : []);
+        calculateStats(Array.isArray(websitesData) ? websitesData : []);
         
         // Reset selection when filter changes
         if (filter !== "pending") {
@@ -299,6 +303,8 @@ export default function SuperAdminDashboard() {
       })
       .catch(err => {
         console.error("Failed to fetch websites:", err);
+        setWebsites([]);
+        calculateStats([]);
         alert("Failed to load websites");
       })
       .finally(() => setLoading(prev => ({ ...prev, websites: false })));
@@ -309,8 +315,9 @@ export default function SuperAdminDashboard() {
     fetch("/api/purchases?role=superadmin")
       .then(r => r.json())
       .then(data => {
-        setPurchaseRequests(data);
-        calculatePurchaseStats(data);
+        const purchaseData = Array.isArray(data) ? data : [];
+        setPurchaseRequests(purchaseData);
+        calculatePurchaseStats(purchaseData);
         
         // Reset selection when filter changes
         if (purchaseFilter !== "pending") {
@@ -320,6 +327,8 @@ export default function SuperAdminDashboard() {
       })
       .catch(err => {
         console.error("Failed to fetch purchase requests:", err);
+        setPurchaseRequests([]);
+        calculatePurchaseStats([]);
         alert("Failed to load purchase requests");
       })
       .finally(() => setLoading(prev => ({ ...prev, purchases: false })));
@@ -330,11 +339,14 @@ export default function SuperAdminDashboard() {
     try {
       const res = await fetch("/api/content-requests");
       const data = await res.json();
-      if (data.success) {
+      if (data.success && Array.isArray(data.items)) {
         setRequests(data.items);
+      } else {
+        setRequests([]);
       }
     } catch (err) {
       console.error("Error fetching content requests:", err);
+      setRequests([]);
     } finally {
       setContentLoading(false);
     }
@@ -345,32 +357,37 @@ export default function SuperAdminDashboard() {
     try {
       const res = await fetch("/api/admin/user-content");
       const data = await res.json();
-      if (data.items) {
+      if (data.items && Array.isArray(data.items)) {
         setUserContent(data.items);
+      } else {
+        setUserContent([]);
       }
     } catch (err) {
       console.error("Error fetching user content:", err);
+      setUserContent([]);
     } finally {
       setUserContentLoading(false);
     }
   }
 
   function calculateStats(websites: Website[]) {
+    const validWebsites = websites || [];
     const stats = {
-      pending: websites.filter(w => w.status === "pending").length,
-      approved: websites.filter(w => w.status === "approved").length,
-      rejected: websites.filter(w => w.status === "rejected").length,
-      total: websites.length
+      pending: validWebsites.filter(w => w.status === "pending").length,
+      approved: validWebsites.filter(w => w.status === "approved").length,
+      rejected: validWebsites.filter(w => w.status === "rejected").length,
+      total: validWebsites.length
     };
     setStats(stats);
   }
 
   function calculatePurchaseStats(requests: PurchaseRequest[]) {
+    const validRequests = requests || [];
     const stats = {
-      pending: requests.filter(r => r.status === "pending").length,
-      approved: requests.filter(r => r.status === "approved").length,
-      rejected: requests.filter(r => r.status === "rejected").length,
-      total: requests.length
+      pending: validRequests.filter(r => r.status === "pending").length,
+      approved: validRequests.filter(r => r.status === "approved").length,
+      rejected: validRequests.filter(r => r.status === "rejected").length,
+      total: validRequests.length
     };
     setPurchaseStats(stats);
   }
@@ -433,7 +450,7 @@ export default function SuperAdminDashboard() {
     return `$${(cents / 100).toFixed(2)}`;
   }
 
-  const filteredPurchaseRequests = purchaseRequests.filter(request => {
+  const filteredPurchaseRequests = (purchaseRequests || []).filter(request => {
     if (purchaseFilter === "all") return true;
     return request.status === purchaseFilter;
   });
@@ -508,7 +525,7 @@ export default function SuperAdminDashboard() {
                     <p className="text-orange-600 font-medium">Loading user content...</p>
                   </div>
                 </div>
-              ) : userContent.length === 0 ? (
+              ) : (userContent || []).length === 0 ? (
                 <div className="text-center py-16 bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border border-orange-100">
                   <div className="w-20 h-20 bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -534,12 +551,12 @@ export default function SuperAdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {userContent.map((content, index) => (
+                        {(userContent || []).map((content, index) => (
                           <tr key={content._id} className={`hover:bg-orange-50/50 transition-colors border-b border-gray-100/50 ${
                             index % 2 === 0 ? 'bg-white/30' : 'bg-gray-50/30'
                           }`}>
                             <td className="px-6 py-4 text-gray-700 font-medium">
-                              {content.userEmail || content.userId}
+                              {content.userEmail || content.userId || 'N/A'}
                             </td>
                             <td className="px-6 py-4 text-gray-600">
                               {content.websiteTitle || content.websiteId || 
@@ -570,8 +587,8 @@ export default function SuperAdminDashboard() {
                             </td>
                             <td className="px-6 py-4">
                               <div className="max-w-xs">
-                                <p className="text-gray-700 truncate" title={content.requirements}>
-                                  {content.requirements}
+                                <p className="text-gray-700 truncate" title={content.requirements || ''}>
+                                  {content.requirements || 'No requirements'}
                                 </p>
                               </div>
                             </td>
@@ -613,7 +630,7 @@ export default function SuperAdminDashboard() {
                     <p className="text-purple-600 font-medium">Loading content requests...</p>
                   </div>
                 </div>
-              ) : requests.length === 0 ? (
+              ) : (requests || []).length === 0 ? (
                 <div className="text-center py-16 bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl border border-purple-100">
                   <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-violet-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -640,16 +657,16 @@ export default function SuperAdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {requests.map((req, index) => (
+                        {(requests || []).map((req, index) => (
                           <tr key={req._id} className={`hover:bg-purple-50/50 transition-colors border-b border-gray-100/50 ${
                             index % 2 === 0 ? 'bg-white/30' : 'bg-gray-50/30'
                           }`}>
                             <td className="px-6 py-4 text-gray-700 font-medium">
-                              {req.websiteTitle || req.websiteId}
+                              {req.websiteTitle || req.websiteId || 'N/A'}
                             </td>
                             <td className="px-6 py-4 text-gray-700">
                               <div className="max-w-xs">
-                                <p className="font-medium truncate" title={req.topic}>{req.topic}</p>
+                                <p className="font-medium truncate" title={req.topic || ''}>{req.topic || 'No topic'}</p>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-gray-600">
@@ -662,18 +679,18 @@ export default function SuperAdminDashboard() {
                               )}
                             </td>
                             <td className="px-6 py-4 text-gray-600 font-medium">
-                              {req.customerId}
+                              {req.customerId || 'N/A'}
                             </td>
                             <td className="px-6 py-4 text-gray-600">
                               {req.customerEmail || <span className="text-gray-400 italic">No email</span>}
                             </td>
                             <td className="px-6 py-4">
                               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
-                                req.status === "pending" ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-yellow-200" :
-                                req.status === "approved" ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200" :
+                                (req.status || 'pending') === "pending" ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-yellow-200" :
+                                (req.status || 'pending') === "approved" ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200" :
                                 "bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-red-200"
                               }`}>
-                                {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                                {(req.status || 'pending').charAt(0).toUpperCase() + (req.status || 'pending').slice(1)}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-gray-600">
@@ -720,22 +737,22 @@ export default function SuperAdminDashboard() {
                       className="h-4 w-4 text-green-600 rounded focus:ring-green-500 transition-colors"
                     />
                     <span className="text-sm font-medium text-gray-700">
-                      {selectedPurchases.length > 0 
-                        ? `${selectedPurchases.length} purchase(s) selected` 
+                      {(selectedPurchases || []).length > 0 
+                        ? `${(selectedPurchases || []).length} purchase(s) selected` 
                         : "Select all"}
                     </span>
                   </div>
                   
-                  {selectedPurchases.length > 0 && (
+                  {(selectedPurchases || []).length > 0 && (
                     <button
                       onClick={approveSelectedPurchases}
-                      disabled={selectedPurchases.length === 0}
+                      disabled={(selectedPurchases || []).length === 0}
                       className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-200 text-sm font-medium flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      Approve Selected ({selectedPurchases.length})
+                      Approve Selected ({(selectedPurchases || []).length})
                     </button>
                   )}
                 </div>
@@ -831,10 +848,10 @@ export default function SuperAdminDashboard() {
                       }`}>
                         {/* Checkbox */}
                         <div className="col-span-1 flex justify-center">
-                          {request.status === 'pending' && (
+                          {(request.status || 'pending') === 'pending' && (
                             <input 
                               type="checkbox" 
-                              checked={selectedPurchases.includes(request.id)}
+                              checked={(selectedPurchases || []).includes(request.id)}
                               onChange={() => togglePurchaseSelection(request.id)}
                               className="h-4 w-4 text-green-600 rounded border-gray-300 focus:ring-green-500" 
                             />
@@ -845,11 +862,11 @@ export default function SuperAdminDashboard() {
                         <div className="col-span-4">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold">
-                              {request.websiteTitle.charAt(0).toUpperCase()}
+                              {(request.websiteTitle || 'W').charAt(0).toUpperCase()}
                             </div>
                             <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{request.websiteTitle}</div>
-                              <div className="text-xs text-gray-500">ID: {request.websiteId}</div>
+                              <div className="text-sm font-medium text-gray-900">{request.websiteTitle || 'Untitled'}</div>
+                              <div className="text-xs text-gray-500">ID: {request.websiteId || 'N/A'}</div>
                             </div>
                           </div>
                         </div>
@@ -870,28 +887,28 @@ export default function SuperAdminDashboard() {
                         
                         {/* Customer Email */}
                         <div className="col-span-3 flex justify-center">
-                          <div className="text-sm text-gray-700 truncate max-w-[150px]" title={request.customerEmail}>
-                            {request.customerEmail}
+                          <div className="text-sm text-gray-700 truncate max-w-[150px]" title={request.customerEmail || ''}>
+                            {request.customerEmail || 'N/A'}
                           </div>
                         </div>
                         
                         {/* Request ID */}
                         <div className="col-span-2 flex justify-center">
-                          <div className="text-sm text-gray-500 font-mono truncate max-w-[80px]" title={request.id}>
-                            {request.id.substring(0, 8)}...
+                          <div className="text-sm text-gray-500 font-mono truncate max-w-[80px]" title={request.id || ''}>
+                            {(request.id || '').substring(0, 8)}...
                           </div>
                         </div>
                         
                         {/* Status */}
                         <div className="col-span-2 flex justify-center">
                           <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            request.status === 'approved' 
+                            (request.status || 'pending') === 'approved' 
                               ? 'bg-green-100 text-green-800'
-                              : request.status === 'rejected'
+                              : (request.status || 'pending') === 'rejected'
                               ? 'bg-red-100 text-red-800'
                               : 'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {request.status.toUpperCase()}
+                            {(request.status || 'pending').toUpperCase()}
                           </span>
                         </div>
                         
@@ -904,7 +921,7 @@ export default function SuperAdminDashboard() {
                         
                         {/* Actions */}
                         <div className="col-span-2 flex justify-center">
-                          {request.status === 'pending' ? (
+                          {(request.status || 'pending') === 'pending' ? (
                             <div className="flex space-x-1">
                               <button
                                 onClick={() => updatePurchaseStatus(request.id, "approved")}
@@ -927,7 +944,7 @@ export default function SuperAdminDashboard() {
                             </div>
                           ) : (
                             <div className="text-xs text-gray-400">
-                              {request.status === 'approved' ? '✓ Approved' : '✗ Rejected'}
+                              {(request.status || 'pending') === 'approved' ? '✓ Approved' : '✗ Rejected'}
                             </div>
                           )}
                         </div>
@@ -953,10 +970,10 @@ export default function SuperAdminDashboard() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </button>
-                <span className="text-sm font-medium text-gray-500">{websites.length} websites found</span>
+                <span className="text-sm font-medium text-gray-500">{(websites || []).length} websites found</span>
               </div>
               <div className="flex items-center gap-4">
-                {filter === "pending" && websites.length > 0 && selectedWebsites.length > 0 && (
+                {filter === "pending" && (websites || []).length > 0 && (selectedWebsites || []).length > 0 && (
                   <button
                     onClick={approveSelectedWebsites}
                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium text-sm flex items-center"
@@ -964,7 +981,7 @@ export default function SuperAdminDashboard() {
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    Approve Selected ({selectedWebsites.length})
+                    Approve Selected ({(selectedWebsites || []).length})
                   </button>
                 )}
                 <select 
@@ -1049,7 +1066,7 @@ export default function SuperAdminDashboard() {
               </div>
             ) : (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                {websites.length === 0 ? (
+                {(websites || []).length === 0 ? (
                   <div className="p-8 text-center">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1087,15 +1104,15 @@ export default function SuperAdminDashboard() {
                     
                     {/* Table Body */}
                     <div className="divide-y divide-gray-200">
-                      {websites.map((website, idx) => {
+                      {(websites || []).map((website, idx) => {
                         return (
                           <div key={website.id || idx} className="grid grid-cols-20 gap-4 px-6 py-4 hover:bg-gray-50 items-center">
                             {/* Checkbox */}
                             <div className="col-span-1 flex justify-center">
-                              {website.status === 'pending' && (
+                              {(website.status || 'pending') === 'pending' && (
                                 <input 
                                   type="checkbox" 
-                                  checked={selectedWebsites.includes(website.id)}
+                                  checked={(selectedWebsites || []).includes(website.id)}
                                   onChange={() => toggleWebsiteSelection(website.id)}
                                   className="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" 
                                 />
@@ -1115,13 +1132,13 @@ export default function SuperAdminDashboard() {
                                   />
                                 ) : (
                                   <div className="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-                                    {website.title.charAt(0).toUpperCase()}
+                                    {(website.title || 'W').charAt(0).toUpperCase()}
                                   </div>
                                 )}
                                 <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">{website.title}</div>
-                                  <div className="text-xs text-gray-500 truncate max-w-[200px]" title={website.url}>
-                                    {website.url.length > 40 ? `${website.url.substring(0, 40)}...` : website.url}
+                                  <div className="text-sm font-medium text-gray-900">{website.title || 'Untitled'}</div>
+                                  <div className="text-xs text-gray-500 truncate max-w-[200px]" title={website.url || ''}>
+                                    {(website.url || '').length > 40 ? `${(website.url || '').substring(0, 40)}...` : (website.url || '')}
                                   </div>
                                 </div>
                               </div>
@@ -1157,21 +1174,21 @@ export default function SuperAdminDashboard() {
                             
                             {/* Owner */}
                             <div className="col-span-2 flex justify-center">
-                              <div className="text-sm text-gray-900 truncate max-w-[120px]" title={website.ownerId}>
-                                {website.ownerId.length > 15 ? `${website.ownerId.substring(0, 15)}...` : website.ownerId}
+                              <div className="text-sm text-gray-900 truncate max-w-[120px]" title={website.ownerId || ''}>
+                                {(website.ownerId || '').length > 15 ? `${(website.ownerId || '').substring(0, 15)}...` : (website.ownerId || '')}
                               </div>
                             </div>
                             
                             {/* Status */}
                             <div className="col-span-2 flex justify-center">
                               <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                website.status === 'approved' 
+                                (website.status || 'pending') === 'approved' 
                                   ? 'bg-green-100 text-green-800'
-                                  : website.status === 'rejected'
+                                  : (website.status || 'pending') === 'rejected'
                                   ? 'bg-red-100 text-red-800'
                                   : 'bg-yellow-100 text-yellow-800'
                               }`}>
-                                {website.status.toUpperCase()}
+                                {(website.status || 'pending').toUpperCase()}
                               </span>
                             </div>
                             
@@ -1190,7 +1207,7 @@ export default function SuperAdminDashboard() {
                                   </svg>
                                 </a>
                                 
-                                {website.status === 'pending' && (
+                                {(website.status || 'pending') === 'pending' && (
                                   <>
                                     <button
                                       onClick={() => updateWebsiteStatus(website.id, "approved")}
@@ -1225,7 +1242,7 @@ export default function SuperAdminDashboard() {
                             </div>
 
                             {/* Show rejection reason if rejected */}
-                            {website.status === 'rejected' && website.rejectionReason && (
+                            {(website.status || 'pending') === 'rejected' && website.rejectionReason && (
                               <div className="col-span-20 px-6 py-2 bg-red-50 border-l-4 border-red-400">
                                 <p className="text-sm text-red-700">
                                   <strong>Rejection Reason:</strong> {website.rejectionReason}
@@ -1254,7 +1271,7 @@ export default function SuperAdminDashboard() {
                 Reject Website
               </h3>
               <p className="text-gray-600 text-xs lg:text-sm mb-3">
-                Please provide a reason for rejecting &quot;{selectedWebsite.title}&quot;:
+                Please provide a reason for rejecting &quot;{(selectedWebsite?.title || 'this website')}&quot;:
               </p>
               <textarea
                 value={rejectionReason}
@@ -1273,7 +1290,7 @@ export default function SuperAdminDashboard() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => updateWebsiteStatus(selectedWebsite.id, "rejected", rejectionReason)}
+                  onClick={() => updateWebsiteStatus(selectedWebsite?.id || '', "rejected", rejectionReason)}
                   className="px-3 py-2 bg-red-500 text-white rounded text-xs lg:text-sm hover:bg-red-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm w-full sm:w-auto"
                   disabled={!rejectionReason.trim()}
                 >
