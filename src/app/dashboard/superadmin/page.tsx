@@ -6,7 +6,7 @@ import Image from "next/image";
 // Sidebar component
 function Sidebar({ activeTab, setActiveTab }: {
   activeTab: string;
-  setActiveTab: (tab: "websites" | "purchases" | "contentRequests" | "userContent") => void;
+  setActiveTab: (tab: "websites" | "purchases" | "contentRequests" | "userContent" | "priceConflicts") => void;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -19,9 +19,9 @@ function Sidebar({ activeTab, setActiveTab }: {
         <button 
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="p-2 rounded-lg transition-colors"
-          style={{'&:hover': {backgroundColor: 'var(--base-tertiary)'}}}
-          onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--base-tertiary)'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+          style={{}} /* Removed invalid CSS */
+          onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--base-tertiary)'}
+          onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
         >
           <span className="material-symbols-outlined">
             menu
@@ -44,12 +44,12 @@ function Sidebar({ activeTab, setActiveTab }: {
             }}
             onMouseEnter={(e) => {
               if (activeTab !== "websites") {
-                e.target.style.backgroundColor = 'var(--base-tertiary)';
+                (e.target as HTMLElement).style.backgroundColor = 'var(--base-tertiary)';
               }
             }}
             onMouseLeave={(e) => {
               if (activeTab !== "websites") {
-                e.target.style.backgroundColor = 'transparent';
+                (e.target as HTMLElement).style.backgroundColor = 'transparent';
               }
             }}
           >
@@ -70,12 +70,12 @@ function Sidebar({ activeTab, setActiveTab }: {
             }}
             onMouseEnter={(e) => {
               if (activeTab !== "purchases") {
-                e.target.style.backgroundColor = 'var(--base-tertiary)';
+                (e.target as HTMLElement).style.backgroundColor = 'var(--base-tertiary)';
               }
             }}
             onMouseLeave={(e) => {
               if (activeTab !== "purchases") {
-                e.target.style.backgroundColor = 'transparent';
+                (e.target as HTMLElement).style.backgroundColor = 'transparent';
               }
             }}
           >
@@ -96,17 +96,43 @@ function Sidebar({ activeTab, setActiveTab }: {
             }}
             onMouseEnter={(e) => {
               if (activeTab !== "contentRequests") {
-                e.target.style.backgroundColor = 'var(--base-tertiary)';
+                (e.target as HTMLElement).style.backgroundColor = 'var(--base-tertiary)';
               }
             }}
             onMouseLeave={(e) => {
               if (activeTab !== "contentRequests") {
-                e.target.style.backgroundColor = 'transparent';
+                (e.target as HTMLElement).style.backgroundColor = 'transparent';
               }
             }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">description</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Content Requests</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab("priceConflicts")}
+            className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
+              activeTab === "priceConflicts"
+                ? '' 
+                : ''
+            }`}
+            style={{
+              backgroundColor: activeTab === "priceConflicts" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "priceConflicts" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "priceConflicts") {
+                (e.target as HTMLElement).style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "priceConflicts") {
+                (e.target as HTMLElement).style.backgroundColor = 'transparent';
+              }
+            }}
+          >
+            <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">compare</span>
+            <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Price Conflicts</span>
           </button>
           
           <button
@@ -122,12 +148,12 @@ function Sidebar({ activeTab, setActiveTab }: {
             }}
             onMouseEnter={(e) => {
               if (activeTab !== "userContent") {
-                e.target.style.backgroundColor = 'var(--base-tertiary)';
+                (e.target as HTMLElement).style.backgroundColor = 'var(--base-tertiary)';
               }
             }}
             onMouseLeave={(e) => {
               if (activeTab !== "userContent") {
-                e.target.style.backgroundColor = 'transparent';
+                (e.target as HTMLElement).style.backgroundColor = 'transparent';
               }
             }}
           >
@@ -146,7 +172,7 @@ function Sidebar({ activeTab, setActiveTab }: {
             <p className="text-xs lg:text-sm font-semibold" style={{color: 'var(--secondary-primary)'}}>
               Benjamin
             </p>
-            <a className="text-xs lg:text-sm transition-colors" style={{color: 'var(--secondary-lighter)'}} onMouseEnter={(e) => e.target.style.color = 'var(--accent-primary)'} onMouseLeave={(e) => e.target.style.color = 'var(--secondary-lighter)'} href="#">
+            <a className="text-xs lg:text-sm transition-colors" style={{color: 'var(--secondary-lighter)'}} onMouseEnter={(e) => (e.target as HTMLElement).style.color = 'var(--accent-primary)'} onMouseLeave={(e) => (e.target as HTMLElement).style.color = 'var(--secondary-lighter)'} href="#">
               View profile
             </a>
           </div>
@@ -159,12 +185,13 @@ function Sidebar({ activeTab, setActiveTab }: {
 type Website = {
   id: string;
   ownerId: string;
+  userId?: string; // Add userId field
   title: string;
   url: string;
   description: string;
   priceCents?: number;
   price?: number;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "priceConflict"; // Add priceConflict status
   rejectionReason?: string;
   approvedAt?: string;
   rejectedAt?: string;
@@ -179,7 +206,11 @@ type Website = {
   Spam?: number;             
   OrganicTraffic?: number;   
   DR?: number;               
-  RD?: string;   
+  RD?: string;
+  // Price conflict fields
+  conflictsWith?: string;
+  conflictGroup?: string;
+  isOriginal?: boolean;
 };
 
 type PurchaseRequest = {
@@ -222,6 +253,14 @@ type UserContent = {
   createdAt: string;
 };
 
+type PriceConflict = {
+  groupId: string;
+  websites: Website[];
+  url: string;
+  originalPrice?: number;
+  newPrice?: number;
+};
+
 type FilterType = "all" | "pending" | "approved" | "rejected";
 
 export default function SuperAdminDashboard() {
@@ -256,13 +295,16 @@ export default function SuperAdminDashboard() {
     rejected: 0,
     total: 0
   });
-  const [activeTab, setActiveTab] = useState<"websites" | "purchases" | "contentRequests" | "userContent">("websites");
+  const [activeTab, setActiveTab] = useState<"websites" | "purchases" | "contentRequests" | "userContent" | "priceConflicts">("websites");
+  const [priceConflicts, setPriceConflicts] = useState<PriceConflict[]>([]);
+  const [priceConflictsLoading, setPriceConflictsLoading] = useState(true);
 
   useEffect(() => {
     refresh();
     refreshPurchaseRequests();
     fetchContentRequests();
     fetchUserContent();
+    fetchPriceConflicts();
   }, [filter, purchaseFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleSelectAllWebsites = () => {
@@ -433,6 +475,55 @@ export default function SuperAdminDashboard() {
     }
   }
 
+  // Function to fetch price conflicts
+  async function fetchPriceConflicts() {
+    setPriceConflictsLoading(true);
+    try {
+      const response = await fetch('/api/price-conflicts');
+      if (response.ok) {
+        const data = await response.json();
+        setPriceConflicts(data.conflicts || []);
+      } else {
+        console.error('Failed to fetch price conflicts');
+        setPriceConflicts([]);
+      }
+    } catch (error) {
+      console.error('Error fetching price conflicts:', error);
+      setPriceConflicts([]);
+    } finally {
+      setPriceConflictsLoading(false);
+    }
+  }
+
+  // Function to resolve a price conflict
+  async function resolvePriceConflict(conflictGroup: string, selectedWebsiteId: string, reason?: string) {
+    try {
+      const response = await fetch('/api/price-conflicts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conflictGroup,
+          selectedWebsiteId,
+          reason: reason || 'Price conflict resolved by admin'
+        })
+      });
+
+      if (response.ok) {
+        alert('Price conflict resolved successfully!');
+        fetchPriceConflicts(); // Refresh the list
+        refresh(); // Also refresh the main website list
+      } else {
+        const error = await response.json();
+        alert('Failed to resolve conflict: ' + (error.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error resolving price conflict:', error);
+      alert('Network error. Please try again.');
+    }
+  }
+
   function calculateStats(websites: Website[]) {
     const validWebsites = websites || [];
     const stats = {
@@ -553,21 +644,24 @@ export default function SuperAdminDashboard() {
               {activeTab === "purchases" && "Purchase Requests"}
               {activeTab === "contentRequests" && "Content Requests"}
               {activeTab === "userContent" && "User Uploads"}
+              {activeTab === "priceConflicts" && "Price Conflicts"}
             </h1>
             <p className="mt-1 sm:mt-2 text-sm sm:text-base lg:text-lg" style={{color: 'var(--secondary-lighter)'}}>
-              Manage websites, purchases, and content requests
+              {activeTab === "priceConflicts" 
+                ? "Resolve conflicts when multiple users submit the same URL with different prices" 
+                : "Manage websites, purchases, and content requests"}
             </p>
           </div>
           <button 
-            onClick={activeTab === "websites" ? refresh : activeTab === "purchases" ? refreshPurchaseRequests : fetchContentRequests}
+            onClick={activeTab === "websites" ? refresh : activeTab === "purchases" ? refreshPurchaseRequests : activeTab === "priceConflicts" ? fetchPriceConflicts : fetchContentRequests}
             className="flex items-center px-3 sm:px-4 lg:px-5 py-2.5 rounded-lg shadow-sm transition duration-200 text-sm sm:text-base whitespace-nowrap"
             style={{
               backgroundColor: 'var(--base-primary)',
               color: 'var(--secondary-primary)',
               border: '1px solid var(--base-tertiary)'
             }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--base-secondary)'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--base-primary)'}
+            onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--base-secondary)'}
+            onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--base-primary)'}
           >
             <span className="material-symbols-outlined mr-2 text-lg sm:text-xl">refresh</span> 
             <span className="hidden sm:inline">Refresh Data</span>
@@ -576,7 +670,154 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* Content based on active tab */}
-        {activeTab === "userContent" ? (
+        {activeTab === "priceConflicts" ? (
+          /* Price Conflicts Section */
+          <section className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-600/5 via-blue-600/5 to-teal-600/5"></div>
+            <div className="relative z-10">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 00-2 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2z" />
+                  </svg>
+                </div>
+                <span className="bg-gradient-to-r from-gray-800 via-cyan-800 to-teal-800 bg-clip-text text-transparent">
+                  Price Conflicts
+                </span>
+              </h2>
+
+              {priceConflictsLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-3 border-cyan-200 border-t-cyan-500 mx-auto"></div>
+                    <p className="text-cyan-600 font-medium">Loading price conflicts...</p>
+                  </div>
+                </div>
+              ) : priceConflicts.length === 0 ? (
+                <div className="text-center py-16 bg-gradient-to-br from-cyan-50 to-teal-50 rounded-2xl border border-cyan-100">
+                  <div className="w-20 h-20 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 00-2 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No Price Conflicts</h3>
+                  <p className="text-gray-500 max-w-md mx-auto">Great! There are currently no URL conflicts to resolve. When users submit duplicate URLs with different prices, they will appear here for your decision.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {priceConflicts.map((conflict, index) => (
+                    <div key={conflict.groupId} className="bg-white/70 rounded-xl border border-gray-200/50 shadow-sm overflow-hidden">
+                      <div className="bg-gradient-to-r from-cyan-50 to-teal-50 px-6 py-4 border-b border-gray-200/50">
+                        <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-3">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          </svg>
+                          URL Conflict #{index + 1}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1 font-mono bg-gray-100 px-3 py-1 rounded">
+                          {conflict.url}
+                        </p>
+                      </div>
+                      
+                      <div className="p-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {conflict.websites.map((website, idx) => (
+                            <div 
+                              key={website.id}
+                              className={`relative rounded-lg border-2 p-4 transition-all hover:shadow-md ${
+                                website.isOriginal 
+                                  ? 'border-blue-200 bg-blue-50/50' 
+                                  : 'border-orange-200 bg-orange-50/50'
+                              }`}
+                            >
+                              <div className="absolute top-2 right-2">
+                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                  website.isOriginal 
+                                    ? 'bg-blue-100 text-blue-800' 
+                                    : 'bg-orange-100 text-orange-800'
+                                }`}>
+                                  {website.isOriginal ? 'Original' : 'New Submission'}
+                                </span>
+                              </div>
+                              
+                              <div className="space-y-3 mt-6">
+                                <h4 className="font-semibold text-gray-900 text-lg">{website.title}</h4>
+                                <div className="space-y-2">
+                                  <p className="text-sm text-gray-600">
+                                    <span className="font-medium">Price:</span> 
+                                    <span className="text-lg font-bold ml-2">
+                                      ${(website.price || 0).toFixed(2)}
+                                    </span>
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    <span className="font-medium">Submitted:</span> 
+                                    <span className="ml-2">{formatDate(website.createdAt)}</span>
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    <span className="font-medium">Owner:</span> 
+                                    <span className="ml-2">{website.ownerId || website.userId || 'N/A'}</span>
+                                  </p>
+                                </div>
+                                
+                                {/* SEO Metrics */}
+                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-200">
+                                  <div className="text-center">
+                                    <div className="text-xs text-gray-500">DA</div>
+                                    <div className="font-semibold">{website.DA || 0}</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-xs text-gray-500">DR</div>
+                                    <div className="font-semibold">{website.DR || 0}</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-xs text-gray-500">Spam</div>
+                                    <div className="font-semibold">{website.Spam || 0}</div>
+                                  </div>
+                                </div>
+                                
+                                <p className="text-sm text-gray-700 bg-white/70 p-3 rounded border">
+                                  <span className="font-medium">Description:</span><br/>
+                                  {website.description || 'No description provided'}
+                                </p>
+                              </div>
+                              
+                              <div className="mt-4 pt-3 border-t border-gray-200">
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`Are you sure you want to approve "${website.title}" and reject the other submission?`)) {
+                                      resolvePriceConflict(conflict.groupId, website.id);
+                                    }
+                                  }}
+                                  className={`w-full px-4 py-2 rounded-lg font-medium transition-all ${
+                                    website.isOriginal
+                                      ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-md hover:shadow-lg'
+                                      : 'bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg'
+                                  }`}
+                                >
+                                  Select This Submission
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="mt-6 pt-4 border-t border-gray-200 text-center">
+                          <p className="text-sm text-gray-600">
+                            <strong>Price Difference:</strong> 
+                            ${Math.abs((conflict.originalPrice || 0) - (conflict.newPrice || 0)).toFixed(2)}
+                            {(conflict.newPrice || 0) < (conflict.originalPrice || 0) 
+                              ? ' (New submission is cheaper)' 
+                              : ' (Original is cheaper)'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        ) : activeTab === "userContent" ? (
           <section className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-orange-600/5 via-amber-600/5 to-yellow-600/5"></div>
             <div className="relative z-10">

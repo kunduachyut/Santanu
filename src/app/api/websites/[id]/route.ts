@@ -69,14 +69,28 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       website.rejectedAt = new Date();
     } else {
       // --- Publisher edits ---
+      console.log('Publisher editing website:', {
+        websiteId: id,
+        currentStatus: website.status,
+        updatedFields: Object.keys(body)
+      });
+      
+      // Store the original status to check if content was modified
+      const originalStatus = website.status;
+      
       Object.keys(body).forEach((key) => {
         if (body[key] !== undefined) {
           website[key] = body[key];
         }
       });
 
-      if (website.status === "approved") {
+      // When a publisher edits content, set status to pending for admin review
+      // Exception: Don't change priceConflict status as it needs admin resolution
+      if (originalStatus !== 'priceConflict') {
         website.status = "pending";
+        console.log('🔄 Setting status to pending due to publisher edit');
+      } else {
+        console.log('⚠️ Keeping priceConflict status - requires admin resolution');
       }
     }
 

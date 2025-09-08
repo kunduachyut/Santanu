@@ -195,6 +195,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    // Check for existing website with same URL (excluding rejected and priceConflict ones)
+    const existingWebsite = await Website.findOne({ 
+      url, 
+      status: { $in: ['pending', 'approved'] } // Only check active submissions
+    });
+
+    console.log('🔍 URL conflict check:', {
+      url,
+      existingFound: !!existingWebsite,
+      existingStatus: existingWebsite?.status,
+      existingUserId: existingWebsite?.userId,
+      newUserId: userId
+    });
+
     // ✅ Normalize tags into array of strings
     let normalizedTags: string[] = [];
     if (typeof tags === "string") {
@@ -205,6 +219,73 @@ export async function POST(req: Request) {
     } else if (Array.isArray(tags)) {
       normalizedTags = tags.map((tag) => String(tag).trim()).filter((tag) => tag);
     }
+
+    if (existingWebsite) {
+      console.log('🔍 Found existing website:', {
+        existingUserId: existingWebsite.userId,
+        newUserId: userId,
+        sameUser: existingWebsite.userId === userId,
+        existingStatus: existingWebsite.status
+      });
+      
+      // Check if it's the same user trying to submit the same URL
+      if (existingWebsite.userId === userId) {
+        console.log('❌ Same user attempting duplicate submission');
+        return NextResponse.json({
+          error: "This URL has already been published by you. You cannot submit the same URL twice."
+        }, { status: 400 });
+      }
+      
+      console.log('⚔️ Different users - creating price conflict');
+      // Different user - create price conflict
+      // Create new website first
+      const newSite = await Website.create({
+        title,
+        url,
+        description,
+        priceCents: Number(priceCents),
+        price: Number(priceCents) / 100,
+        category: category || "",
+        tags: normalizedTags,
+        DA: DA ? Number(DA) : undefined,
+        PA: PA ? Number(PA) : undefined,
+        Spam: Spam ? Number(Spam) : undefined,
+        OrganicTraffic: OrganicTraffic ? Number(OrganicTraffic) : undefined,
+        DR: DR ? Number(DR) : undefined,
+        RD: RD || undefined,
+        userId: userId,
+        image: "/default-website-image.png",
+        status: "pending", // Will be changed to priceConflict
+      });
+
+      console.log('✅ New website created:', { id: newSite._id, status: newSite.status });
+      
+      try {
+        // Create price conflict between existing and new website
+        await newSite.createPriceConflict(existingWebsite);
+        console.log('✅ Price conflict created successfully');
+        
+        // Reload the updated website to get the new status
+        const updatedNewSite = await Website.findById(newSite._id);
+        const updatedExistingSite = await Website.findById(existingWebsite._id);
+        
+        console.log('🔄 After conflict creation:', {
+          newSite: { id: updatedNewSite?._id, status: updatedNewSite?.status, conflictGroup: updatedNewSite?.conflictGroup },
+          existingSite: { id: updatedExistingSite?._id, status: updatedExistingSite?.status, conflictGroup: updatedExistingSite?.conflictGroup }
+        });
+        
+      } catch (conflictError) {
+        console.error('❌ Error creating price conflict:', conflictError);
+        // If conflict creation fails, we should still return the website but log the error
+      }
+
+      return NextResponse.json({
+        ...newSite.toJSON(),
+        message: "Website submitted successfully! Since this URL already exists from another user, both submissions are now in price conflict review for admin decision."
+      }, { status: 201 });
+    }
+
+    // No conflict - create normally
 
     const site = await Website.create({
       title,
@@ -234,9 +315,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Validation failed", details: errors }, { status: 400 });
     }
 
-    if (error.code === 11000) {
-      return NextResponse.json({ error: "Website with this URL already exists" }, { status: 400 });
-    }
+    // Remove the old duplicate URL error handling since we now allow duplicates
+    // if (error.code === 11000) {
+    //   return NextResponse.json({ error: "Website with this URL already exists" }, { status: 400 });
+    // }
 
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

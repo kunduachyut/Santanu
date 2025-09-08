@@ -7,9 +7,10 @@ export interface IWebsite extends mongoose.Document {
   description: string;
   category: string;
   price: number;
+  priceCents: number;
   image: string;
   userId: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'priceConflict';
   approvedAt?: Date;
   rejectedAt?: Date;
   rejectionReason?: string;
@@ -28,6 +29,11 @@ export interface IWebsite extends mongoose.Document {
   DR?: number;
   RD?: string;
 
+  // Price conflict fields
+  conflictsWith?: string; // ID of the website this conflicts with
+  conflictGroup?: string; // Group ID for multiple conflicting websites
+  isOriginal?: boolean;   // True for the original website, false for the new submission
+
   createdAt: Date;
   updatedAt: Date;
 
@@ -40,6 +46,8 @@ export interface IWebsite extends mongoose.Document {
   isPending(): boolean;
   isApproved(): boolean;
   isRejected(): boolean;
+  isPriceConflict(): boolean;
+  createPriceConflict(originalWebsite: IWebsite): Promise<void>;
 }
 
 // Define the static methods interface
@@ -48,6 +56,7 @@ interface WebsiteModel extends mongoose.Model<IWebsite> {
   findPending(): mongoose.Query<IWebsite[], IWebsite>;
   findApproved(): mongoose.Query<IWebsite[], IWebsite>;
   findRejected(): mongoose.Query<IWebsite[], IWebsite>;
+  findPriceConflicts(): mongoose.Query<IWebsite[], IWebsite>;
   findByUser(userId: string, status?: string): mongoose.Query<IWebsite[], IWebsite>;
 }
 
@@ -62,7 +71,6 @@ const WebsiteSchema = new mongoose.Schema({
   url: {
     type: String,
     required: [true, 'URL is required'],
-    unique: true,
     validate: {
       validator: function(v: string) {
         if (!v) return false;
@@ -100,6 +108,11 @@ const WebsiteSchema = new mongoose.Schema({
     required: [true, 'Price is required'],
     min: [0, 'Price cannot be negative']
   },
+  priceCents: {
+    type: Number,
+    required: [true, 'Price in cents is required'],
+    min: [0, 'Price cannot be negative']
+  },
   image: {
     type: String,
     default: '/default-website-image.png'
@@ -112,7 +125,7 @@ const WebsiteSchema = new mongoose.Schema({
   // Approval workflow
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected'],
+    enum: ['pending', 'approved', 'rejected', 'priceConflict'],
     default: 'pending'
   },
   approvedAt: {
@@ -128,6 +141,21 @@ const WebsiteSchema = new mongoose.Schema({
     trim: true,
     maxlength: [500, 'Rejection reason cannot exceed 500 characters'],
     default: ''
+  },
+
+  // Price conflict fields
+  conflictsWith: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Website',
+    default: null
+  },
+  conflictGroup: {
+    type: String,
+    default: null
+  },
+  isOriginal: {
+    type: Boolean,
+    default: true
   },
 
   // Analytics
@@ -158,13 +186,16 @@ const WebsiteSchema = new mongoose.Schema({
 }, { 
   timestamps: true,
   toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  toObject: { virtuals: true },
+  autoIndex: false // Prevent automatic index creation
 });
 
-// Indexes for performance
-WebsiteSchema.index({ userId: 1, status: 1 });
-WebsiteSchema.index({ status: 1, createdAt: -1 });
-WebsiteSchema.index({ category: 1, status: 1 });
+// Note: Indexes disabled to prevent unique constraints
+// Indexes can be created manually in production if needed for performance
+// WebsiteSchema.index({ userId: 1, status: 1 });
+// WebsiteSchema.index({ status: 1, createdAt: -1 });
+// WebsiteSchema.index({ category: 1, status: 1 });
+// WebsiteSchema.index({ url: 1, status: 1 }); // Non-unique index for URL queries
 
 // Virtual: isNew (less than 7 days old)
 WebsiteSchema.virtual('isNew').get(function(this: IWebsite) {
@@ -180,14 +211,14 @@ WebsiteSchema.pre('save', function(this: IWebsite, next) {
     // Check if any field other than status, approvedAt, rejectedAt, or rejectionReason is modified
     const modifiedPaths = this.modifiedPaths();
     const contentFieldsModified = modifiedPaths.some(path => 
-      !['status', 'approvedAt', 'rejectedAt', 'rejectionReason', '_id', 'updatedAt', 'createdAt'].includes(path)
+      !['status', 'approvedAt', 'rejectedAt', 'rejectionReason', '_id', 'updatedAt', 'createdAt', 'conflictGroup', 'conflictsWith', 'isOriginal'].includes(path)
     );
     
-    // If content fields are modified and status is not explicitly set to 'approved' or 'rejected'
-    // (which would only happen in admin actions), set status to 'pending'
-    if (contentFieldsModified && this.status !== 'rejected' && this.status !== 'approved') {
-      console.log('Setting website status to pending due to content field modifications');
-      this.status = 'pending';
+    // If content fields are modified and status was explicitly changed by API, don't override it
+    // This allows the API logic to handle status changes appropriately
+    if (contentFieldsModified && !this.isModified('status')) {
+      console.log('🗓️ Pre-save hook: Content fields modified but status not explicitly set');
+      // Let the API handle the status logic
     }
   }
   next();
@@ -208,6 +239,36 @@ WebsiteSchema.methods.reject = function(this: IWebsite, reason: string = '') {
   return this.save();
 };
 
+WebsiteSchema.methods.isPriceConflict = function(this: IWebsite) {
+  return this.status === 'priceConflict';
+};
+
+WebsiteSchema.methods.createPriceConflict = async function(this: IWebsite, originalWebsite: IWebsite) {
+  const conflictGroup = `conflict_${originalWebsite._id}_${Date.now()}`;
+  console.log('🔥 Creating price conflict:', {
+    conflictGroup,
+    originalId: originalWebsite._id,
+    originalStatus: originalWebsite.status,
+    newId: this._id,
+    newStatus: this.status
+  });
+  
+  // Update original website to priceConflict status
+  originalWebsite.status = 'priceConflict';
+  originalWebsite.conflictGroup = conflictGroup;
+  originalWebsite.isOriginal = true;
+  await originalWebsite.save();
+  console.log('✅ Updated original website to priceConflict status');
+  
+  // Update this website (new submission) to priceConflict status
+  this.status = 'priceConflict';
+  this.conflictsWith = originalWebsite._id;
+  this.conflictGroup = conflictGroup;
+  this.isOriginal = false;
+  await this.save();
+  console.log('✅ Updated new website to priceConflict status');
+};
+
 WebsiteSchema.methods.isPending = function(this: IWebsite) {
   return this.status === 'pending';
 };
@@ -219,6 +280,10 @@ WebsiteSchema.methods.isRejected = function(this: IWebsite) {
 };
 
 // Statics
+WebsiteSchema.statics.findPriceConflicts = function() {
+  return this.find({ status: 'priceConflict' }).sort({ createdAt: -1 });
+};
+
 WebsiteSchema.statics.findByStatus = function(status: string) {
   return this.find({ status }).sort({ createdAt: -1 });
 };
@@ -247,8 +312,15 @@ WebsiteSchema.set('toJSON', {
   }
 });
 
-// Final model
-const Website = mongoose.models.Website as WebsiteModel 
-  || mongoose.model<IWebsite, WebsiteModel>('Website', WebsiteSchema);
+// Clear any cached model to ensure fresh compilation
+if (mongoose.models.Website) {
+  delete mongoose.models.Website;
+}
+
+// Final model with strict index control
+const Website = mongoose.model<IWebsite, WebsiteModel>('Website', WebsiteSchema);
+
+// Ensure no automatic indexing happens
+mongoose.set('autoIndex', false);
 
 export default Website;
