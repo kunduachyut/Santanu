@@ -11,14 +11,17 @@ function Sidebar({ activeTab, setActiveTab }: {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <aside className={`${sidebarOpen ? 'w-56 lg:w-64' : 'w-14 lg:w-16'} flex-shrink-0 flex flex-col bg-white transition-all duration-300 min-h-screen shadow-lg`}>
-      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100 h-14 sm:h-16 lg:h-[6.25rem] flex-shrink-0">
-        <div className={`${sidebarOpen ? 'block' : 'hidden'} text-xl lg:text-2xl font-bold text-gray-900`}>
+    <aside className={`${sidebarOpen ? 'w-56 lg:w-64' : 'w-14 lg:w-16'} flex-shrink-0 flex flex-col transition-all duration-300 min-h-screen shadow-lg`} style={{backgroundColor: 'var(--base-primary)', borderRight: '1px solid var(--base-tertiary)'}}>
+      <div className="flex items-center justify-between p-3 sm:p-4 h-14 sm:h-16 lg:h-[6.25rem] flex-shrink-0" style={{borderBottom: '1px solid var(--base-tertiary)'}}>
+        <div className={`${sidebarOpen ? 'block' : 'hidden'} text-xl lg:text-2xl font-bold`} style={{color: 'var(--secondary-primary)'}}>
           Name
         </div>
         <button 
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-lg hover:bg-gray-100"
+          className="p-2 rounded-lg transition-colors"
+          style={{'&:hover': {backgroundColor: 'var(--base-tertiary)'}}}
+          onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--base-tertiary)'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
         >
           <span className="material-symbols-outlined">
             menu
@@ -27,14 +30,28 @@ function Sidebar({ activeTab, setActiveTab }: {
       </div>
 
       <nav className="flex-1 px-3 lg:px-4 py-4 lg:py-6 space-y-1 lg:space-y-2">
-        <div className="pt-3 lg:pt-4 mt-3 lg:mt-4 border-t border-gray-100 space-y-1 lg:space-y-2">
+        <div className="pt-3 lg:pt-4 mt-3 lg:mt-4 space-y-1 lg:space-y-2" style={{borderTop: '1px solid var(--base-tertiary)'}}>
           <button
             onClick={() => setActiveTab("websites")}
             className={`w-full flex items-center px-4 py-2.5 rounded-lg transition-colors ${
               activeTab === "websites"
-                ? 'text-indigo-700 bg-indigo-50' 
-                : 'text-gray-500 hover:bg-gray-100'
+                ? '' 
+                : ''
             }`}
+            style={{
+              backgroundColor: activeTab === "websites" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "websites" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "websites") {
+                e.target.style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "websites") {
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">web</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Website Moderation</span>
@@ -44,9 +61,23 @@ function Sidebar({ activeTab, setActiveTab }: {
             onClick={() => setActiveTab("purchases")}
             className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
               activeTab === "purchases"
-                ? 'text-indigo-700 bg-indigo-50' 
-                : 'text-gray-500 hover:bg-gray-100'
+                ? '' 
+                : ''
             }`}
+            style={{
+              backgroundColor: activeTab === "purchases" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "purchases" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "purchases") {
+                e.target.style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "purchases") {
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">shopping_cart</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Purchase Requests</span>
@@ -56,9 +87,23 @@ function Sidebar({ activeTab, setActiveTab }: {
             onClick={() => setActiveTab("contentRequests")}
             className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
               activeTab === "contentRequests"
-                ? 'text-indigo-700 bg-indigo-50' 
-                : 'text-gray-500 hover:bg-gray-100'
+                ? '' 
+                : ''
             }`}
+            style={{
+              backgroundColor: activeTab === "contentRequests" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "contentRequests" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "contentRequests") {
+                e.target.style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "contentRequests") {
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">description</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Content Requests</span>
@@ -68,9 +113,23 @@ function Sidebar({ activeTab, setActiveTab }: {
             onClick={() => setActiveTab("userContent")}
             className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
               activeTab === "userContent"
-                ? 'text-indigo-700 bg-indigo-50' 
-                : 'text-gray-500 hover:bg-gray-100'
+                ? '' 
+                : ''
             }`}
+            style={{
+              backgroundColor: activeTab === "userContent" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "userContent" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "userContent") {
+                e.target.style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "userContent") {
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">upload_file</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>User Uploads</span>
@@ -78,14 +137,18 @@ function Sidebar({ activeTab, setActiveTab }: {
         </div>
       </nav>
 
-      <div className="p-3 lg:p-4 border-t border-gray-100">
+      <div className="p-3 lg:p-4" style={{borderTop: '1px solid var(--base-tertiary)'}}>
         <div className="flex items-center">
-          <div className="w-8 lg:w-10 h-8 lg:h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm lg:text-base">
+          <div className="w-8 lg:w-10 h-8 lg:h-10 rounded-full flex items-center justify-center text-sm lg:text-base font-bold" style={{backgroundColor: 'var(--accent-light)', color: 'var(--accent-primary)'}}>
             B
           </div>
           <div className={`${sidebarOpen ? 'block' : 'hidden'} ml-2 lg:ml-3`}>
-            <p className="text-xs lg:text-sm font-semibold text-gray-800">Benjamin</p>
-            <a className="text-xs lg:text-sm text-gray-500 hover:text-indigo-600" href="#">View profile</a>
+            <p className="text-xs lg:text-sm font-semibold" style={{color: 'var(--secondary-primary)'}}>
+              Benjamin
+            </p>
+            <a className="text-xs lg:text-sm transition-colors" style={{color: 'var(--secondary-lighter)'}} onMouseEnter={(e) => e.target.style.color = 'var(--accent-primary)'} onMouseLeave={(e) => e.target.style.color = 'var(--secondary-lighter)'} href="#">
+              View profile
+            </a>
           </div>
         </div>
       </div>
@@ -457,17 +520,17 @@ export default function SuperAdminDashboard() {
 
   if (loading.websites && loading.purchases && contentLoading) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <div className="w-64 bg-white"></div>
+      <div className="flex h-screen" style={{backgroundColor: 'var(--base-primary)'}}>
+        <div className="w-64" style={{backgroundColor: 'var(--base-primary)'}}></div>
         <div className="flex-1 flex justify-center items-center">
           <div className="text-center space-y-4">
             <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-              <div className="absolute inset-0 rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600 animate-spin mx-auto" style={{animationDelay: '0.1s', animationDuration: '1.2s'}}></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-4 mx-auto" style={{borderColor: 'var(--base-tertiary)', borderTopColor: 'var(--accent-primary)'}}></div>
+              <div className="absolute inset-0 rounded-full h-16 w-16 border-4 animate-spin mx-auto" style={{borderColor: 'var(--base-tertiary)', borderTopColor: 'var(--accent-hover)', animationDelay: '0.1s', animationDuration: '1.2s'}}></div>
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-gray-700">Loading Dashboard</h3>
-              <p className="text-sm text-gray-500">Fetching admin data...</p>
+              <h3 className="text-lg font-semibold" style={{color: 'var(--secondary-primary)'}}>Loading Dashboard</h3>
+              <p className="text-sm" style={{color: 'var(--secondary-lighter)'}}>Fetching admin data...</p>
             </div>
           </div>
         </div>
@@ -476,7 +539,7 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 w-screen overflow-x-hidden">
+    <div className="flex min-h-screen w-screen overflow-x-hidden" style={{backgroundColor: 'var(--base-primary)'}}>
       <Sidebar 
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -485,17 +548,26 @@ export default function SuperAdminDashboard() {
       <main className="flex-1 p-4 sm:p-6 lg:p-8 xl:p-10 overflow-y-auto overflow-x-hidden min-w-0 max-w-none w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 lg:mb-8 w-full">
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold" style={{color: 'var(--secondary-primary)'}}>
               {activeTab === "websites" && "Website Moderation"}
               {activeTab === "purchases" && "Purchase Requests"}
               {activeTab === "contentRequests" && "Content Requests"}
               {activeTab === "userContent" && "User Uploads"}
             </h1>
-            <p className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base lg:text-lg">Manage websites, purchases, and content requests</p>
+            <p className="mt-1 sm:mt-2 text-sm sm:text-base lg:text-lg" style={{color: 'var(--secondary-lighter)'}}>
+              Manage websites, purchases, and content requests
+            </p>
           </div>
           <button 
             onClick={activeTab === "websites" ? refresh : activeTab === "purchases" ? refreshPurchaseRequests : fetchContentRequests}
-            className="flex items-center px-3 sm:px-4 lg:px-5 py-2.5 bg-white text-gray-700 rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition duration-200 text-sm sm:text-base whitespace-nowrap"
+            className="flex items-center px-3 sm:px-4 lg:px-5 py-2.5 rounded-lg shadow-sm transition duration-200 text-sm sm:text-base whitespace-nowrap"
+            style={{
+              backgroundColor: 'var(--base-primary)',
+              color: 'var(--secondary-primary)',
+              border: '1px solid var(--base-tertiary)'
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--base-secondary)'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--base-primary)'}
           >
             <span className="material-symbols-outlined mr-2 text-lg sm:text-xl">refresh</span> 
             <span className="hidden sm:inline">Refresh Data</span>
@@ -999,56 +1071,56 @@ export default function SuperAdminDashboard() {
 
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6">
-              <div className="bg-white rounded-lg p-4 lg:p-6 shadow-sm border border-gray-200">
+              <div className="rounded-lg p-4 lg:p-6 shadow-sm" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">Total Websites</p>
-                    <p className="text-2xl lg:text-3xl font-bold text-gray-900">{stats.total}</p>
+                    <p className="text-sm font-medium mb-1" style={{color: 'var(--secondary-lighter)'}}>Total Websites</p>
+                    <p className="text-2xl lg:text-3xl font-bold" style={{color: 'var(--secondary-primary)'}}>{stats.total}</p>
                   </div>
-                  <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{backgroundColor: 'var(--accent-light)'}}>
+                    <svg className="w-6 h-6" style={{color: 'var(--accent-primary)'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s1.343-9-3-9m-9 9a9 9 0 019-9" />
                     </svg>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-lg p-4 lg:p-6 shadow-sm border border-gray-200">
+              <div className="rounded-lg p-4 lg:p-6 shadow-sm" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">Pending</p>
-                    <p className="text-2xl lg:text-3xl font-bold text-gray-900">{stats.pending}</p>
+                    <p className="text-sm font-medium mb-1" style={{color: 'var(--secondary-lighter)'}}>Pending</p>
+                    <p className="text-2xl lg:text-3xl font-bold" style={{color: 'var(--secondary-primary)'}}>{stats.pending}</p>
                   </div>
-                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{backgroundColor: 'var(--warning)'}}>
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-lg p-4 lg:p-6 shadow-sm border border-gray-200">
+              <div className="rounded-lg p-4 lg:p-6 shadow-sm" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">Approved</p>
-                    <p className="text-2xl lg:text-3xl font-bold text-gray-900">{stats.approved}</p>
+                    <p className="text-sm font-medium mb-1" style={{color: 'var(--secondary-lighter)'}}>Approved</p>
+                    <p className="text-2xl lg:text-3xl font-bold" style={{color: 'var(--secondary-primary)'}}>{stats.approved}</p>
                   </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{backgroundColor: 'var(--success)'}}>
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-lg p-4 lg:p-6 shadow-sm border border-gray-200">
+              <div className="rounded-lg p-4 lg:p-6 shadow-sm" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">Rejected</p>
-                    <p className="text-2xl lg:text-3xl font-bold text-gray-900">{stats.rejected}</p>
+                    <p className="text-sm font-medium mb-1" style={{color: 'var(--secondary-lighter)'}}>Rejected</p>
+                    <p className="text-2xl lg:text-3xl font-bold" style={{color: 'var(--secondary-primary)'}}>{stats.rejected}</p>
                   </div>
-                  <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{backgroundColor: 'var(--error)'}}>
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </div>

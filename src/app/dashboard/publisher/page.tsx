@@ -33,14 +33,16 @@ function Sidebar({ activeTab, setActiveTab, stats }: {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <aside className={`${sidebarOpen ? 'w-56 lg:w-64' : 'w-14 lg:w-16'} flex-shrink-0 flex flex-col bg-white transition-all duration-300 min-h-screen shadow-lg sticky top-0 h-screen overflow-y-auto`}>
-      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100 h-14 sm:h-16 lg:h-[6.25rem] flex-shrink-0">
-        <div className={`${sidebarOpen ? 'block' : 'hidden'} text-xl lg:text-2xl font-bold text-gray-900`}>
+    <aside className={`${sidebarOpen ? 'w-56 lg:w-64' : 'w-14 lg:w-16'} flex-shrink-0 flex flex-col transition-all duration-300 min-h-screen shadow-lg sticky top-0 h-screen overflow-y-auto`} style={{backgroundColor: 'var(--base-primary)', borderRight: '1px solid var(--base-tertiary)'}}>
+      <div className="flex items-center justify-between p-3 sm:p-4 h-14 sm:h-16 lg:h-[6.25rem] flex-shrink-0" style={{borderBottom: '1px solid var(--base-tertiary)'}}>
+        <div className={`${sidebarOpen ? 'block' : 'hidden'} text-xl lg:text-2xl font-bold`} style={{color: 'var(--secondary-primary)'}}>
           Publisher
         </div>
         <button 
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-lg hover:bg-gray-100"
+          className="p-2 rounded-lg transition-colors"
+          onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--base-tertiary)'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
         >
           <span className="material-symbols-outlined">
             menu
@@ -54,28 +56,56 @@ function Sidebar({ activeTab, setActiveTab, stats }: {
             onClick={() => setActiveTab("dashboard")}
             className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
               activeTab === "dashboard"
-                ? 'text-blue-700 bg-blue-50' 
-                : 'text-gray-500 hover:bg-gray-100'
+                ? '' 
+                : ''
             }`}
+            style={{
+              backgroundColor: activeTab === "dashboard" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "dashboard" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "dashboard") {
+                e.target.style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "dashboard") {
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">dashboard</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Dashboard</span>
           </button>
         </div>
 
-        <div className="pt-3 lg:pt-4 mt-3 lg:mt-4 border-t border-gray-100 space-y-1 lg:space-y-2">
+        <div className="pt-3 lg:pt-4 mt-3 lg:mt-4 space-y-1 lg:space-y-2" style={{borderTop: '1px solid var(--base-tertiary)'}}>
           <button
             onClick={() => setActiveTab("websites")}
             className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
               activeTab === "websites"
-                ? 'text-green-700 bg-green-50' 
-                : 'text-gray-500 hover:bg-gray-100'
+                ? '' 
+                : ''
             }`}
+            style={{
+              backgroundColor: activeTab === "websites" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "websites" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "websites") {
+                e.target.style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "websites") {
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">web</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>My Websites</span>
             {sidebarOpen && stats.total > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-green-100 text-green-600 rounded-full text-xs font-medium">
+              <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium" style={{backgroundColor: 'var(--success)', color: 'white'}}>
                 {stats.total}
               </span>
             )}
@@ -85,23 +115,51 @@ function Sidebar({ activeTab, setActiveTab, stats }: {
             onClick={() => setActiveTab("add-website")}
             className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
               activeTab === "add-website"
-                ? 'text-purple-700 bg-purple-50' 
-                : 'text-gray-500 hover:bg-gray-100'
+                ? '' 
+                : ''
             }`}
+            style={{
+              backgroundColor: activeTab === "add-website" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "add-website" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "add-website") {
+                e.target.style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "add-website") {
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">add</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Add Website</span>
           </button>
         </div>
 
-        <div className="pt-3 lg:pt-4 mt-3 lg:mt-4 border-t border-gray-100 space-y-1 lg:space-y-2">
+        <div className="pt-3 lg:pt-4 mt-3 lg:mt-4 space-y-1 lg:space-y-2" style={{borderTop: '1px solid var(--base-tertiary)'}}>
           <button
             onClick={() => setActiveTab("analytics")}
             className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
               activeTab === "analytics"
-                ? 'text-indigo-700 bg-indigo-50' 
-                : 'text-gray-500 hover:bg-gray-100'
+                ? '' 
+                : ''
             }`}
+            style={{
+              backgroundColor: activeTab === "analytics" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "analytics" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "analytics") {
+                e.target.style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "analytics") {
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">analytics</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Analytics</span>
@@ -111,23 +169,51 @@ function Sidebar({ activeTab, setActiveTab, stats }: {
             onClick={() => setActiveTab("earnings")}
             className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
               activeTab === "earnings"
-                ? 'text-orange-700 bg-orange-50' 
-                : 'text-gray-500 hover:bg-gray-100'
+                ? '' 
+                : ''
             }`}
+            style={{
+              backgroundColor: activeTab === "earnings" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "earnings" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "earnings") {
+                e.target.style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "earnings") {
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">monetization_on</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Earnings</span>
           </button>
         </div>
 
-        <div className="pt-3 lg:pt-4 mt-3 lg:mt-4 border-t border-gray-100 space-y-1 lg:space-y-2">
+        <div className="pt-3 lg:pt-4 mt-3 lg:mt-4 space-y-1 lg:space-y-2" style={{borderTop: '1px solid var(--base-tertiary)'}}>
           <button
             onClick={() => setActiveTab("settings")}
             className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
               activeTab === "settings"
-                ? 'text-gray-700 bg-gray-50' 
-                : 'text-gray-500 hover:bg-gray-100'
+                ? '' 
+                : ''
             }`}
+            style={{
+              backgroundColor: activeTab === "settings" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "settings" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "settings") {
+                e.target.style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "settings") {
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
           >
             <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">settings</span>
             <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Settings</span>
@@ -135,14 +221,14 @@ function Sidebar({ activeTab, setActiveTab, stats }: {
         </div>
       </nav>
 
-      <div className="p-3 lg:p-4 border-t border-gray-100">
+      <div className="p-3 lg:p-4" style={{borderTop: '1px solid var(--base-tertiary)'}}>
         <div className="flex items-center">
-          <div className="w-8 lg:w-10 h-8 lg:h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm lg:text-base">
+          <div className="w-8 lg:w-10 h-8 lg:h-10 rounded-full flex items-center justify-center font-bold text-sm lg:text-base" style={{backgroundColor: 'var(--accent-light)', color: 'var(--accent-primary)'}}>
             P
           </div>
           <div className={`${sidebarOpen ? 'block' : 'hidden'} ml-2 lg:ml-3`}>
-            <p className="text-xs lg:text-sm font-semibold text-gray-800">Publisher</p>
-            <a className="text-xs lg:text-sm text-gray-500 hover:text-green-600" href="#">View profile</a>
+            <p className="text-xs lg:text-sm font-semibold" style={{color: 'var(--secondary-primary)'}}>Publisher</p>
+            <a className="text-xs lg:text-sm transition-colors" style={{color: 'var(--secondary-lighter)'}} onMouseEnter={(e) => e.target.style.color = 'var(--accent-primary)'} onMouseLeave={(e) => e.target.style.color = 'var(--secondary-lighter)'} href="#">View profile</a>
           </div>
         </div>
       </div>
@@ -412,19 +498,19 @@ export default function PublisherDashboard() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{borderColor: 'var(--accent-primary)'}}></div>
       </div>
     );
   }
 
   return (
-    <div className="flex w-full min-h-screen bg-gray-50">
+    <div className="flex w-full min-h-screen" style={{backgroundColor: 'var(--base-primary)'}}>
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} stats={stats} />
       
       <main className="flex-1 overflow-x-hidden">
         <div className="p-6">
           <div className="mb-8">
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl lg:text-3xl font-bold" style={{color: 'var(--secondary-primary)'}}>
               {activeTab === "dashboard" && "Publisher Dashboard"}
               {activeTab === "websites" && "My Websites"}
               {activeTab === "add-website" && "Add New Website"}
@@ -433,7 +519,7 @@ export default function PublisherDashboard() {
               {activeTab === "settings" && "Settings"}
             </h1>
             {activeTab === "websites" && (
-              <p className="text-gray-600 mt-1">Manage your websites and track their approval status</p>
+              <p className="mt-1" style={{color: 'var(--secondary-lighter)'}}>Manage your websites and track their approval status</p>
             )}
           </div>
 
@@ -441,74 +527,86 @@ export default function PublisherDashboard() {
           {activeTab === "dashboard" && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="rounded-lg shadow-sm p-6" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <span className="material-symbols-outlined text-blue-600">web</span>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{backgroundColor: 'var(--accent-light)'}}>
+                        <span className="material-symbols-outlined" style={{color: 'var(--accent-primary)'}}>web</span>
                       </div>
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Total Websites</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                      <p className="text-sm font-medium" style={{color: 'var(--secondary-lighter)'}}>Total Websites</p>
+                      <p className="text-2xl font-bold" style={{color: 'var(--secondary-primary)'}}>{stats.total}</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="rounded-lg shadow-sm p-6" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                        <span className="material-symbols-outlined text-green-600">check_circle</span>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{backgroundColor: 'var(--success)'}}>
+                        <span className="material-symbols-outlined text-white">check_circle</span>
                       </div>
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Approved</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.approved}</p>
+                      <p className="text-sm font-medium" style={{color: 'var(--secondary-lighter)'}}>Approved</p>
+                      <p className="text-2xl font-bold" style={{color: 'var(--secondary-primary)'}}>{stats.approved}</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="rounded-lg shadow-sm p-6" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                        <span className="material-symbols-outlined text-yellow-600">pending</span>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{backgroundColor: 'var(--warning)'}}>
+                        <span className="material-symbols-outlined text-white">pending</span>
                       </div>
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Pending</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
+                      <p className="text-sm font-medium" style={{color: 'var(--secondary-lighter)'}}>Pending</p>
+                      <p className="text-2xl font-bold" style={{color: 'var(--secondary-primary)'}}>{stats.pending}</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="rounded-lg shadow-sm p-6" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                        <span className="material-symbols-outlined text-red-600">cancel</span>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{backgroundColor: 'var(--error)'}}>
+                        <span className="material-symbols-outlined text-white">cancel</span>
                       </div>
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Rejected</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.rejected}</p>
+                      <p className="text-sm font-medium" style={{color: 'var(--secondary-lighter)'}}>Rejected</p>
+                      <p className="text-2xl font-bold" style={{color: 'var(--secondary-primary)'}}>{stats.rejected}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+              <div className="rounded-lg shadow-sm p-6" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
+                <h3 className="text-lg font-semibold mb-4" style={{color: 'var(--secondary-primary)'}}>Quick Actions</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <button
                     onClick={() => setActiveTab("add-website")}
-                    className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
+                    className="flex items-center p-4 border-2 border-dashed rounded-lg transition-colors text-left"
+                    style={{
+                      borderColor: 'var(--base-tertiary)',
+                      backgroundColor: 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.borderColor = 'var(--accent-primary)';
+                      e.target.style.backgroundColor = 'var(--accent-light)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.borderColor = 'var(--base-tertiary)';
+                      e.target.style.backgroundColor = 'transparent';
+                    }}
                   >
-                    <span className="material-symbols-outlined text-blue-600 mr-3">add</span>
+                    <span className="material-symbols-outlined mr-3" style={{color: 'var(--accent-primary)'}}>add</span>
                     <div>
-                      <p className="font-medium text-gray-900">Add Website</p>
-                      <p className="text-sm text-gray-500">Submit a new website for approval</p>
+                      <p className="font-medium" style={{color: 'var(--secondary-primary)'}}>Add Website</p>
+                      <p className="text-sm" style={{color: 'var(--secondary-lighter)'}}>Submit a new website for approval</p>
                     </div>
                   </button>
                   

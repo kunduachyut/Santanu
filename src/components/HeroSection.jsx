@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import { FaTimes } from "react-icons/fa";
 import { useRouter } from "next/navigation";
@@ -8,10 +9,10 @@ export default function HeroSection() {
   const [isSignup, setIsSignup] = useState(false);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
+    <div className="flex flex-col items-center justify-center min-h-screen" style={{backgroundColor: 'var(--base-primary)'}}>
       {/* Hero Card */}
       <div className="hero-section text-center">
-        <h1 className="text-4xl md:text-6xl font-bold max-w-3xl mx-auto">
+        <h1 className="text-4xl md:text-6xl font-bold max-w-3xl mx-auto" style={{color: 'var(--secondary-primary)'}}>
           The{" "}
           <span className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 bg-clip-text text-transparent">
             Publisher
@@ -19,7 +20,7 @@ export default function HeroSection() {
           for your Content & Links
         </h1>
 
-        <p className="mt-6 text-lg md:text-xl max-w-2xl mx-auto text-gray-700">
+        <p className="mt-6 text-lg md:text-xl max-w-2xl mx-auto" style={{color: 'var(--secondary-lighter)'}}>
           Create a central hub for all your important links – publish, organize,
           and share them with your audience in one beautiful, easy-to-manage
           platform.
@@ -28,21 +29,51 @@ export default function HeroSection() {
         {/* CTA Buttons */}
         <div className="flex gap-4 justify-center mt-8">
           <a href="/dashboard/publisher">
-            <button className="rounded-2xl px-6 py-3 bg-black text-white hover:bg-gray-800 hover:scale-105 hover:shadow-lg transition">
+            <button 
+              className="rounded-2xl px-6 py-3 transition"
+              style={{
+                backgroundColor: 'var(--accent-primary)',
+                color: 'white'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = 'var(--accent-hover)';
+                e.target.style.transform = 'scale(1.05)';
+                e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'var(--accent-primary)';
+                e.target.style.transform = 'scale(1)';
+                e.target.style.boxShadow = 'none';
+              }}
+            >
               Get started as Publisher
             </button>
           </a>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="rounded-2xl px-6 py-3 bg-black text-white hover:bg-gray-800 hover:scale-105 hover:shadow-lg transition"
+            className="rounded-2xl px-6 py-3 transition"
+            style={{
+              backgroundColor: 'var(--secondary-primary)',
+              color: 'white'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = 'var(--secondary-light)';
+              e.target.style.transform = 'scale(1.05)';
+              e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'var(--secondary-primary)';
+              e.target.style.transform = 'scale(1)';
+              e.target.style.boxShadow = 'none';
+            }}
           >
             Get started as Consumer
           </button>
         </div>
 
         {/* Placeholder for Hero Image */}
-        <div className="mt-12 w-full max-w-4xl mx-auto h-64 bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl flex items-center justify-center">
-          <span className="text-gray-500">Platform Preview Image</span>
+        <div className="mt-12 w-full max-w-4xl mx-auto h-64 rounded-xl flex items-center justify-center" style={{backgroundColor: 'var(--base-secondary)'}}>
+          <span style={{color: 'var(--secondary-lighter)'}}>Platform Preview Image</span>
         </div>
 
         {/* Tags */}
@@ -57,7 +88,11 @@ export default function HeroSection() {
           ].map((tag) => (
             <span
               key={tag}
-              className="px-4 py-1 bg-gray-100 rounded-full text-sm text-gray-600"
+              className="px-4 py-1 rounded-full text-sm"
+              style={{
+                backgroundColor: 'var(--base-secondary)',
+                color: 'var(--secondary-lighter)'
+              }}
             >
               {tag}
             </span>
@@ -68,29 +103,38 @@ export default function HeroSection() {
       {/* Modal */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+          className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50"
+          style={{backgroundColor: 'rgba(13, 17, 23, 0.5)'}}
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-scaleIn"
+            className="rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-scaleIn"
+            style={{backgroundColor: 'var(--base-primary)'}}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
+              className="absolute top-3 right-3 transition-colors"
+              style={{color: 'var(--secondary-lighter)'}}
+              onMouseEnter={(e) => e.target.style.color = 'var(--secondary-primary)'}
+              onMouseLeave={(e) => e.target.style.color = 'var(--secondary-lighter)'}
             >
               <FaTimes size={22} />
             </button>
 
             {/* Tabs */}
-            <div className="flex border-b mb-4">
+            <div className="flex mb-4" style={{borderBottom: '1px solid var(--base-tertiary)'}}>
               <button
                 className={`flex-1 py-2 font-medium ${
                   !isSignup
-                    ? "text-indigo-600 border-b-2 border-indigo-600"
-                    : "text-gray-500"
+                    ? ""
+                    : ""
                 }`}
+                style={{
+                  color: !isSignup ? 'var(--accent-primary)' : 'var(--secondary-lighter)',
+                  borderBottom: !isSignup ? '2px solid var(--accent-primary)' : 'none'
+                }}
                 onClick={() => setIsSignup(false)}
               >
                 Login
@@ -131,28 +175,64 @@ function LoginForm({ isSignup }) {
       {!isSignup ? (
         <form onSubmit={handleLogin}>
           <div className="mb-4">
-            <label className="block mb-1 font-medium">Email</label>
+            <label className="block mb-1 font-medium" style={{color: 'var(--secondary-primary)'}}>
+              Email
+            </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full px-4 py-2 rounded-lg outline-none transition-colors"
+              style={{
+                backgroundColor: 'var(--base-secondary)',
+                border: '1px solid var(--base-tertiary)',
+                color: 'var(--secondary-primary)'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--accent-primary)';
+                e.target.style.boxShadow = '0 0 0 2px var(--accent-light)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--base-tertiary)';
+                e.target.style.boxShadow = 'none';
+              }}
             />
           </div>
 
           <div className="mb-4">
-            <label className="block mb-1 font-medium">Password</label>
+            <label className="block mb-1 font-medium" style={{color: 'var(--secondary-primary)'}}>
+              Password
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full px-4 py-2 rounded-lg outline-none transition-colors"
+              style={{
+                backgroundColor: 'var(--base-secondary)',
+                border: '1px solid var(--base-tertiary)',
+                color: 'var(--secondary-primary)'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--accent-primary)';
+                e.target.style.boxShadow = '0 0 0 2px var(--accent-light)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--base-tertiary)';
+                e.target.style.boxShadow = 'none';
+              }}
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
+            className="w-full py-2 rounded-lg transition"
+            style={{
+              backgroundColor: 'var(--accent-primary)',
+              color: 'white'
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--accent-hover)'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--accent-primary)'}
           >
             Login
           </button>

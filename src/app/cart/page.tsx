@@ -332,11 +332,12 @@ export default function CartPage() {
 
   if (cart.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="max-w-4xl mx-auto p-6" style={{backgroundColor: 'var(--base-primary)'}}>
+        <div className="rounded-lg shadow-sm p-8 text-center" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: 'var(--base-secondary)'}}>
             <svg
-              className="w-8 h-8 text-gray-400"
+              className="w-8 h-8"
+              style={{color: 'var(--secondary-lighter)'}}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -349,11 +350,17 @@ export default function CartPage() {
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Your cart is empty</h3>
-          <p className="text-gray-600 mb-6">Add some websites to your cart to get started.</p>
+          <h3 className="text-lg font-medium mb-2" style={{color: 'var(--secondary-primary)'}}>Your cart is empty</h3>
+          <p className="mb-6" style={{color: 'var(--secondary-lighter)'}}>Add some websites to your cart to get started.</p>
           <Link
             href="/dashboard/consumer"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-sm"
+            className="px-4 py-2 rounded-md transition-colors font-medium text-sm"
+            style={{
+              backgroundColor: 'var(--accent-primary)',
+              color: 'white'
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--accent-hover)'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--accent-primary)'}
           >
             Continue Shopping
           </Link>
@@ -363,12 +370,15 @@ export default function CartPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6" style={{backgroundColor: 'var(--base-primary)'}}>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
+        <h1 className="text-3xl font-bold" style={{color: 'var(--secondary-primary)'}}>Shopping Cart</h1>
         <Link
           href="/dashboard/consumer"
-          className="text-blue-500 hover:text-blue-600 flex items-center"
+          className="flex items-center transition-colors"
+          style={{color: 'var(--accent-primary)'}}
+          onMouseEnter={(e) => e.target.style.color = 'var(--accent-hover)'}
+          onMouseLeave={(e) => e.target.style.color = 'var(--accent-primary)'}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
@@ -377,9 +387,9 @@ export default function CartPage() {
         </Link>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b">
-          <div className="grid grid-cols-12 gap-4 font-semibold text-gray-500 uppercase tracking-wider text-xs pb-4">
+      <div className="rounded-lg shadow-sm overflow-hidden" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
+        <div className="p-6" style={{borderBottom: '1px solid var(--base-tertiary)'}}>
+          <div className="grid grid-cols-12 gap-4 font-semibold uppercase tracking-wider text-xs pb-4" style={{color: 'var(--secondary-lighter)'}}>
             <div className="col-span-5">Product</div>
             <div className="col-span-2 text-center">Price</div>
             <div className="col-span-2 text-center">Content Status</div>

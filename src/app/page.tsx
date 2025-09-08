@@ -1,12 +1,18 @@
-import HeroSection from "../components/HeroSection"
-import HeroWithFooter from "../components/HeroWithFooter"
-import TrustedBySection from "../components/TrustedBySection"
-import IntegrateSection from "../components/IntegrateSection"
-import CollaborationSection from "../components/CollaborationSection"
-import Testimonials from "../components/Testimonials"
-import ScaleSection from "../components/ScaleSection"
-import PublishSection from "../components/PublishSection"
-import PublishAnywhere from "../components/PublishAnywhere"
+import type { Metadata } from "next";
+import HeroSection from "../components/HeroSection";
+import HeroWithFooter from "../components/HeroWithFooter";
+import TrustedBySection from "../components/TrustedBySection";
+import IntegrateSection from "../components/IntegrateSection";
+import CollaborationSection from "../components/CollaborationSection";
+import Testimonials from "../components/Testimonials";
+import ScaleSection from "../components/ScaleSection";
+import PublishSection from "../components/PublishSection";
+import PublishAnywhere from "../components/PublishAnywhere";
+
+export const metadata: Metadata = {
+  title: "Marketplace",
+  description: "Publish and buy websites",
+};
 
 export default function Home() {
   return (

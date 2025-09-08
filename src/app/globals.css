@@ -1,11 +1,57 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #000000; /* optional, adjust text color */
+  /* 60-30-10 Modern & Minimal Color Theme */
+  
+  /* Base Colors (60% - Backgrounds) */
+  --base-primary: #FAFAFA;     /* Light gray/off-white for main backgrounds */
+  --base-secondary: #F5F5F5;   /* Slightly darker for secondary backgrounds */
+  --base-tertiary: #EEEEEE;    /* Even darker for hover states */
+  
+  /* Secondary Colors (30% - Headers, Text, Navigation) */
+  --secondary-primary: #0D1117;   /* Black/dark navy for primary text */
+  --secondary-light: #21262D;     /* Lighter variant for secondary text */
+  --secondary-lighter: #656D76;   /* Even lighter for muted text */
+  
+  /* Accent Colors (10% - Buttons, Links, CTAs) */
+  --accent-primary: #00B8D9;      /* Bright cyan/teal for primary actions */
+  --accent-hover: #0097B8;        /* Darker cyan for hover states */
+  --accent-light: #E6F7FB;        /* Very light cyan for backgrounds */
+  
+  /* Status Colors (Maintaining accessibility) */
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #3B82F6;
+  
+  /* Legacy variables for backward compatibility */
+  --background: var(--base-primary);
+  --foreground: var(--secondary-primary);
 }
 
 @theme inline {
+  /* Base colors (60%) */
+  --color-base-primary: var(--base-primary);
+  --color-base-secondary: var(--base-secondary);
+  --color-base-tertiary: var(--base-tertiary);
+  
+  /* Secondary colors (30%) */
+  --color-secondary-primary: var(--secondary-primary);
+  --color-secondary-light: var(--secondary-light);
+  --color-secondary-lighter: var(--secondary-lighter);
+  
+  /* Accent colors (10%) */
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-light: var(--accent-light);
+  
+  /* Status colors */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
+  
+  /* Legacy support */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
