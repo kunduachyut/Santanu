@@ -3,6 +3,7 @@ import { dbConnect } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { UserContent } from "@/models/Content";
 import Website from "@/models/Website";
+import { getOrCreateUser } from "@/lib/user";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
     
     // Fetch website information for each item
     const enrichedItems = await Promise.all(items.map(async (item) => {
-      const itemObj = item.toObject();
+      const itemObj = item.toObject() as any;
       
       // If websiteId exists, get website title
       if (itemObj.websiteId) {
@@ -49,10 +50,14 @@ export async function GET(req: NextRequest) {
         }
       }
       
-      // Get user email from Clerk (in a real app)
-      // For now, we'll use a more realistic mock email based on userId
-      // Format: user_ID@yourdomain.com
-      itemObj.userEmail = `user_${itemObj.userId}@yourdomain.com`;
+      // Get user email from Clerk
+      try {
+        const user = await getOrCreateUser(itemObj.userId);
+        itemObj.userEmail = user.email;
+      } catch (err) {
+        console.error(`Error fetching user ${itemObj.userId}:`, err);
+        itemObj.userEmail = `user_${itemObj.userId}@yourdomain.com`; // Fallback
+      }
       
       return itemObj;
     }));
