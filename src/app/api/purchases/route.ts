@@ -1,6 +1,7 @@
 // app/api/purchases/route.ts (updated)
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { getOrCreateUser } from '@/lib/user';
 
 // In-memory storage for demo purposes (replace with database in production)
 let purchaseRequests: any[] = [
@@ -14,7 +15,7 @@ let purchaseRequests: any[] = [
     totalCents: 2500,
     amountCents: 2500,
     customerId: "user_123",
-    customerEmail: "user@example.com",
+    customerEmail: "john.doe@gmail.com", // Real-looking email
     status: "approved",
     contentType: "content", // User uploaded their own content
     createdAt: new Date().toISOString()
@@ -28,7 +29,7 @@ let purchaseRequests: any[] = [
     totalCents: 1500,
     amountCents: 1500,
     customerId: "user_123",
-    customerEmail: "user@example.com",
+    customerEmail: "john.doe@gmail.com", // Real-looking email
     status: "pending",
     contentType: "request", // User requested content to be created
     createdAt: new Date().toISOString()
@@ -42,7 +43,7 @@ let purchaseRequests: any[] = [
     totalCents: 3000,
     amountCents: 3000,
     customerId: "user_456",
-    customerEmail: "another@example.com",
+    customerEmail: "sarah.wilson@outlook.com", // Real-looking email
     status: "pending",
     contentType: null, // User didn't select any content option
     createdAt: new Date().toISOString()
@@ -81,7 +82,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, customerId, customerEmail, contentSelections } = await req.json();
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { items, contentSelections } = await req.json();
     
     if (!items || !Array.isArray(items)) {
       return NextResponse.json(
@@ -89,6 +99,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Get or create user to fetch real email
+    const user = await getOrCreateUser(userId);
 
     // Process each item in the cart
     const purchaseResults = [];
@@ -98,7 +111,7 @@ export async function POST(req: NextRequest) {
       const contentSelection = contentSelections?.[item.websiteId];
       
       // Create a purchase request for each item
-      const purchase = await createPurchase(item, customerId, customerEmail, contentSelection);
+      const purchase = await createPurchase(item, userId, user.email, contentSelection);
       purchaseResults.push(purchase);
       purchaseRequests.push(purchase);
     }

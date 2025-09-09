@@ -108,8 +108,6 @@ export default function CartPage() {
             title: item.title,
             priceCents: item.priceCents
           })),
-          customerId: userId,
-          customerEmail: "user@example.com", // In a real app, get from user profile
           contentSelections: selectedOptions // Include the content selections
         }),
       });
@@ -252,8 +250,6 @@ export default function CartPage() {
           websiteTitle: selectedItem.title,
           topic: contentRequestData.keywords, // Using keywords as topic
           wordCount: parseInt(contentRequestData.wordCount),
-          customerId: userId,
-          customerEmail: "user@example.com", // In a real app, get from user profile
           contentRequest: contentRequestData // Include the full request data
         }),
       });

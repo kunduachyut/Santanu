@@ -8,6 +8,7 @@ export interface IContentRequest extends Document {
   customerId: string;
   customerEmail?: string;
   status: "pending" | "approved" | "rejected";
+  contentRequest?: any; // Store the detailed content request data
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +26,7 @@ const ContentRequestSchema: Schema<IContentRequest> = new Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+    contentRequest: { type: Schema.Types.Mixed } // Store detailed request data
   },
   { timestamps: true }
 );

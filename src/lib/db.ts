@@ -13,6 +13,9 @@ export async function dbConnect() {
   }
 
   if (!cached.promise) {
+    // Prevent automatic index creation as per memory guidelines
+    mongoose.set('autoIndex', false);
+    
     cached.promise = mongoose.connect(MONGODB_URI, {
       // Any options you need
     })

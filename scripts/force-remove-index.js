@@ -4,8 +4,7 @@ const mongoose = require('mongoose');
 async function forceRemoveIndex() {
   try {
     // Use the actual MongoDB URI from your .env file
-    const uri = 'mongodb://santanu:santanu123@ac-se8zhft-shard-00-00.8b6iys2.mongodb.net:27017,ac-se8zhft-shard-00-01.8b6iys2.mongodb.net:27017,ac-se8zhft-shard-00-02.8b6iys2.mongodb.net:27017/?ssl=true&replicaSet=atlas-51zpjw-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0';
-    
+    const uri = MONGODB_URI
     console.log('Connecting to MongoDB Atlas...');
     await mongoose.connect(uri);
     console.log('Connected to MongoDB Atlas successfully');
