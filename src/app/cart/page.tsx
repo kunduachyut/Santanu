@@ -415,33 +415,67 @@ export default function CartPage() {
                 {selectedOptions[item._id] === 'content' && (
                   <div className="flex flex-col items-center">
                     <span className="text-xs text-blue-600 font-medium">My Content</span>
-                    <button 
-                      onClick={() => openContentModal(item)}
-                      className="mt-1 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center"
-                      title="View uploaded documents"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      {uploadsByWebsite[item._id] > 0 && (
-                        <span className="ml-1 text-xs font-medium">{uploadsByWebsite[item._id]}</span>
-                      )}
-                    </button>
+                    <div className="flex gap-1 mt-1">
+                      <button 
+                        onClick={() => openContentModal(item)}
+                        className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center"
+                        title="View uploaded documents"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {uploadsByWebsite[item._id] > 0 && (
+                          <span className="ml-1 text-xs font-medium">{uploadsByWebsite[item._id]}</span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedOptions(prev => {
+                            const newOptions = {...prev};
+                            delete newOptions[item._id];
+                            return newOptions;
+                          });
+                        }}
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                        title="Clear selection"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 )}
                 {selectedOptions[item._id] === 'request' && (
                   <div className="flex flex-col items-center">
-                    <span className="text-xs text-green-600 font-medium">Request Content</span>
-                    <button 
-                      onClick={() => openRequestModal(item)}
-                      className="mt-1 p-1 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors flex items-center justify-center"
-                      title="View request details"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    </button>
+                    <span className="text-xs text-green-600 font-medium">Request</span>
+                    <div className="flex gap-1 mt-1">
+                      <button 
+                        onClick={() => openRequestModal(item)}
+                        className="p-1 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors flex items-center justify-center"
+                        title="View request details"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedOptions(prev => {
+                            const newOptions = {...prev};
+                            delete newOptions[item._id];
+                            return newOptions;
+                          });
+                        }}
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                        title="Clear selection"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 )}
                 {!selectedOptions[item._id] && (
@@ -452,32 +486,30 @@ export default function CartPage() {
               </div>
               <div className="col-span-3 flex items-center justify-end gap-1">
                 <button
-                  onClick={() => {
-                    openContentModal(item);
-                    // Set this item's selected option to 'content'
-                    setSelectedOptions(prev => ({
-                      ...prev,
-                      [item._id]: 'content'
-                    }));
-                  }}
+                  onClick={() => openContentModal(item)}
                   disabled={selectedOptions[item._id] === 'request'}
-                  className={`px-2 py-0.5 text-white rounded text-xs transition-colors font-medium ${selectedOptions[item._id] === 'request' ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  className={`px-2 py-0.5 text-white rounded text-xs transition-colors font-medium ${
+                    selectedOptions[item._id] === 'request' 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : selectedOptions[item._id] === 'content'
+                      ? 'bg-blue-800 hover:bg-blue-900'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
                 >
-                  My Content
+                  {selectedOptions[item._id] === 'content' ? '✓ My Content' : 'My Content'}
                 </button>
                 <button
-                  onClick={() => {
-                    openRequestModal(item);
-                    // Set this item's selected option to 'request'
-                    setSelectedOptions(prev => ({
-                      ...prev,
-                      [item._id]: 'request'
-                    }));
-                  }}
+                  onClick={() => openRequestModal(item)}
                   disabled={selectedOptions[item._id] === 'content'}
-                  className={`px-2 py-0.5 text-white rounded text-xs transition-colors font-medium ${selectedOptions[item._id] === 'content' ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+                  className={`px-2 py-0.5 text-white rounded text-xs transition-colors font-medium ${
+                    selectedOptions[item._id] === 'content' 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : selectedOptions[item._id] === 'request'
+                      ? 'bg-green-800 hover:bg-green-900'
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
                 >
-                  Request
+                  {selectedOptions[item._id] === 'request' ? '✓ Request' : 'Request'}
                 </button>
                 <button
                   onClick={() => removeFromCart(item._id)}
@@ -535,14 +567,8 @@ export default function CartPage() {
                  onClick={() => {
                    setShowContentModal(false);
                    resetFileInput();
-                   // Reset the selected option for this item if user closes without completing
-                   if (selectedItem) {
-                     setSelectedOptions(prev => {
-                       const newOptions = {...prev};
-                       delete newOptions[selectedItem._id];
-                       return newOptions;
-                     });
-                   }
+                   // Keep the selected option when user closes modal
+                   // Only reset if user explicitly removes the selection
                  }}
                  className="text-gray-500 hover:text-gray-700"
                >
@@ -638,14 +664,8 @@ export default function CartPage() {
                    onClick={() => {
                      setShowContentModal(false);
                      resetFileInput();
-                     // Reset the selected option for this item if user closes without completing
-                     if (selectedItem) {
-                       setSelectedOptions(prev => {
-                         const newOptions = {...prev};
-                         delete newOptions[selectedItem._id];
-                         return newOptions;
-                       });
-                     }
+                     // Keep the selected option when user closes modal
+                     // Only reset if user explicitly removes the selection
                    }}
                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
                  >
@@ -702,14 +722,8 @@ export default function CartPage() {
               <button
                 onClick={() => {
                   setShowRequestModal(false);
-                  // Reset the selected option for this item if user closes without completing
-                  if (selectedItem) {
-                    setSelectedOptions(prev => {
-                      const newOptions = {...prev};
-                      delete newOptions[selectedItem._id];
-                      return newOptions;
-                    });
-                  }
+                  // Keep the selected option when user closes modal
+                  // Only reset if user explicitly removes the selection
                 }}
                 className="text-gray-500 hover:text-gray-700"
               >
@@ -898,14 +912,8 @@ export default function CartPage() {
               <button
                 onClick={() => {
                   setShowRequestModal(false);
-                  // Reset the selected option for this item if user closes without completing
-                  if (selectedItem) {
-                    setSelectedOptions(prev => {
-                      const newOptions = {...prev};
-                      delete newOptions[selectedItem._id];
-                      return newOptions;
-                    });
-                  }
+                  // Keep the selected option when user closes modal
+                  // Only reset if user explicitly removes the selection
                 }}
                 className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
               >
