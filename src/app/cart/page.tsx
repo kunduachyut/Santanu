@@ -109,7 +109,8 @@ export default function CartPage() {
             priceCents: item.priceCents
           })),
           customerId: userId,
-          customerEmail: "user@example.com" // In a real app, get from user profile
+          customerEmail: "user@example.com", // In a real app, get from user profile
+          contentSelections: selectedOptions // Include the content selections
         }),
       });
 

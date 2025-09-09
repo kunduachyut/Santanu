@@ -224,6 +224,7 @@ type PurchaseRequest = {
   status: "pending" | "approved" | "rejected";
   createdAt: string;
   updatedAt?: string;
+  contentType?: "content" | "request" | null; // Track the content selection type
 };
 
 type ContentRequest = {
@@ -298,6 +299,10 @@ export default function SuperAdminDashboard() {
   const [activeTab, setActiveTab] = useState<"websites" | "purchases" | "contentRequests" | "userContent" | "priceConflicts">("websites");
   const [priceConflicts, setPriceConflicts] = useState<PriceConflict[]>([]);
   const [priceConflictsLoading, setPriceConflictsLoading] = useState(true);
+  const [selectedPurchase, setSelectedPurchase] = useState<PurchaseRequest | null>(null);
+  const [showContentModal, setShowContentModal] = useState(false);
+  const [contentDetails, setContentDetails] = useState<any>(null);
+  const [contentDetailsLoading, setContentDetailsLoading] = useState(false);
 
   useEffect(() => {
     refresh();
@@ -521,6 +526,53 @@ export default function SuperAdminDashboard() {
     } catch (error) {
       console.error('Error resolving price conflict:', error);
       alert('Network error. Please try again.');
+    }
+  }
+
+  // Function to fetch content details for a purchase
+  async function fetchContentDetails(purchase: PurchaseRequest) {
+    setContentDetailsLoading(true);
+    setSelectedPurchase(purchase);
+    setShowContentModal(true);
+    
+    try {
+      if (purchase.contentType === 'content') {
+        // Fetch uploaded content for this website and customer
+        const response = await fetch(`/api/my-content?websiteId=${purchase.websiteId}&userId=${purchase.customerId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setContentDetails({
+            type: 'content',
+            items: data.items || [],
+            count: data.items?.length || 0
+          });
+        } else {
+          setContentDetails({ type: 'content', items: [], count: 0, error: 'Failed to fetch content' });
+        }
+      } else if (purchase.contentType === 'request') {
+        // Fetch content requests for this website and customer
+        const response = await fetch(`/api/content-requests?websiteId=${purchase.websiteId}&customerId=${purchase.customerId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setContentDetails({
+            type: 'request',
+            items: data.items || [],
+            count: data.items?.length || 0
+          });
+        } else {
+          setContentDetails({ type: 'request', items: [], count: 0, error: 'Failed to fetch requests' });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching content details:', error);
+      setContentDetails({ 
+        type: purchase.contentType, 
+        items: [], 
+        count: 0, 
+        error: 'Network error occurred' 
+      });
+    } finally {
+      setContentDetailsLoading(false);
     }
   }
 
@@ -1132,7 +1184,7 @@ export default function SuperAdminDashboard() {
               <div className="overflow-hidden border border-gray-200/50 rounded-2xl shadow-lg bg-white/50">
                 <div className="overflow-x-auto">
                   {/* Table Header */}
-                  <div className="grid grid-cols-20 gap-4 px-6 py-3 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="grid grid-cols-21 gap-4 px-6 py-3 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <div className="col-span-1 flex justify-center">
                       {purchaseFilter === "pending" && (
                         <input 
@@ -1148,15 +1200,16 @@ export default function SuperAdminDashboard() {
                     <div className="col-span-2 flex justify-center">TOTAL</div>
                     <div className="col-span-3 flex justify-center">CUSTOMER EMAIL</div>
                     <div className="col-span-2 flex justify-center">REQUEST ID</div>
+                    <div className="col-span-2 flex justify-center">CONTENT TYPE</div>
                     <div className="col-span-2 flex justify-center">STATUS</div>
                     <div className="col-span-2 flex justify-center">REQUESTED</div>
-                    <div className="col-span-2 flex justify-center">ACTIONS</div>
+                    <div className="col-span-1 flex justify-center">ACTIONS</div>
                   </div>
                   
                   {/* Table Body */}
                   <div className="divide-y divide-gray-100/50">
                     {filteredPurchaseRequests.map((request, index) => (
-                      <div key={request.id} className={`grid grid-cols-20 gap-4 px-6 py-4 hover:bg-green-50/50 items-center transition-colors ${
+                      <div key={request.id} className={`grid grid-cols-21 gap-4 px-6 py-4 hover:bg-green-50/50 items-center transition-colors ${
                         index % 2 === 0 ? 'bg-white/30' : 'bg-gray-50/30'
                       }`}>
                         {/* Checkbox */}
@@ -1212,6 +1265,39 @@ export default function SuperAdminDashboard() {
                           </div>
                         </div>
                         
+                        {/* Content Type */}
+                        <div className="col-span-2 flex justify-center">
+                          {request.contentType === 'content' && (
+                            <button
+                              onClick={() => fetchContentDetails(request)}
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300 hover:from-blue-200 hover:to-blue-300 transition-all cursor-pointer transform hover:scale-105"
+                              title="Click to view uploaded content details"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              My Content
+                            </button>
+                          )}
+                          {request.contentType === 'request' && (
+                            <button
+                              onClick={() => fetchContentDetails(request)}
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-200 text-green-800 border border-green-300 hover:from-green-200 hover:to-emerald-300 transition-all cursor-pointer transform hover:scale-105"
+                              title="Click to view content request details"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                              Request Content
+                            </button>
+                          )}
+                          {!request.contentType && (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-300">
+                              Not Selected
+                            </span>
+                          )}
+                        </div>
+                        
                         {/* Status */}
                         <div className="col-span-2 flex justify-center">
                           <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -1233,7 +1319,7 @@ export default function SuperAdminDashboard() {
                         </div>
                         
                         {/* Actions */}
-                        <div className="col-span-2 flex justify-center">
+                        <div className="col-span-1 flex justify-center">
                           {(request.status || 'pending') === 'pending' ? (
                             <div className="flex space-x-1">
                               <button
@@ -1611,6 +1697,266 @@ export default function SuperAdminDashboard() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   Confirm Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Details Modal */}
+        {showContentModal && selectedPurchase && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-6 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-auto shadow-2xl border border-gray-200">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold flex items-center gap-3">
+                  {selectedPurchase.contentType === 'content' ? (
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-gray-800">
+                      {selectedPurchase.contentType === 'content' ? 'User Uploaded Content' : 'Content Requests'}
+                    </div>
+                    <div className="text-sm text-gray-500 font-normal">for {selectedPurchase.websiteTitle}</div>
+                  </div>
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowContentModal(false);
+                    setSelectedPurchase(null);
+                    setContentDetails(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Purchase Details */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h4 className="font-semibold text-gray-800 mb-3">Purchase Information</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-600">Customer:</span>
+                    <div className="text-gray-800">{selectedPurchase.customerEmail}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Purchase Date:</span>
+                    <div className="text-gray-800">{formatDate(selectedPurchase.createdAt)}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Amount:</span>
+                    <div className="text-gray-800 font-bold">{formatCurrency(selectedPurchase.totalCents)}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Status:</span>
+                    <div className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
+                      selectedPurchase.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      selectedPurchase.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {selectedPurchase.status.toUpperCase()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content Details */}
+              {contentDetailsLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-200 border-t-blue-500 mx-auto"></div>
+                    <p className="text-blue-600 font-medium">Loading content details...</p>
+                  </div>
+                </div>
+              ) : contentDetails?.error ? (
+                <div className="text-center py-12 bg-red-50 rounded-lg border border-red-200">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">Failed to Load Content</h3>
+                  <p className="text-red-600">{contentDetails.error}</p>
+                </div>
+              ) : contentDetails?.items?.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Content Found</h3>
+                  <p className="text-gray-500">
+                    {selectedPurchase.contentType === 'content' 
+                      ? 'No files have been uploaded for this purchase yet.' 
+                      : 'No content requests have been submitted for this purchase yet.'}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    {selectedPurchase.contentType === 'content' ? 'Uploaded Files' : 'Content Requests'}
+                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                      {contentDetails?.count || 0} item{(contentDetails?.count || 0) !== 1 ? 's' : ''}
+                    </span>
+                  </h4>
+                  
+                  {selectedPurchase.contentType === 'content' ? (
+                    // Display uploaded content
+                    <div className="space-y-4">
+                      {contentDetails?.items?.map((item: any, index: number) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-3">
+                              <div className="flex-shrink-0 h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {item.pdf?.filename || 'PDF Document'}
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  Size: {item.pdf?.size ? `${(item.pdf.size / 1024).toFixed(1)} KB` : 'Unknown'}
+                                </div>
+                                <div className="text-sm text-gray-600 mt-2">
+                                  <span className="font-medium">Requirements:</span>
+                                  <div className="mt-1 text-gray-700">{item.requirements || 'No requirements specified'}</div>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-2">
+                                  Uploaded: {new Date(item.createdAt).toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                            <a 
+                              href={`/api/admin/pdf/${item._id}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 hover:border-blue-400 transition-colors text-sm font-medium"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Download
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    // Display content requests
+                    <div className="space-y-4">
+                      {contentDetails?.items?.map((item: any, index: number) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start space-x-3">
+                                <div className="flex-shrink-0 h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center text-green-600">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    Content Request #{index + 1}
+                                  </div>
+                                  <div className="text-sm text-gray-500 mt-1">
+                                    Topic: {item.topic || 'No topic specified'}
+                                  </div>
+                                  {item.wordCount && (
+                                    <div className="text-sm text-gray-500">
+                                      Word Count: {item.wordCount} words
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-gray-500 mt-2">
+                                    Requested: {new Date(item.createdAt).toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
+                                item.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                item.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {item.status?.toUpperCase() || 'PENDING'}
+                              </span>
+                            </div>
+                            
+                            {/* Show detailed content request information if available */}
+                            {item.contentRequest && (
+                              <div className="bg-gray-50 rounded-lg p-3 mt-3">
+                                <h5 className="text-sm font-medium text-gray-800 mb-2">Request Details</h5>
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                  {item.contentRequest.keywords && (
+                                    <div>
+                                      <span className="font-medium text-gray-600">Keywords:</span>
+                                      <div className="text-gray-700">{item.contentRequest.keywords}</div>
+                                    </div>
+                                  )}
+                                  {item.contentRequest.anchorText && (
+                                    <div>
+                                      <span className="font-medium text-gray-600">Anchor Text:</span>
+                                      <div className="text-gray-700">{item.contentRequest.anchorText}</div>
+                                    </div>
+                                  )}
+                                  {item.contentRequest.targetAudience && (
+                                    <div>
+                                      <span className="font-medium text-gray-600">Target Audience:</span>
+                                      <div className="text-gray-700">{item.contentRequest.targetAudience}</div>
+                                    </div>
+                                  )}
+                                  {item.contentRequest.category && (
+                                    <div>
+                                      <span className="font-medium text-gray-600">Category:</span>
+                                      <div className="text-gray-700">{item.contentRequest.category}</div>
+                                    </div>
+                                  )}
+                                  {item.contentRequest.landingPageUrl && (
+                                    <div className="col-span-2">
+                                      <span className="font-medium text-gray-600">Landing Page:</span>
+                                      <div className="text-gray-700 break-all">{item.contentRequest.landingPageUrl}</div>
+                                    </div>
+                                  )}
+                                  {item.contentRequest.briefNote && (
+                                    <div className="col-span-2">
+                                      <span className="font-medium text-gray-600">Brief Note:</span>
+                                      <div className="text-gray-700">{item.contentRequest.briefNote}</div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => {
+                    setShowContentModal(false);
+                    setSelectedPurchase(null);
+                    setContentDetails(null);
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Close
                 </button>
               </div>
             </div>

@@ -16,6 +16,7 @@ let purchaseRequests: any[] = [
     customerId: "user_123",
     customerEmail: "user@example.com",
     status: "approved",
+    contentType: "content", // User uploaded their own content
     createdAt: new Date().toISOString()
   },
   {
@@ -29,6 +30,21 @@ let purchaseRequests: any[] = [
     customerId: "user_123",
     customerEmail: "user@example.com",
     status: "pending",
+    contentType: "request", // User requested content to be created
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "sample3", 
+    _id: "sample3",
+    websiteId: "website3",
+    websiteTitle: "Sample Website 3",
+    priceCents: 3000,
+    totalCents: 3000,
+    amountCents: 3000,
+    customerId: "user_456",
+    customerEmail: "another@example.com",
+    status: "pending",
+    contentType: null, // User didn't select any content option
     createdAt: new Date().toISOString()
   }
 ];
@@ -65,7 +81,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, customerId, customerEmail } = await req.json();
+    const { items, customerId, customerEmail, contentSelections } = await req.json();
     
     if (!items || !Array.isArray(items)) {
       return NextResponse.json(
@@ -78,8 +94,11 @@ export async function POST(req: NextRequest) {
     const purchaseResults = [];
     
     for (const item of items) {
+      // Get content selection for this item
+      const contentSelection = contentSelections?.[item.websiteId];
+      
       // Create a purchase request for each item
-      const purchase = await createPurchase(item, customerId, customerEmail);
+      const purchase = await createPurchase(item, customerId, customerEmail, contentSelection);
       purchaseResults.push(purchase);
       purchaseRequests.push(purchase);
     }
@@ -101,7 +120,7 @@ export async function POST(req: NextRequest) {
 }
 
 // Mock function to create a purchase
-async function createPurchase(item: any, customerId: string, customerEmail: string) {
+async function createPurchase(item: any, customerId: string, customerEmail: string, contentSelection?: string) {
   // This would typically create a database record
   return {
     id: Math.random().toString(36).substr(2, 9),
@@ -114,6 +133,7 @@ async function createPurchase(item: any, customerId: string, customerEmail: stri
     customerId,
     customerEmail,
     status: 'pending',
+    contentType: contentSelection || null, // 'content' for My Content, 'request' for Request Content
     createdAt: new Date().toISOString()
   };
 }
