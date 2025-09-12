@@ -332,7 +332,7 @@ export default function ConsumerDashboard() {
         updatedAt: w.updatedAt || new Date().toISOString(),
       }));
       const approvedWebsites = websitesData.filter(
-        (w: Website) => w.status === undefined || w.status === "approved"
+        (w: Website) => w.status === "approved"
       );
 
       setWebsites(approvedWebsites);
