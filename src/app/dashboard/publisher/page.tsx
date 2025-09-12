@@ -7,6 +7,44 @@ import PublisherWebsitesSection from "@/components/PublisherWebsitesSection";
 import PublisherAddWebsiteSection from "@/components/PublisherAddWebsiteSection";
 import PublisherComingSoonSection from "@/components/PublisherComingSoonSection";
 
+// Define the categories as requested with mapping to backend enum values
+const CATEGORIES = [
+  { id: 1, name: "Finance, Insurance & Investment", backendValue: "business" },
+  { id: 2, name: "Crypto, Blockchain, Bitcoin & Digital Assets", backendValue: "business" },
+  { id: 3, name: "Health, Wellness, Fitness & Personal Care", backendValue: "business" },
+  { id: 4, name: "Software, SaaS, Technology & IT Solutions", backendValue: "business" },
+  { id: 5, name: "Business, Marketing, PR & Communication", backendValue: "business" },
+  { id: 6, name: "Travel, Tourism, Adventure & Hospitality", backendValue: "business" },
+  { id: 7, name: "Law, Legal Services, Attorneys & Compliance", backendValue: "business" },
+  { id: 8, name: "Automotive, Cars, Bikes & Electric Vehicles (EVs)", backendValue: "business" },
+  { id: 9, name: "iGaming, Casino, Betting, Gambling & Adult Niches", backendValue: "entertainment" },
+  { id: 10, name: "Education, E-Learning, Training & Career Development", backendValue: "educational" },
+  { id: 11, name: "Real Estate, Property, Home Improvement & Garden", backendValue: "business" },
+  { id: 12, name: "Food, Recipes, Cooking & Culinary Lifestyle", backendValue: "business" },
+  { id: 13, name: "Sports, Fitness, Training & Active Lifestyle", backendValue: "entertainment" },
+  { id: 14, name: "Clothing, Fashion, Style & Apparel", backendValue: "business" },
+  { id: 15, name: "Beauty, Cosmetics, Skincare & Personal Style", backendValue: "business" },
+  { id: 16, name: "Parenting, Family, Kids & Childcare", backendValue: "business" },
+  { id: 17, name: "Wedding, Events, Parties & Celebrations", backendValue: "business" },
+  { id: 18, name: "Lifestyle, General Interest & Multi-Niche Blogs", backendValue: "blog" },
+  { id: 19, name: "Photography, Visual Arts & Creative Media", backendValue: "entertainment" },
+  { id: 20, name: "Hobbies, Leisure, Crafts & Entertainment", backendValue: "entertainment" },
+  { id: 21, name: "Women's Lifestyle, Fashion & Inspiration", backendValue: "business" },
+  { id: 22, name: "Men's Lifestyle, Fashion & Grooming", backendValue: "business" },
+  { id: 23, name: "Media, Publishing, Literature & Books", backendValue: "blog" },
+  { id: 24, name: "Music, Movies, Film & Entertainment", backendValue: "entertainment" },
+  { id: 25, name: "Gadgets, Electronics, Hardware & Consumer Tech", backendValue: "business" },
+  { id: 26, name: "Social Media, Influencers & Digital Trends", backendValue: "blog" },
+  { id: 27, name: "News, Blogs, Magazines & Current Affairs", backendValue: "blog" },
+  { id: 28, name: "Promotional Products, Gifts & Corporate Merchandise", backendValue: "business" },
+  { id: 29, name: "Catering, Food Services & Hospitality Industry", backendValue: "business" },
+  { id: 30, name: "Animals, Pets, Wildlife & Veterinary Care", backendValue: "business" },
+  { id: 31, name: "Construction, Architecture, Engineering & Building", backendValue: "business" },
+  { id: 32, name: "Sustainability, Eco-Friendly & Green Living", backendValue: "business" },
+  { id: 33, name: "Games, Toys, Kids & Children's Products", backendValue: "entertainment" },
+  { id: 34, name: "Private SEO Blog Networks (PSBN)", backendValue: "blog" }
+];
+
 type Website = {
   _id: string;
   title: string;
@@ -42,7 +80,7 @@ export default function PublisherDashboard() {
     title: '',
     url: '',
     description: '',
-    category: '',
+    category: '', // This will now be a comma-separated string of category IDs
     price: '',
     DA: '',
     PA: '',
@@ -192,13 +230,32 @@ export default function PublisherDashboard() {
     setFormData(prev => ({ ...prev, [name]: value }));
   }
 
+  // Function to convert comma-separated category IDs to selected IDs array
+  function getCategoryIdsFromString(categoryString: string): number[] {
+    if (!categoryString) return [];
+    return categoryString.split(',').map(Number).filter(Boolean);
+  }
+
+  // Function to handle editing a website with multiple categories
   function editWebsite(website: Website) {
     setEditingWebsite(website);
+    
+    // Convert the backend category value to our category IDs
+    // This is a simplified approach - in a real implementation, you might want to store
+    // the original category IDs in a separate field
+    let categoryIds: number[] = [];
+    if (website.category) {
+      // Find categories that map to this backend value
+      const matchingCategories = CATEGORIES.filter(cat => cat.backendValue === website.category)
+        .map(cat => cat.id);
+      categoryIds = matchingCategories;
+    }
+    
     setFormData({
       title: website.title,
       url: website.url,
       description: website.description,
-      category: website.category || '',
+      category: website.category || '', // Keep the backend value for submission
       price: (website.priceCents / 100).toString(),
       DA: website.DA?.toString() || '',
       PA: website.PA?.toString() || '',
@@ -364,3 +421,4 @@ export default function PublisherDashboard() {
     </div>
   );
 }
+
