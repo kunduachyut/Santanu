@@ -72,6 +72,77 @@ export default function MarketplaceSection({
   paidSiteIds: Set<string>;
 }) {
   const { addToCart } = useCart();
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    minPrice: '',
+    maxPrice: '',
+    minDA: '',
+    maxDA: '',
+    minDR: '',
+    maxDR: '',
+    category: '',
+    country: '',
+  });
+
+  // Get unique categories and countries from websites
+  const uniqueCategories = Array.from(
+    new Set(websites.flatMap(w => Array.isArray(w.category) ? w.category : w.category ? [w.category] : []))
+  ).filter(Boolean) as string[];
+
+  const uniqueCountries = Array.from(
+    new Set(websites.map(w => w.primaryCountry).filter(Boolean))
+  ).filter(Boolean) as string[];
+
+  // Apply filters to websites
+  const filteredWebsites = websites.filter(w => {
+    // Search filter
+    if (searchQuery) {
+      const matchesSearch = w.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           w.url.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+    }
+
+    // Price filters
+    if (filters.minPrice && w.priceCents < parseFloat(filters.minPrice) * 100) return false;
+    if (filters.maxPrice && w.priceCents > parseFloat(filters.maxPrice) * 100) return false;
+
+    // DA filters
+    if (filters.minDA && (w.DA || 0) < parseInt(filters.minDA)) return false;
+    if (filters.maxDA && (w.DA || 0) > parseInt(filters.maxDA)) return false;
+
+    // DR filters
+    if (filters.minDR && (w.DR || 0) < parseInt(filters.minDR)) return false;
+    if (filters.maxDR && (w.DR || 0) > parseInt(filters.maxDR)) return false;
+
+    // Category filter
+    if (filters.category) {
+      const websiteCategories = Array.isArray(w.category) ? w.category : w.category ? [w.category] : [];
+      if (!websiteCategories.includes(filters.category)) return false;
+    }
+
+    // Country filter
+    if (filters.country && w.primaryCountry !== filters.country) return false;
+
+    return true;
+  });
+
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      minPrice: '',
+      maxPrice: '',
+      minDA: '',
+      maxDA: '',
+      minDR: '',
+      maxDR: '',
+      category: '',
+      country: '',
+    });
+  };
 
   return (
     <div>
@@ -86,7 +157,7 @@ export default function MarketplaceSection({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
-          <span className="text-sm font-medium text-gray-500">{websites.length} websites available</span>
+          <span className="text-sm font-medium text-gray-500">{filteredWebsites.length} websites available</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -136,13 +207,139 @@ export default function MarketplaceSection({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <button className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100">
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100 relative"
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
+            {/* Filter indicator dot */}
+            {(filters.minPrice || filters.maxPrice || filters.minDA || filters.maxDA || 
+              filters.minDR || filters.maxDR || filters.category || filters.country) && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+            )}
           </button>
         </div>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="mb-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-medium text-gray-900">Filters</h3>
+            <button 
+              onClick={clearFilters}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              Clear all
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Price Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Price Range</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  name="minPrice"
+                  placeholder="Min"
+                  value={filters.minPrice}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  type="number"
+                  name="maxPrice"
+                  placeholder="Max"
+                  value={filters.maxPrice}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
+            {/* DA Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">DA Range</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  name="minDA"
+                  placeholder="Min"
+                  value={filters.minDA}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  type="number"
+                  name="maxDA"
+                  placeholder="Max"
+                  value={filters.maxDA}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
+            {/* DR Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">DR Range</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  name="minDR"
+                  placeholder="Min"
+                  value={filters.minDR}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  type="number"
+                  name="maxDR"
+                  placeholder="Max"
+                  value={filters.maxDR}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
+            {/* Category */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select
+                name="category"
+                value={filters.category}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Categories</option>
+                {uniqueCategories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Country */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+              <select
+                name="country"
+                value={filters.country}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Countries</option>
+                {uniqueCountries.map(country => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (
@@ -172,15 +369,27 @@ export default function MarketplaceSection({
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          {websites.length === 0 ? (
+          {filteredWebsites.length === 0 ? (
             <div className="p-8 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Websites Available</h3>
-              <p className="text-gray-600">Check back later for new digital assets</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Websites Found</h3>
+              <p className="text-gray-600">
+                {websites.length > 0 
+                  ? "Try adjusting your filters to see more results" 
+                  : "Check back later for new digital assets"}
+              </p>
+              {websites.length > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-sm"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           ) : (
             <div>
@@ -220,12 +429,7 @@ export default function MarketplaceSection({
               
               {/* Table Body */}
               <div className="divide-y divide-gray-200">
-                {websites
-                  .filter(w => {
-                    if (!searchQuery) return true;
-                    return w.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           w.url.toLowerCase().includes(searchQuery.toLowerCase());
-                  })
+                {filteredWebsites
                   .map((w) => {
                   const stableId = w._id || w.id || `${w.title}-${w.url}`;
                   const isPurchased = paidSiteIds.has(stableId);
