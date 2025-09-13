@@ -80,6 +80,8 @@ export default function MarketplaceSection({
     maxDA: '',
     minDR: '',
     maxDR: '',
+    minOrganicTraffic: '',
+    maxOrganicTraffic: '',
     category: '',
     country: '',
   });
@@ -114,6 +116,10 @@ export default function MarketplaceSection({
     if (filters.minDR && (w.DR || 0) < parseInt(filters.minDR)) return false;
     if (filters.maxDR && (w.DR || 0) > parseInt(filters.maxDR)) return false;
 
+    // Organic Traffic filters
+    if (filters.minOrganicTraffic && (w.OrganicTraffic || 0) < parseInt(filters.minOrganicTraffic)) return false;
+    if (filters.maxOrganicTraffic && (w.OrganicTraffic || 0) > parseInt(filters.maxOrganicTraffic)) return false;
+
     // Category filter
     if (filters.category) {
       const websiteCategories = Array.isArray(w.category) ? w.category : w.category ? [w.category] : [];
@@ -139,6 +145,8 @@ export default function MarketplaceSection({
       maxDA: '',
       minDR: '',
       maxDR: '',
+      minOrganicTraffic: '',
+      maxOrganicTraffic: '',
       category: '',
       country: '',
     });
@@ -216,7 +224,8 @@ export default function MarketplaceSection({
             </svg>
             {/* Filter indicator dot */}
             {(filters.minPrice || filters.maxPrice || filters.minDA || filters.maxDA || 
-              filters.minDR || filters.maxDR || filters.category || filters.country) && (
+              filters.minDR || filters.maxDR || filters.minOrganicTraffic || filters.maxOrganicTraffic || 
+              filters.category || filters.country) && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
             )}
           </button>
@@ -236,7 +245,7 @@ export default function MarketplaceSection({
             </button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Price Range */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Price Range</label>
@@ -320,6 +329,29 @@ export default function MarketplaceSection({
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>
+            </div>
+            
+            {/* Organic Traffic Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Organic Traffic Range</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  name="minOrganicTraffic"
+                  placeholder="Min"
+                  value={filters.minOrganicTraffic}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  type="number"
+                  name="maxOrganicTraffic"
+                  placeholder="Max"
+                  value={filters.maxOrganicTraffic}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
             </div>
             
             {/* Country */}
