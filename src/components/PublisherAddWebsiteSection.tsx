@@ -18,7 +18,7 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
-  category?: string; // Updated to accept both string and array
+  category?: string | string[]; // Updated to accept both string and array
   tags?: string;
   primaryCountry?: string; // Add primaryCountry field
 };
@@ -75,7 +75,7 @@ export default function PublisherAddWebsiteSection({
     title: string;
     url: string;
     description: string;
-    category: string;
+    category: string | string[]; // Updated to accept both string and array
     price: string;
     DA: string;
     PA: string;
@@ -94,15 +94,28 @@ export default function PublisherAddWebsiteSection({
 }) {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<number[]>(() => {
-    // Initialize from formData.category which is a string (comma-separated)
+    // Initialize from formData.category - handle different possible data types
     if (!formData.category) return [];
     
-    // Split the comma-separated string and find matching IDs
-    return formData.category.split(',').map(name => {
-      const trimmedName = name.trim();
-      const category = CATEGORIES.find(cat => cat.name === trimmedName);
-      return category ? category.id : null;
-    }).filter((id): id is number => id !== null);
+    // Handle case where category is already an array (from editing)
+    if (Array.isArray(formData.category)) {
+      return formData.category.map(name => {
+        const category = CATEGORIES.find(cat => cat.name === name);
+        return category ? category.id : null;
+      }).filter((id): id is number => id !== null);
+    }
+    
+    // Handle case where category is a string (comma-separated)
+    if (typeof formData.category === 'string') {
+      return formData.category.split(',').map(name => {
+        const trimmedName = name.trim();
+        const category = CATEGORIES.find(cat => cat.name === trimmedName);
+        return category ? category.id : null;
+      }).filter((id): id is number => id !== null);
+    }
+    
+    // Fallback for any other case
+    return [];
   });
 
   // Function to handle category selection

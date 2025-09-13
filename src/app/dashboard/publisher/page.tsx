@@ -63,7 +63,7 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
-  category?: string; // Keep as string to match the backend value
+  category?: string; // Revert to string only
   tags?: string;
   primaryCountry?: string; // Add primaryCountry field
 };
@@ -81,7 +81,7 @@ export default function PublisherDashboard() {
     title: '',
     url: '',
     description: '',
-    category: '', // This will now be a comma-separated string of category IDs
+    category: '', // Keep as string for form submission
     price: '',
     DA: '',
     PA: '',
@@ -89,7 +89,8 @@ export default function PublisherDashboard() {
     OrganicTraffic: '',
     DR: '',
     RD: '',
-    tags: ''
+    tags: '',
+    primaryCountry: '' // Add primaryCountry field
   });
   const [formLoading, setFormLoading] = useState(false);
   const [stats, setStats] = useState({
@@ -221,7 +222,8 @@ export default function PublisherDashboard() {
       OrganicTraffic: '',
       DR: '',
       RD: '',
-      tags: ''
+      tags: '',
+      primaryCountry: '' // Add primaryCountry field
     });
     setEditingWebsite(null);
   }
@@ -241,22 +243,21 @@ export default function PublisherDashboard() {
   function editWebsite(website: Website) {
     setEditingWebsite(website);
     
-    // Convert the backend category value to our category IDs
-    // This is a simplified approach - in a real implementation, you might want to store
-    // the original category IDs in a separate field
-    let categoryIds: number[] = [];
+    // Handle category field - convert array to comma-separated string if needed
+    let categoryValue = '';
     if (website.category) {
-      // Find categories that map to this backend value
-      const matchingCategories = CATEGORIES.filter(cat => cat.backendValue === website.category)
-        .map(cat => cat.id);
-      categoryIds = matchingCategories;
+      if (Array.isArray(website.category)) {
+        categoryValue = website.category.join(',');
+      } else {
+        categoryValue = website.category;
+      }
     }
     
     setFormData({
       title: website.title,
       url: website.url,
       description: website.description,
-      category: website.category || '', // Keep the backend value for submission
+      category: categoryValue,
       price: (website.priceCents / 100).toString(),
       DA: website.DA?.toString() || '',
       PA: website.PA?.toString() || '',
@@ -264,7 +265,8 @@ export default function PublisherDashboard() {
       OrganicTraffic: website.OrganicTraffic?.toString() || '',
       DR: website.DR?.toString() || '',
       RD: website.RD || '',
-      tags: website.tags || ''
+      tags: website.tags || '',
+      primaryCountry: website.primaryCountry || '' // Add primaryCountry field
     });
     setActiveTab('add-website');
   }
@@ -274,8 +276,19 @@ export default function PublisherDashboard() {
     setFormLoading(true);
 
     try {
+      // Process category data to convert from comma-separated string to array
+      let processedCategory: string[] = [];
+      if (typeof formData.category === 'string' && formData.category.includes(',')) {
+        processedCategory = formData.category.split(',').map(cat => cat.trim()).filter(Boolean);
+      } else if (typeof formData.category === 'string' && formData.category.trim()) {
+        processedCategory = [formData.category.trim()];
+      } else if (Array.isArray(formData.category)) {
+        processedCategory = formData.category;
+      }
+
       const submitData = {
         ...formData,
+        category: processedCategory,
         priceCents: Math.round(parseFloat(formData.price) * 100),
         DA: formData.DA ? parseInt(formData.DA) : undefined,
         PA: formData.PA ? parseInt(formData.PA) : undefined,
