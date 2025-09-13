@@ -49,21 +49,27 @@ export default function PublisherWebsitesSection({
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex items-center gap-3">
           <button
             onClick={refresh}
-            className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100"
+            className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+            title="Refresh"
           >
             <span className="material-symbols-outlined">refresh</span>
           </button>
-          <span className="text-sm font-medium text-gray-500">{mySites.length} websites</span>
+          <div>
+            <span className="text-sm font-medium text-gray-700">{mySites.length} websites</span>
+            {statusFilter !== "all" && (
+              <span className="text-sm text-gray-500 ml-2">({filteredSites.length} filtered)</span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as "all" | "pending" | "approved" | "rejected")}
-            className="pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            className="pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -74,86 +80,94 @@ export default function PublisherWebsitesSection({
       </div>
 
       {filteredSites.length === 0 ? (
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 text-center">
-          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="material-symbols-outlined text-blue-600 text-2xl">web</span>
+        <div className="bg-white rounded-lg p-8 shadow-sm border border-gray-200 text-center">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="material-symbols-outlined text-blue-600 text-3xl">web</span>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Websites Found</h3>
-          <p className="text-gray-600 mb-4">You haven't added any websites yet. Get started by adding your first website!</p>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No Websites Found</h3>
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">You haven't added any websites yet or no websites match your current filter. Get started by adding your first website!</p>
           <button
             onClick={() => {
-              const addWebsiteButton = document.querySelector('[data-tab="add-website"]') as HTMLButtonElement;
-              if (addWebsiteButton) {
-                addWebsiteButton.click();
-              }
+              const event = new CustomEvent('switchTab', { detail: 'add-website' });
+              window.dispatchEvent(event);
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-sm inline-flex items-center"
+            className="px-5 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium inline-flex items-center gap-2"
           >
-            <span className="material-symbols-outlined mr-2">add</span>
+            <span className="material-symbols-outlined">add</span>
             Add Website
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-6">
           {filteredSites.map((site) => (
             <div
               key={site._id}
-              className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow bg-white"
+              className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all bg-white flex flex-col"
             >
-              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-                <div className="flex-grow">
-                  <h3 className="font-semibold text-lg text-gray-900">{site.title}</h3>
-                  <a
-                    href={site.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline text-sm inline-block mt-1"
-                  >
-                    {site.url}
-                  </a>
-                  <p className="text-gray-600 mt-2 text-sm">{site.description}</p>
-                  
-                  {/* Display categories */}
-                  {site.category && (
-                    <div className="mt-2 flex flex-wrap gap-1">
+              <div className="flex-grow">
+                <div className="flex justify-between items-start gap-3 mb-3">
+                  <h3 className="font-bold text-lg text-gray-900 line-clamp-1">{site.title}</h3>
+                  <div className="flex-shrink-0">
+                    {getStatusBadge(site.status, site.rejectionReason)}
+                  </div>
+                </div>
+                
+                <a
+                  href={site.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline text-sm inline-block mb-3 line-clamp-1"
+                >
+                  {site.url}
+                </a>
+                
+                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{site.description}</p>
+                
+                {/* Display categories */}
+                {site.category && (
+                  <div className="mb-4">
+                    <div className="flex flex-wrap gap-2">
                       {(Array.isArray(site.category) ? site.category : site.category.split(',')).map((cat, index) => (
-                        <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                        <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-full">
                           {cat.trim()}
                         </span>
                       ))}
                     </div>
-                  )}
-                  
-                  {/* SEO Metrics */}
-                  <div className="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                    {site.DA && (
+                  </div>
+                )}
+                
+                {/* SEO Metrics */}
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">SEO Metrics</h4>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {site.DA !== undefined && site.DA !== null && (
                       <div className="bg-blue-50 rounded-lg p-2 text-center">
                         <p className="text-xs text-blue-600 font-medium">DA</p>
                         <p className="text-sm font-bold text-blue-800">{site.DA}</p>
                       </div>
                     )}
-                    {site.DR && (
+                    {site.DR !== undefined && site.DR !== null && (
                       <div className="bg-green-50 rounded-lg p-2 text-center">
                         <p className="text-xs text-green-600 font-medium">DR</p>
                         <p className="text-sm font-bold text-green-800">{site.DR}</p>
                       </div>
                     )}
-                    {site.PA && (
+                    {site.PA !== undefined && site.PA !== null && (
                       <div className="bg-purple-50 rounded-lg p-2 text-center">
                         <p className="text-xs text-purple-600 font-medium">PA</p>
                         <p className="text-sm font-bold text-purple-800">{site.PA}</p>
                       </div>
                     )}
-                    {site.Spam !== undefined && (
+                    {site.Spam !== undefined && site.Spam !== null && (
                       <div className="bg-red-50 rounded-lg p-2 text-center">
                         <p className="text-xs text-red-600 font-medium">Spam</p>
                         <p className="text-sm font-bold text-red-800">{site.Spam}</p>
                       </div>
                     )}
-                    {site.OrganicTraffic && (
+                    {site.OrganicTraffic !== undefined && site.OrganicTraffic !== null && (
                       <div className="bg-orange-50 rounded-lg p-2 text-center">
                         <p className="text-xs text-orange-600 font-medium">Traffic</p>
-                        <p className="text-sm font-bold text-orange-800">{site.OrganicTraffic}</p>
+                        <p className="text-sm font-bold text-orange-800">{site.OrganicTraffic?.toLocaleString()}</p>
                       </div>
                     )}
                     {site.RD && (
@@ -171,22 +185,36 @@ export default function PublisherWebsitesSection({
                       </div>
                     )}
                   </div>
-
-                  <div className="mt-3">
-                    {getStatusBadge(site.status, site.rejectionReason)}
-                  </div>
                 </div>
-                <div className="text-green-600 font-bold text-lg">
-                  {formatPrice(site.priceCents)}
+
+                {/* Primary Country */}
+                {site.primaryCountry && (
+                  <div className="mb-4">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Primary Traffic Country</h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm bg-gray-100 px-2.5 py-1 rounded-full">
+                        {site.primaryCountry}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                  <div className="text-sm text-gray-500">
+                    Added: {new Date(site.createdAt).toLocaleDateString()}
+                  </div>
+                  <div className="text-green-600 font-bold text-lg">
+                    {formatPrice(site.priceCents)}
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 flex justify-end space-x-2">
+              <div className="flex justify-end space-x-2 pt-4">
                 <button
                   onClick={() => editWebsite(site)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors flex items-center gap-1"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors flex items-center gap-1.5"
                 >
-                  <span className="material-symbols-outlined text-sm">edit</span>
+                  <span className="material-symbols-outlined text-base">edit</span>
                   Edit
                 </button>
                 <button
@@ -203,16 +231,16 @@ export default function PublisherWebsitesSection({
                     }
                   }}
                   disabled={deleteLoading === site._id}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-300 text-sm font-medium transition-colors flex items-center gap-1"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-300 text-sm font-medium transition-colors flex items-center gap-1.5"
                 >
                   {deleteLoading === site._id ? (
                     <>
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-1"></div>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
                       Deleting...
                     </>
                   ) : (
                     <>
-                      <span className="material-symbols-outlined text-sm">delete</span>
+                      <span className="material-symbols-outlined text-base">delete</span>
                       Delete
                     </>
                   )}

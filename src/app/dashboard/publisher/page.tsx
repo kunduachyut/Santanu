@@ -104,6 +104,20 @@ export default function PublisherDashboard() {
     refresh();
   }, []);
 
+  // Add event listener for tab switching
+  useEffect(() => {
+    const handleTabSwitch = (event: CustomEvent) => {
+      if (event.detail === 'add-website') {
+        setActiveTab('add-website');
+      }
+    };
+
+    window.addEventListener('switchTab', handleTabSwitch as EventListener);
+    return () => {
+      window.removeEventListener('switchTab', handleTabSwitch as EventListener);
+    };
+  }, [setActiveTab]);
+
   useEffect(() => {
     const newStats = {
       total: mySites.length,
