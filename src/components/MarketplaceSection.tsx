@@ -267,7 +267,7 @@ export default function MarketplaceSection({
                       
                       {/* Price */}
                       <div className="col-span-2 flex justify-center">
-                        <div className="text-sm font-medium text-gray-900">${(w.priceCents / 100).toFixed(2)}</div>
+                        <div className="text-sm font-medium text-green-600">${(w.priceCents / 100).toFixed(2)}</div>
                       </div>
                       
                       {/* DA */}
