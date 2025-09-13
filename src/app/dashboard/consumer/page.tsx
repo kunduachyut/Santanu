@@ -233,6 +233,7 @@ type Website = {
   DR?: number;
   RD?: string;
   category?: string | string[]; // Add category field
+  primaryCountry?: string; // Add primaryCountry field
 };
 
 type Purchase = {
@@ -335,6 +336,7 @@ export default function ConsumerDashboard() {
         DR: w.DR || 0,
         RD: w.RD || "",
         category: w.category || [], // Add category field
+        primaryCountry: w.primaryCountry || "", // Add primaryCountry field
         createdAt: w.createdAt || new Date().toISOString(),
         updatedAt: w.updatedAt || new Date().toISOString(),
       }));

@@ -19,8 +19,9 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
-  category?: string | string[]; // Updated to accept both string and array
+  category?: string; // Updated to accept both string and array
   tags?: string;
+  primaryCountry?: string; // Add primaryCountry field
 };
 
 export default function PublisherWebsitesSection({ 

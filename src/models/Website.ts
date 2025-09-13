@@ -18,6 +18,7 @@ export interface IWebsite extends mongoose.Document {
   clicks: number;
   featured: boolean;
   tags: string[];
+  primaryCountry?: string; // Add primaryCountry field
   metaTitle?: string;
   metaDescription?: string;
 
@@ -160,6 +161,11 @@ const WebsiteSchema = new mongoose.Schema({
   clicks: { type: Number, default: 0 },
   featured: { type: Boolean, default: false },
   tags: [{ type: String, trim: true }],
+  primaryCountry: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Country name cannot exceed 100 characters']
+  },
 
   // SEO fields
   metaTitle: {

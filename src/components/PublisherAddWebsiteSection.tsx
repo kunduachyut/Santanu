@@ -18,8 +18,9 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
-  category?: string | string[]; // Updated to accept both string and array
+  category?: string; // Updated to accept both string and array
   tags?: string;
+  primaryCountry?: string; // Add primaryCountry field
 };
 
 // Define the categories as requested with mapping to backend enum values
@@ -82,7 +83,8 @@ export default function PublisherAddWebsiteSection({
     OrganicTraffic: string;
     DR: string;
     RD: string;
-    tags: string;
+    primaryCountry?: string; // Add primaryCountry field
+    // Removed tags field
   };
   handleFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
@@ -371,20 +373,33 @@ export default function PublisherAddWebsiteSection({
           </div>
         </div>
 
-        {/* Tags */}
+        {/* Country Selection */}
         <div>
-          <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-1">
-            Tags (comma-separated)
+          <label htmlFor="primaryCountry" className="block text-sm font-medium text-gray-700 mb-1">
+            Primary Traffic Country
           </label>
-          <input
-            type="text"
-            id="tags"
-            name="tags"
-            value={formData.tags}
+          <select
+            id="primaryCountry"
+            name="primaryCountry"
+            value={formData.primaryCountry || ''}
             onChange={handleFormChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="e.g., technology, blog, business"
-          />
+          >
+            <option value="">Select a country</option>
+            <option value="United States">United States</option>
+            <option value="United Kingdom">United Kingdom</option>
+            <option value="Canada">Canada</option>
+            <option value="Australia">Australia</option>
+            <option value="Germany">Germany</option>
+            <option value="France">France</option>
+            <option value="India">India</option>
+            <option value="Brazil">Brazil</option>
+            <option value="Japan">Japan</option>
+            <option value="China">China</option>
+            <option value="Russia">Russia</option>
+            <option value="Other">Other</option>
+          </select>
+          <p className="mt-1 text-sm text-gray-500">Select the country where your website receives the most traffic</p>
         </div>
 
         {/* Submit Button */}

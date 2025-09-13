@@ -191,7 +191,7 @@ export async function POST(req: Request) {
 
   try {
     const json = await req.json();
-    const { title, url, description, priceCents, category, tags, DA, PA, Spam, OrganicTraffic, DR, RD } = json;
+    const { title, url, description, priceCents, category, tags, DA, PA, Spam, OrganicTraffic, DR, RD, primaryCountry } = json;
 
     if (!title || !url || !description || priceCents === undefined) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -266,6 +266,7 @@ export async function POST(req: Request) {
         price: Number(priceCents) / 100,
         category: normalizedCategories, // Use normalized categories
         tags: normalizedTags,
+        primaryCountry: primaryCountry || undefined, // Add primaryCountry field
         DA: DA ? Number(DA) : undefined,
         PA: PA ? Number(PA) : undefined,
         Spam: Spam ? Number(Spam) : undefined,
@@ -314,6 +315,7 @@ export async function POST(req: Request) {
       price: Number(priceCents) / 100,
       category: normalizedCategories, // Use normalized categories
       tags: normalizedTags,
+      primaryCountry: primaryCountry || undefined, // Add primaryCountry field
       DA: DA ? Number(DA) : undefined,
       PA: PA ? Number(PA) : undefined,
       Spam: Spam ? Number(Spam) : undefined,

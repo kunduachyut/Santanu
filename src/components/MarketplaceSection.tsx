@@ -1,6 +1,28 @@
 import { useState } from "react";
 import { useCart } from "../app/context/CartContext";
 
+// Country flag mapping function
+const getCountryFlag = (countryName: string | undefined): string => {
+  if (!countryName) return '🌐';
+  
+  const countryFlags: Record<string, string> = {
+    'United States': '🇺🇸',
+    'United Kingdom': '🇬🇧',
+    'Canada': '🇨🇦',
+    'Australia': '🇦🇺',
+    'Germany': '🇩🇪',
+    'France': '🇫🇷',
+    'India': '🇮🇳',
+    'Brazil': '🇧🇷',
+    'Japan': '🇯🇵',
+    'China': '🇨🇳',
+    'Russia': '🇷🇺',
+    'Other': '🌐'
+  };
+  
+  return countryFlags[countryName] || '🌐';
+};
+
 type Website = {
   _id?: string;
   id?: string;
@@ -20,7 +42,8 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
-  category?: string | string[]; // Add category field
+  category?: string | string[];
+  primaryCountry?: string;
 };
 
 export default function MarketplaceSection({ 
@@ -162,7 +185,7 @@ export default function MarketplaceSection({
           ) : (
             <div>
               {/* Table Header */}
-              <div className="grid grid-cols-22 gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <div className="grid grid-cols-23 gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="col-span-1 flex justify-center">
                   <input 
                     type="checkbox" 
@@ -187,6 +210,7 @@ export default function MarketplaceSection({
                 <div className="col-span-2 flex justify-center">ORGANIC TRAFFIC</div>
                 <div className="col-span-1 flex justify-center">SPAM</div>
                 <div className="col-span-2 flex justify-center">RD LINK</div>
+                <div className="col-span-1 flex justify-center">COUNTRY</div>
                 <div className="col-span-2 flex justify-center">CATEGORY</div>
                 <div className="col-span-2 flex justify-center">STATUS</div>
                 <div className="col-span-2 flex justify-center">ACTIONS</div>
@@ -206,7 +230,7 @@ export default function MarketplaceSection({
                   const isPurchased = paidSiteIds.has(stableId);
                   
                   return (
-                    <div key={stableId} className="grid grid-cols-22 gap-4 px-6 py-4 hover:bg-gray-50 items-center">
+                    <div key={stableId} className="grid grid-cols-23 gap-4 px-6 py-4 hover:bg-gray-50 items-center">
                       {/* Checkbox */}
                       <div className="col-span-1 flex justify-center">
                         <input 
@@ -281,6 +305,22 @@ export default function MarketplaceSection({
                           </a>
                         ) : (
                           <span className="text-sm font-medium text-gray-400">0</span>
+                        )}
+                      </div>
+                      
+                      {/* Country */}
+                      <div className="col-span-1 flex justify-center">
+                        {w.primaryCountry ? (
+                          <div className="relative group">
+                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
+                              {getCountryFlag(w.primaryCountry)}
+                            </div>
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                              {w.primaryCountry}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-400">-</span>
                         )}
                       </div>
                       

@@ -21,6 +21,7 @@ type Website = {
   RD?: string;
   category?: string;
   tags?: string;
+  primaryCountry?: string; // Add primaryCountry field
 };
 
 export default function PublisherDashboardSection({ 

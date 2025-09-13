@@ -63,8 +63,9 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
-  category?: string;
+  category?: string; // Keep as string to match the backend value
   tags?: string;
+  primaryCountry?: string; // Add primaryCountry field
 };
 
 

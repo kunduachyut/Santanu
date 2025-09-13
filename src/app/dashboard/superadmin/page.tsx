@@ -24,7 +24,7 @@ type Website = {
   rejectedAt?: string;
   createdAt: string;
   updatedAt: string;
-  category?: string;
+  category?: string | string[];
   image?: string;
   views?: number;
   clicks?: number;
@@ -37,6 +37,7 @@ type Website = {
   conflictsWith?: string;
   conflictGroup?: string;
   isOriginal?: boolean;
+  primaryCountry?: string; // Add primaryCountry field
 };
 
 type PurchaseRequest = {
