@@ -12,7 +12,7 @@ export const WebsiteCreateSchema = z.object({
   }).pipe(z.string().url()),
   description: z.string().min(10),
   priceCents: z.number().int().nonnegative(),
-  category: z.string().min(1),
+  category: z.string().min(1), // Keep as string since we'll handle comma-separated values
   tags: z.array(z.string()).optional().default([]),
   image: z.string().url().optional(),
 });

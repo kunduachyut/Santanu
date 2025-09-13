@@ -34,7 +34,9 @@ export async function GET(req: Request) {
   }
 
   if (category) {
-    filter.category = category;
+    // For category search, use regex to match any category that contains the search term
+    // Since category is now an array, we need to search within the array
+    filter.category = { $regex: category, $options: 'i' };
   }
 
   const authCheck = await requireAuth();
@@ -220,6 +222,23 @@ export async function POST(req: Request) {
       normalizedTags = tags.map((tag) => String(tag).trim()).filter((tag) => tag);
     }
 
+    // ✅ Normalize categories into array of strings
+    let normalizedCategories: string[] = [];
+    if (typeof category === "string") {
+      // If it's a comma-separated string, split it
+      if (category.includes(",")) {
+        normalizedCategories = category
+          .split(",")
+          .map((cat) => cat.trim())
+          .filter((cat) => cat);
+      } else {
+        // Single category
+        normalizedCategories = [category.trim()];
+      }
+    } else if (Array.isArray(category)) {
+      normalizedCategories = category.map((cat) => String(cat).trim()).filter((cat) => cat);
+    }
+
     if (existingWebsite) {
       console.log('🔍 Found existing website:', {
         existingUserId: existingWebsite.userId,
@@ -245,7 +264,7 @@ export async function POST(req: Request) {
         description,
         priceCents: Number(priceCents),
         price: Number(priceCents) / 100,
-        category: category || "",
+        category: normalizedCategories, // Use normalized categories
         tags: normalizedTags,
         DA: DA ? Number(DA) : undefined,
         PA: PA ? Number(PA) : undefined,
@@ -293,7 +312,7 @@ export async function POST(req: Request) {
       description,
       priceCents: Number(priceCents),
       price: Number(priceCents) / 100,
-      category: category || "",
+      category: normalizedCategories, // Use normalized categories
       tags: normalizedTags,
       DA: DA ? Number(DA) : undefined,
       PA: PA ? Number(PA) : undefined,

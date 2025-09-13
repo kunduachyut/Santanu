@@ -232,6 +232,7 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
+  category?: string | string[]; // Add category field
 };
 
 type Purchase = {
@@ -333,6 +334,7 @@ export default function ConsumerDashboard() {
         OrganicTraffic: w.OrganicTraffic || 0,
         DR: w.DR || 0,
         RD: w.RD || "",
+        category: w.category || [], // Add category field
         createdAt: w.createdAt || new Date().toISOString(),
         updatedAt: w.updatedAt || new Date().toISOString(),
       }));

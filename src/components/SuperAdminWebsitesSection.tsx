@@ -18,12 +18,13 @@ type Website = {
   rejectedAt?: string;
   createdAt: string;
   updatedAt: string;
-  category?: string;
+  category?: string | string[]; // Updated to accept both string and array
   image?: string;
   views?: number;
   clicks?: number;
   DA?: number;
   PA?: number;
+
   Spam?: number;
   OrganicTraffic?: number;
   DR?: number;

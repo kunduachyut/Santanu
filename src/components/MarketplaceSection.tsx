@@ -20,6 +20,7 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
+  category?: string | string[]; // Add category field
 };
 
 export default function MarketplaceSection({ 
@@ -186,6 +187,7 @@ export default function MarketplaceSection({
                 <div className="col-span-2 flex justify-center">ORGANIC TRAFFIC</div>
                 <div className="col-span-1 flex justify-center">SPAM</div>
                 <div className="col-span-2 flex justify-center">RD LINK</div>
+                <div className="col-span-2 flex justify-center">CATEGORY</div>
                 <div className="col-span-2 flex justify-center">STATUS</div>
                 <div className="col-span-2 flex justify-center">ACTIONS</div>
                 <div className="col-span-1"></div>
@@ -279,6 +281,22 @@ export default function MarketplaceSection({
                           </a>
                         ) : (
                           <span className="text-sm font-medium text-gray-400">0</span>
+                        )}
+                      </div>
+                      
+                      {/* Category */}
+                      <div className="col-span-2 flex justify-center">
+                        {w.category ? (
+                          <div className="relative group">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold cursor-help">
+                              C
+                            </div>
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                              {Array.isArray(w.category) ? w.category.join(', ') : w.category}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-400">-</span>
                         )}
                       </div>
                       

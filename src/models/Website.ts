@@ -5,7 +5,7 @@ export interface IWebsite extends mongoose.Document {
   title: string;
   url: string;
   description: string;
-  category: string;
+  category: string[];
   price: number;
   priceCents: number;
   image: string;
@@ -91,17 +91,14 @@ const WebsiteSchema = new mongoose.Schema({
     maxlength: [500, 'Description cannot exceed 500 characters']
   },
   category: {
-    type: String,
+    type: [String], // Changed from String with enum to [String] array
     required: [true, 'Category is required'],
-    enum: [
-      'ecommerce',
-      'blog',
-      'portfolio',
-      'business',
-      'educational',
-      'entertainment',
-      'other'
-    ]
+    validate: {
+      validator: function(v: string[]) {
+        return v && v.length > 0;
+      },
+      message: 'At least one category is required'
+    }
   },
   price: {
     type: Number,

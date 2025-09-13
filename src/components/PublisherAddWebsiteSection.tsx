@@ -18,7 +18,7 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
-  category?: string;
+  category?: string | string[]; // Updated to accept both string and array
   tags?: string;
 };
 
@@ -91,9 +91,17 @@ export default function PublisherAddWebsiteSection({
   setActiveTab: (tab: "dashboard" | "websites" | "add-website" | "analytics" | "earnings" | "settings") => void;
 }) {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<number[]>(
-    formData.category ? formData.category.split(',').map(Number).filter(Boolean) : []
-  );
+  const [selectedCategories, setSelectedCategories] = useState<number[]>(() => {
+    // Initialize from formData.category which is a string (comma-separated)
+    if (!formData.category) return [];
+    
+    // Split the comma-separated string and find matching IDs
+    return formData.category.split(',').map(name => {
+      const trimmedName = name.trim();
+      const category = CATEGORIES.find(cat => cat.name === trimmedName);
+      return category ? category.id : null;
+    }).filter((id): id is number => id !== null);
+  });
 
   // Function to handle category selection
   const toggleCategory = (categoryId: number) => {
@@ -106,19 +114,22 @@ export default function PublisherAddWebsiteSection({
 
   // Function to save selected categories
   const saveCategories = () => {
-    // For now, we'll use the backend value of the first selected category
-    // In a more sophisticated implementation, we might want to handle multiple categories differently
+    // Store the actual category names instead of backend enum values
     if (selectedCategories.length > 0) {
-      const firstCategory = CATEGORIES.find(cat => cat.id === selectedCategories[0]);
-      if (firstCategory) {
-        // Update the form data with the backend enum value
-        handleFormChange({
-          target: {
-            name: 'category',
-            value: firstCategory.backendValue
-          }
-        } as React.ChangeEvent<HTMLInputElement>);
-      }
+      const selectedCategoryNames = selectedCategories
+        .map(id => {
+          const category = CATEGORIES.find(cat => cat.id === id);
+          return category ? category.name : null;
+        })
+        .filter(Boolean) as string[]; // Filter out null values and cast to string[]
+      
+      // Join the category names with commas for storage
+      handleFormChange({
+        target: {
+          name: 'category',
+          value: selectedCategoryNames.join(',')
+        }
+      } as React.ChangeEvent<HTMLInputElement>);
     }
     
     setShowCategoryModal(false);
@@ -451,7 +462,6 @@ export default function PublisherAddWebsiteSection({
                       </div>
                       <div>
                         <div className="font-medium text-gray-900">{category.id}. {category.name}</div>
-                        <div className="text-xs text-gray-500 mt-1">Backend: {category.backendValue}</div>
                       </div>
                     </div>
                   </div>

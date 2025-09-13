@@ -9,9 +9,9 @@ import PublisherComingSoonSection from "@/components/PublisherComingSoonSection"
 
 // Define the categories as requested with mapping to backend enum values
 const CATEGORIES = [
-  { id: 1, name: "Finance, Insurance & Investment", backendValue: "business" },
+  { id: 1, name: "Finance, Insurance & Investment" },
   { id: 2, name: "Crypto, Blockchain, Bitcoin & Digital Assets", backendValue: "business" },
-  { id: 3, name: "Health, Wellness, Fitness & Personal Care", backendValue: "business" },
+  { id: 3, name: "Health, Wellness, Fitness & Personal Care", backendValue: "buiness" },
   { id: 4, name: "Software, SaaS, Technology & IT Solutions", backendValue: "business" },
   { id: 5, name: "Business, Marketing, PR & Communication", backendValue: "business" },
   { id: 6, name: "Travel, Tourism, Adventure & Hospitality", backendValue: "business" },

@@ -19,7 +19,7 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
-  category?: string;
+  category?: string | string[]; // Updated to accept both string and array
   tags?: string;
 };
 
@@ -111,6 +111,17 @@ export default function PublisherWebsitesSection({
                     {site.url}
                   </a>
                   <p className="text-gray-600 mt-2 text-sm">{site.description}</p>
+                  
+                  {/* Display categories */}
+                  {site.category && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {(Array.isArray(site.category) ? site.category : site.category.split(',')).map((cat, index) => (
+                        <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                          {cat.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   
                   {/* SEO Metrics */}
                   <div className="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
