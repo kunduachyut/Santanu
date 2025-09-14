@@ -34,6 +34,9 @@ const SuperAdminUserContentSection: React.FC<SuperAdminUserContentSectionProps> 
   const [showFilters, setShowFilters] = useState(false);
   const [filteredContent, setFilteredContent] = useState<UserContent[]>([]);
   const [isFiltering, setIsFiltering] = useState(false);
+  const [showMassDownloadModal, setShowMassDownloadModal] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
 
   // Filter content based on search and date range by calling the API
   const applyFilters = async () => {
@@ -99,6 +102,59 @@ const SuperAdminUserContentSection: React.FC<SuperAdminUserContentSectionProps> 
     return searchQuery !== "" || startDate !== "" || endDate !== "";
   };
 
+  // Mass download functionality
+  const handleMassDownload = async () => {
+    setIsDownloading(true);
+    setDownloadProgress({ current: 0, total: filteredContent.length });
+    
+    try {
+      // Filter content that has PDFs
+      const contentWithPdfs = filteredContent.filter(content => content.pdf);
+      
+      if (contentWithPdfs.length === 0) {
+        alert("No PDF files found to download.");
+        setIsDownloading(false);
+        setShowMassDownloadModal(false);
+        return;
+      }
+      
+      setDownloadProgress({ current: 0, total: contentWithPdfs.length });
+      
+      // Download each PDF sequentially
+      for (let i = 0; i < contentWithPdfs.length; i++) {
+        const content = contentWithPdfs[i];
+        try {
+          // Create download link
+          const link = document.createElement('a');
+          link.href = `/api/admin/pdf/${content._id}`;
+          link.download = content.pdf?.filename || `document-${content._id}.pdf`;
+          link.target = '_blank';
+          
+          // Trigger download
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Update progress
+          setDownloadProgress({ current: i + 1, total: contentWithPdfs.length });
+          
+          // Small delay to prevent browser from blocking downloads
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          console.error(`Error downloading PDF ${content._id}:`, error);
+        }
+      }
+      
+      alert(`Successfully downloaded ${contentWithPdfs.length} PDF files!`);
+    } catch (error) {
+      console.error("Error during mass download:", error);
+      alert("An error occurred during the download process. Please try again.");
+    } finally {
+      setIsDownloading(false);
+      setShowMassDownloadModal(false);
+    }
+  };
+
   return (
     <section className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 via-indigo-600/5 to-purple-600/5"></div>
@@ -120,6 +176,18 @@ const SuperAdminUserContentSection: React.FC<SuperAdminUserContentSectionProps> 
             <span className="text-sm font-medium text-gray-500">{filteredContent.length} uploads</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Mass Download Button */}
+            {filteredContent.length > 0 && (
+              <button
+                onClick={() => setShowMassDownloadModal(true)}
+                className="px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-md hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 text-sm font-medium flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Mass Download
+              </button>
+            )}
             <div className="relative">
               <input 
                 type="text" 
@@ -290,6 +358,80 @@ const SuperAdminUserContentSection: React.FC<SuperAdminUserContentSectionProps> 
           </div>
         )}
       </div>
+
+      {/* Mass Download Confirmation Modal */}
+      {showMassDownloadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Mass Download Confirmation
+              </h3>
+              <button
+                onClick={() => setShowMassDownloadModal(false)}
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-600 mb-4">
+                You are about to download {filteredContent.filter(c => c.pdf).length} PDF files. 
+                This action will download all files sequentially.
+              </p>
+              
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-medium text-blue-800">Important Information</span>
+                </div>
+                <p className="text-sm text-blue-700">
+                  Your browser may block multiple downloads. If this happens, please allow pop-ups for this site and try again.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowMassDownloadModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMassDownload}
+                disabled={isDownloading}
+                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-md hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 font-medium flex items-center gap-2 disabled:opacity-50"
+              >
+                {isDownloading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Downloading... {downloadProgress.current}/{downloadProgress.total}
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Start Download
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
