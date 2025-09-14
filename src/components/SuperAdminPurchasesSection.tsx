@@ -39,6 +39,12 @@ type SuperAdminPurchasesSectionProps = {
   fetchContentDetails: (purchase: PurchaseRequest) => void;
   formatCurrency: (cents: number) => string;
   formatDate: (dateString?: string) => string;
+  // Add new props for confirmation modal
+  showConfirmationModal: boolean;
+  setShowConfirmationModal: (show: boolean) => void;
+  confirmationAction: { purchaseId: string | null; status: "approved" | "rejected" | null };
+  setConfirmationAction: (action: { purchaseId: string | null; status: "approved" | "rejected" | null }) => void;
+  confirmPurchaseStatusUpdate: () => void;
 };
 
 const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
@@ -55,7 +61,13 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
   updatePurchaseStatus,
   fetchContentDetails,
   formatCurrency,
-  formatDate
+  formatDate,
+  // New props for confirmation modal
+  showConfirmationModal,
+  setShowConfirmationModal,
+  confirmationAction,
+  setConfirmationAction,
+  confirmPurchaseStatusUpdate
 }) => {
   return (
     <section className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20 relative overflow-hidden">
@@ -296,7 +308,10 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
                       {(request.status || 'pending') === 'pending' ? (
                         <div className="flex space-x-1">
                           <button
-                            onClick={() => updatePurchaseStatus(request.id, "approved")}
+                            onClick={() => {
+                              setConfirmationAction({ purchaseId: request.id, status: "approved" });
+                              setShowConfirmationModal(true);
+                            }}
                             className="text-green-600 hover:text-green-800 p-1 rounded transition-colors"
                             title="Approve Purchase"
                           >
@@ -305,7 +320,10 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
                             </svg>
                           </button>
                           <button
-                            onClick={() => updatePurchaseStatus(request.id, "rejected")}
+                            onClick={() => {
+                              setConfirmationAction({ purchaseId: request.id, status: "rejected" });
+                              setShowConfirmationModal(true);
+                            }}
                             className="text-red-600 hover:text-red-800 p-1 rounded transition-colors"
                             title="Reject Purchase"
                           >
@@ -327,6 +345,64 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
           </div>
         )}
       </div>
+      
+      {/* Confirmation Modal */}
+      {showConfirmationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Confirm Action
+              </h3>
+              <button
+                onClick={() => {
+                  setShowConfirmationModal(false);
+                  setConfirmationAction({ purchaseId: null, status: null });
+                }}
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-600">
+                Are you sure you want to <span className="font-semibold">{confirmationAction.status}</span> this purchase request?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                This action cannot be undone.
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowConfirmationModal(false);
+                  setConfirmationAction({ purchaseId: null, status: null });
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPurchaseStatusUpdate}
+                className={`px-4 py-2 text-white rounded-md transition-colors font-medium ${
+                  confirmationAction.status === "approved" 
+                    ? "bg-green-500 hover:bg-green-600" 
+                    : "bg-red-500 hover:bg-red-600"
+                }`}
+              >
+                Confirm {confirmationAction.status === "approved" ? "Approval" : "Rejection"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

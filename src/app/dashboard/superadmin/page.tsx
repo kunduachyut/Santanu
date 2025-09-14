@@ -154,6 +154,17 @@ export default function SuperAdminDashboard() {
   const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
   const [isAllRequestsSelected, setIsAllRequestsSelected] = useState(false);
   const [userRequestFilter, setUserRequestFilter] = useState<FilterType>("pending");
+  
+  // Add state for purchase confirmation modal
+  const [showPurchaseConfirmationModal, setShowPurchaseConfirmationModal] = useState(false);
+  const [confirmationAction, setConfirmationAction] = useState<{ 
+    purchaseId: string | null; 
+    status: "approved" | "rejected" | null 
+  }>({ purchaseId: null, status: null });
+  
+  // Add state for success messages
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     refresh();
@@ -315,6 +326,31 @@ export default function SuperAdminDashboard() {
     } catch (error) {
       console.error("Failed to approve purchase requests in bulk:", error);
       alert("Failed to approve some purchase requests. Please try again.");
+    }
+  };
+
+  // Add the confirmation function for individual purchase status updates
+  const confirmPurchaseStatusUpdate = async () => {
+    if (!confirmationAction.purchaseId || !confirmationAction.status) return;
+
+    try {
+      await updatePurchaseStatus(confirmationAction.purchaseId, confirmationAction.status);
+      // Close the modal and reset the action
+      setShowPurchaseConfirmationModal(false);
+      setConfirmationAction({ purchaseId: null, status: null });
+      
+      // Show success message
+      setSuccessMessage(`Purchase request ${confirmationAction.status} successfully`);
+      setShowSuccessMessage(true);
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+        setSuccessMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error("Failed to update purchase status:", error);
+      alert("Failed to update purchase status. Please try again.");
     }
   };
 
@@ -568,7 +604,8 @@ export default function SuperAdminDashboard() {
 
     if (res.ok) {
       refreshPurchaseRequests();
-      alert("Purchase status updated successfully");
+      // Remove the alert since we're using a confirmation modal and toast message
+      // alert("Purchase status updated successfully");
     } else {
       const err = await res.json();
       console.error("Failed to update purchase status:", err);
@@ -664,6 +701,18 @@ export default function SuperAdminDashboard() {
           </button>
         </div>
 
+        {/* Success Message Toast */}
+        {showSuccessMessage && (
+          <div className="fixed top-4 right-4 z-50">
+            <div className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {successMessage}
+            </div>
+          </div>
+        )}
+
         {/* Content based on active tab */}
         {activeTab === "priceConflicts" && (
           <SuperAdminPriceConflictsSection
@@ -706,6 +755,12 @@ export default function SuperAdminDashboard() {
             fetchContentDetails={fetchContentDetails}
             formatCurrency={formatCurrency}
             formatDate={formatDate}
+            // Add new props for confirmation modal
+            showConfirmationModal={showPurchaseConfirmationModal}
+            setShowConfirmationModal={setShowPurchaseConfirmationModal}
+            confirmationAction={confirmationAction}
+            setConfirmationAction={setConfirmationAction}
+            confirmPurchaseStatusUpdate={confirmPurchaseStatusUpdate}
           />
         )}
 
