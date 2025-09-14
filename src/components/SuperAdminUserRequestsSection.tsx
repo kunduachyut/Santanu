@@ -77,7 +77,7 @@ const SuperAdminUserRequestsSection: React.FC<Props> = ({
                         All
                     </button>
                 </div>
-                {selectedRequests.length > 0 && (
+                {selectedRequests.length > 0 && userRequestFilter !== "approved" && userRequestFilter !== "rejected" && (
                     <button
                         onClick={approveSelectedRequests}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
@@ -109,13 +109,15 @@ const SuperAdminUserRequestsSection: React.FC<Props> = ({
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-gray-200">
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    <input
-                                        type="checkbox"
-                                        checked={isAllRequestsSelected}
-                                        onChange={toggleSelectAllRequests}
-                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                    />
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                                    {userRequestFilter !== "approved" && userRequestFilter !== "rejected" && (
+                                        <input
+                                            type="checkbox"
+                                            checked={isAllRequestsSelected}
+                                            onChange={toggleSelectAllRequests}
+                                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                        />
+                                    )}
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
@@ -130,14 +132,15 @@ const SuperAdminUserRequestsSection: React.FC<Props> = ({
                         <tbody className="divide-y divide-gray-200">
                             {userRequests.map((request) => (
                                 <tr key={request._id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedRequests.includes(request._id)}
-                                            onChange={() => toggleRequestSelection(request._id)}
-                                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                            disabled={request.status !== "pending"}
-                                        />
+                                    <td className="px-4 py-3 whitespace-nowrap w-10">
+                                        {request.status !== "approved" && request.status !== "rejected" && (
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedRequests.includes(request._id)}
+                                                onChange={() => toggleRequestSelection(request._id)}
+                                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                            />
+                                        )}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{request.email}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{request.phone}</td>
