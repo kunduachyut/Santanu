@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { UserContent } from "@/models/Content";
+import Website from "@/models/Website";
+import User from "@/models/User";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +42,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File size exceeds 10MB" }, { status: 400 });
     }
 
+    // Get website information if websiteId is provided
+    let websiteTitle = "Untitled";
+    if (websiteId) {
+      try {
+        const website = await Website.findById(websiteId);
+        if (website) {
+          websiteTitle = website.title;
+        }
+      } catch (err) {
+        console.error("Error fetching website:", err);
+      }
+    }
+
+    // Get user information
+    let userEmail = "unknown";
+    try {
+      const user = await User.findOne({ clerkId: userId });
+      if (user) {
+        userEmail = user.email;
+      }
+    } catch (err) {
+      console.error("Error fetching user:", err);
+    }
+
+    // Create new filename with the format: website name_user email_date_real name
+    const originalFileName = fileLike.name.replace(/\.[^/.]+$/, ""); // Remove extension
+    const dateStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const newFileName = `${websiteTitle}_${userEmail}_${dateStr}_${originalFileName}.pdf`;
+
     const arrayBuffer = await fileLike.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
@@ -50,7 +81,7 @@ export async function POST(req: NextRequest) {
       pdf: {
         data: buffer,
         contentType: fileLike.type || "application/pdf",
-        filename: fileLike.name,
+        filename: newFileName, // Use the new filename
         size: fileLike.size,
       },
     });
@@ -85,5 +116,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-
-
