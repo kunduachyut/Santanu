@@ -23,11 +23,31 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const customerId = searchParams.get("customerId");
     const websiteId = searchParams.get("websiteId");
+    const searchQuery = searchParams.get("search"); // For website name search
+    const startDate = searchParams.get("startDate"); // For date range filter
+    const endDate = searchParams.get("endDate"); // For date range filter
     
     // Build query based on provided filters
     const query: any = {};
     if (customerId) query.userId = customerId;
     if (websiteId) query.websiteId = websiteId;
+    
+    // Add date range filter with proper date handling
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        // Create a date at the start of the day
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        query.createdAt.$gte = start;
+      }
+      if (endDate) {
+        // Create a date at the end of the day
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
 
     // Get user content with additional information
     const items = await UserContent.find(query)
@@ -35,7 +55,7 @@ export async function GET(req: NextRequest) {
       .select("userId requirements createdAt pdf.filename pdf.size websiteId");
     
     // Fetch website information for each item
-    const enrichedItems = await Promise.all(items.map(async (item) => {
+    let enrichedItems = await Promise.all(items.map(async (item) => {
       const itemObj = item.toObject() as any;
       
       // If websiteId exists, get website title
@@ -61,6 +81,14 @@ export async function GET(req: NextRequest) {
       
       return itemObj;
     }));
+    
+    // Apply search filter after enrichment (filter by website title or user email)
+    if (searchQuery) {
+      enrichedItems = enrichedItems.filter(item => 
+        (item.websiteTitle && item.websiteTitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.userEmail && item.userEmail.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    }
 
     return NextResponse.json({ items: enrichedItems });
   } catch (err) {
