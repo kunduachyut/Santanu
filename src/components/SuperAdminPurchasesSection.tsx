@@ -165,7 +165,7 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
           <div className="overflow-hidden border border-gray-200/50 rounded-2xl shadow-lg bg-white/50">
             <div className="overflow-x-auto">
               {/* Table Header */}
-              <div className="grid grid-cols-21 gap-4 px-6 py-3 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <div className="grid grid-cols-19 gap-4 px-6 py-3 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="col-span-1 flex justify-center">
                   {purchaseFilter === "pending" && (
                     <input 
@@ -180,7 +180,6 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
                 <div className="col-span-2 flex justify-center">PRICE</div>
                 <div className="col-span-2 flex justify-center">TOTAL</div>
                 <div className="col-span-3 flex justify-center">CUSTOMER EMAIL</div>
-                <div className="col-span-2 flex justify-center">REQUEST ID</div>
                 <div className="col-span-2 flex justify-center">CONTENT TYPE</div>
                 <div className="col-span-2 flex justify-center">STATUS</div>
                 <div className="col-span-2 flex justify-center">REQUESTED</div>
@@ -190,7 +189,7 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
               {/* Table Body */}
               <div className="divide-y divide-gray-100/50">
                 {filteredPurchaseRequests.map((request, index) => (
-                  <div key={request.id} className={`grid grid-cols-21 gap-4 px-6 py-4 hover:bg-green-50/50 items-center transition-colors ${
+                  <div key={request.id} className={`grid grid-cols-19 gap-4 px-6 py-4 hover:bg-green-50/50 items-center transition-colors ${
                     index % 2 === 0 ? 'bg-white/30' : 'bg-gray-50/30'
                   }`}>
                     {/* Checkbox */}
@@ -236,13 +235,6 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
                     <div className="col-span-3 flex justify-center">
                       <div className="text-sm text-gray-700 truncate max-w-[150px]" title={request.customerEmail || ''}>
                         {request.customerEmail || 'N/A'}
-                      </div>
-                    </div>
-                    
-                    {/* Request ID */}
-                    <div className="col-span-2 flex justify-center">
-                      <div className="text-sm text-gray-500 font-mono truncate max-w-[80px]" title={request.id || ''}>
-                        {(request.id || '').substring(0, 8)}...
                       </div>
                     </div>
                     
