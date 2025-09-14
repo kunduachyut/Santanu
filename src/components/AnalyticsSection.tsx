@@ -157,27 +157,31 @@ export default function AnalyticsSection({
             <h3 className="text-lg font-medium text-gray-900">Top Performing Websites</h3>
           </div>
           <div className="divide-y divide-gray-200">
-            {websites.slice(0, 3).map((website, index) => (
-              <div key={website._id} className="px-6 py-4 hover:bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                      index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-500'
-                    }`}>
-                      #{index + 1}
+            {websites
+              .filter(website => website.OrganicTraffic !== undefined && website.OrganicTraffic !== null)
+              .sort((a, b) => (b.OrganicTraffic || 0) - (a.OrganicTraffic || 0))
+              .slice(0, 3)
+              .map((website, index) => (
+                <div key={website._id} className="px-6 py-4 hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                        index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-500'
+                      }`}>
+                        #{index + 1}
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-gray-900">{website.title}</p>
+                        <p className="text-sm text-gray-500">DA: {website.DA || 0} | DR: {website.DR || 0}</p>
+                      </div>
                     </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">{website.title}</p>
-                      <p className="text-sm text-gray-500">DA: {website.DA || 0} | DR: {website.DR || 0}</p>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-900">${(website.priceCents / 100).toFixed(2)}</p>
+                      <p className="text-sm text-gray-500">{website.OrganicTraffic || 0} traffic</p>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">${(website.priceCents / 100).toFixed(2)}</p>
-                    <p className="text-sm text-gray-500">{website.OrganicTraffic || 0} traffic</p>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       </div>
