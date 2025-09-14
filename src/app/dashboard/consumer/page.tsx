@@ -280,6 +280,13 @@ export default function ConsumerDashboard() {
   const { addToCart, itemCount } = useCart();
 
   useEffect(() => {
+    // Check URL parameters for initial tab
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam && ['marketplace', 'purchases', 'adRequests', 'contentRequests', 'analytics'].includes(tabParam)) {
+      setActiveTab(tabParam as TabType);
+    }
+    
     refreshWebsites();
     refreshPurchases();
     fetchAdRequests();
@@ -291,6 +298,19 @@ export default function ConsumerDashboard() {
     setSelectedItems({});
     setSelectAll(false);
   }, [activeTab]);
+
+  // Handle tab switching event
+  useEffect(() => {
+    const handleTabSwitch = (event: CustomEvent) => {
+      const tab = event.detail as TabType;
+      setActiveTab(tab);
+    };
+
+    window.addEventListener('switchTab', handleTabSwitch as EventListener);
+    return () => {
+      window.removeEventListener('switchTab', handleTabSwitch as EventListener);
+    };
+  }, []);
 
   // Calculate stats whenever data changes
   useEffect(() => {

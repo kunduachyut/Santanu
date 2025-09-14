@@ -9,6 +9,18 @@ export default function ContentRequestsSection({
   error: string;
   fetchContentRequests: () => void;
 }) {
+  // Function to redirect to marketplace
+  const redirectToMarketplace = () => {
+    // Dispatch a custom event to switch tabs to marketplace
+    const event = new CustomEvent('switchTab', { detail: 'marketplace' });
+    window.dispatchEvent(event);
+    
+    // Also update the URL to reflect the marketplace tab
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'marketplace');
+    window.history.pushState({}, '', url);
+  };
+
   return (
     <div>
       {/* Table Header */}
@@ -24,7 +36,10 @@ export default function ContentRequestsSection({
           </button>
           <span className="text-sm font-medium text-gray-500">{contentRequests.length} content requests found</span>
         </div>
-        <button className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors font-medium text-sm flex items-center">
+        <button 
+          onClick={redirectToMarketplace}
+          className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors font-medium text-sm flex items-center"
+        >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
@@ -69,7 +84,10 @@ export default function ContentRequestsSection({
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Content Requests Yet</h3>
               <p className="text-gray-600 mb-4">Request custom content for your websites to boost engagement</p>
-              <button className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors font-medium text-sm">
+              <button 
+                onClick={redirectToMarketplace}
+                className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors font-medium text-sm"
+              >
                 Create Content Request
               </button>
             </div>
