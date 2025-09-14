@@ -1,3 +1,5 @@
+// src/app/superadmin/dashboard/page.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,6 +9,7 @@ import SuperAdminPurchasesSection from "@/components/SuperAdminPurchasesSection"
 import SuperAdminContentRequestsSection from "@/components/SuperAdminContentRequestsSection";
 import SuperAdminUserContentSection from "@/components/SuperAdminUserContentSection";
 import SuperAdminPriceConflictsSection from "@/components/SuperAdminPriceConflictsSection";
+import SuperAdminUserRequestsSection from "@/components/SuperAdminUserRequestsSection";
 
 // Type definitions
 type Website = {
@@ -89,6 +92,20 @@ type PriceConflict = {
   newPrice?: number;
 };
 
+type UserAccessRequest = {
+  _id: string;
+  email: string;
+  phone: string;
+  password: string;
+  country: string;
+  traffic: string;
+  numberOfWebsites: string;
+  message?: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+  updatedAt?: string;
+};
+
 type FilterType = "all" | "pending" | "approved" | "rejected";
 
 export default function SuperAdminDashboard() {
@@ -123,21 +140,99 @@ export default function SuperAdminDashboard() {
     rejected: 0,
     total: 0
   });
-  const [activeTab, setActiveTab] = useState<"websites" | "purchases" | "contentRequests" | "userContent" | "priceConflicts">("websites");
+  const [activeTab, setActiveTab] = useState<
+    "websites" | "purchases" | "contentRequests" | "userContent" | "priceConflicts" | "userRequests"
+  >("websites");
   const [priceConflicts, setPriceConflicts] = useState<PriceConflict[]>([]);
   const [priceConflictsLoading, setPriceConflictsLoading] = useState(true);
   const [selectedPurchase, setSelectedPurchase] = useState<PurchaseRequest | null>(null);
   const [showContentModal, setShowContentModal] = useState(false);
   const [contentDetails, setContentDetails] = useState<any>(null);
   const [contentDetailsLoading, setContentDetailsLoading] = useState(false);
+  const [userRequests, setUserRequests] = useState<UserAccessRequest[]>([]);
+  const [userRequestsLoading, setUserRequestsLoading] = useState(true);
+  const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
+  const [isAllRequestsSelected, setIsAllRequestsSelected] = useState(false);
+  const [userRequestFilter, setUserRequestFilter] = useState<FilterType>("pending");
 
   useEffect(() => {
     refresh();
+  }, [filter]);
+
+  useEffect(() => {
     refreshPurchaseRequests();
+  }, [purchaseFilter]);
+
+  useEffect(() => {
     fetchContentRequests();
     fetchUserContent();
     fetchPriceConflicts();
-  }, [filter, purchaseFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    fetchUserRequests();
+  }, [userRequestFilter]);
+
+  const toggleSelectAllRequests = () => {
+    if (isAllRequestsSelected) {
+      setSelectedRequests([]);
+    } else {
+      setSelectedRequests(userRequests.filter(r => r.status === "pending").map(request => request._id));
+    }
+    setIsAllRequestsSelected(!isAllRequestsSelected);
+  };
+
+  const toggleRequestSelection = (id: string) => {
+    const currentSelected = selectedRequests || [];
+    if (currentSelected.includes(id)) {
+      setSelectedRequests(currentSelected.filter(requestId => requestId !== id));
+    } else {
+      setSelectedRequests([...currentSelected, id]);
+    }
+  };
+
+  const updateRequestStatus = async (requestId: string, status: "approved" | "rejected") => {
+    try {
+      const res = await fetch("/api/request-access", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: requestId, status }),
+      });
+
+      if (res.ok) {
+        fetchUserRequests();
+        alert(`User request ${status} successfully`);
+      } else {
+        const err = await res.json();
+        console.error("Failed to update request status:", err);
+        alert("Failed to update request status: " + JSON.stringify(err));
+      }
+    } catch (error) {
+      console.error("Error updating request status:", error);
+      alert("Network error. Please try again.");
+    }
+  };
+
+  const approveSelectedRequests = async () => {
+    const currentSelected = selectedRequests || [];
+    if (currentSelected.length === 0) return;
+
+    try {
+      if (!confirm(`Are you sure you want to approve ${currentSelected.length} user request(s)?`)) {
+        return;
+      }
+
+      for (const requestId of currentSelected) {
+        await updateRequestStatus(requestId, "approved");
+      }
+
+      setSelectedRequests([]);
+      setIsAllRequestsSelected(false);
+    } catch (error) {
+      console.error("Failed to approve requests in bulk:", error);
+      alert("Failed to approve some requests. Please try again.");
+    }
+  };
 
   const toggleSelectAllWebsites = () => {
     if (isAllWebsitesSelected) {
@@ -269,6 +364,24 @@ export default function SuperAdminDashboard() {
         alert("Failed to load purchase requests");
       })
       .finally(() => setLoading(prev => ({ ...prev, purchases: false })));
+  }
+
+  async function fetchUserRequests() {
+    setUserRequestsLoading(true);
+    try {
+      const res = await fetch("/api/request-access");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setUserRequests(data);
+      } else {
+        setUserRequests([]);
+      }
+    } catch (err) {
+      console.error("Error fetching user requests:", err);
+      setUserRequests([]);
+    } finally {
+      setUserRequestsLoading(false);
+    }
   }
 
   async function fetchContentRequests() {
@@ -485,6 +598,11 @@ export default function SuperAdminDashboard() {
     return request.status === purchaseFilter;
   });
 
+  const filteredUserRequests = userRequests.filter((req) => {
+    if (userRequestFilter === "all") return true;
+    return req.status === userRequestFilter;
+  });
+
   if (loading.websites && loading.purchases && contentLoading) {
     return (
       <div className="flex h-screen" style={{ backgroundColor: 'var(--base-primary)' }}>
@@ -521,6 +639,7 @@ export default function SuperAdminDashboard() {
               {activeTab === "contentRequests" && "Content Requests"}
               {activeTab === "userContent" && "User Uploads"}
               {activeTab === "priceConflicts" && "Price Conflicts"}
+              {activeTab === "userRequests" && "User Access Requests"}
             </h1>
             <p className="mt-1 sm:mt-2 text-sm sm:text-base lg:text-lg" style={{ color: 'var(--secondary-lighter)' }}>
               {activeTab === "priceConflicts"
@@ -529,7 +648,7 @@ export default function SuperAdminDashboard() {
             </p>
           </div>
           <button
-            onClick={activeTab === "websites" ? refresh : activeTab === "purchases" ? refreshPurchaseRequests : activeTab === "priceConflicts" ? fetchPriceConflicts : fetchContentRequests}
+            onClick={activeTab === "websites" ? refresh : activeTab === "purchases" ? refreshPurchaseRequests : activeTab === "priceConflicts" ? fetchPriceConflicts : activeTab === "userRequests" ? fetchUserRequests : fetchContentRequests}
             className="flex items-center px-3 sm:px-4 lg:px-5 py-2.5 rounded-lg shadow-sm transition duration-200 text-sm sm:text-base whitespace-nowrap"
             style={{
               backgroundColor: 'var(--base-primary)',
@@ -605,6 +724,22 @@ export default function SuperAdminDashboard() {
             updateWebsiteStatus={updateWebsiteStatus}
             openRejectModal={openRejectModal}
             refresh={refresh}
+          />
+        )}
+
+        {activeTab === "userRequests" && (
+          <SuperAdminUserRequestsSection
+            userRequests={filteredUserRequests}
+            userRequestsLoading={userRequestsLoading}
+            selectedRequests={selectedRequests}
+            isAllRequestsSelected={isAllRequestsSelected}
+            userRequestFilter={userRequestFilter}
+            setUserRequestFilter={setUserRequestFilter}
+            toggleSelectAllRequests={toggleSelectAllRequests}
+            toggleRequestSelection={toggleRequestSelection}
+            approveSelectedRequests={approveSelectedRequests}
+            updateRequestStatus={updateRequestStatus}
+            formatDate={formatDate}
           />
         )}
 

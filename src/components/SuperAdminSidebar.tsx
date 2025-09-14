@@ -3,8 +3,8 @@
 import React from "react";
 
 type SidebarProps = {
-  activeTab: "websites" | "purchases" | "contentRequests" | "userContent" | "priceConflicts";
-  setActiveTab: (tab: "websites" | "purchases" | "contentRequests" | "userContent" | "priceConflicts") => void;
+  activeTab: "websites" | "purchases" | "contentRequests" | "userContent" | "priceConflicts" | "userRequests";
+  setActiveTab: (tab: "websites" | "purchases" | "contentRequests" | "userContent" | "priceConflicts" | "userRequests") => void;
 };
 
 const SuperAdminSidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
@@ -113,6 +113,27 @@ const SuperAdminSidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               Price Conflicts
+            </button>
+          </li>
+
+          {/* Add the new userRequests tab */}
+          <li>
+            <button
+              onClick={() => setActiveTab("userRequests")}
+              className={`w-full text-left px-4 py-3 rounded-lg transition duration-200 flex items-center gap-3 ${
+                activeTab === "userRequests"
+                  ? "bg-indigo-100 text-indigo-700 font-medium"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+              style={{
+                backgroundColor: activeTab === "userRequests" ? 'var(--accent-light)' : '',
+                color: activeTab === "userRequests" ? 'var(--accent-primary)' : ''
+              }}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              User Requests
             </button>
           </li>
         </ul>

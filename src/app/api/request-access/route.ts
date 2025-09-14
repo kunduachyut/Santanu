@@ -7,7 +7,12 @@ const MONGODB_URI = process.env.MONGODB_URI as string;
 interface IRequest extends Document {
   email: string;
   phone: string;
+  password: string;
+  country: string;
+  traffic: string;
+  numberOfWebsites: string;
   message?: string;
+  status: "pending" | "approved";
   createdAt: Date;
 }
 
@@ -15,7 +20,12 @@ interface IRequest extends Document {
 const requestSchema = new Schema<IRequest>({
   email: { type: String, required: true },
   phone: { type: String, required: true },
+  password: { type: String, required: true },
+  country: { type: String, required: true },
+  traffic: { type: String, required: true },
+  numberOfWebsites: { type: String, required: true },
   message: { type: String },
+  status: { type: String, enum: ["pending", "approved"], default: "pending" },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -37,27 +47,42 @@ async function connectDB() {
   }
 }
 
+
 // --- POST Handler (Save new request) ---
 export async function POST(req: Request) {
   try {
     await connectDB();
     const body = await req.json();
 
-    if (!body.email || !body.phone) {
+    // Validate required fields
+    const requiredFields = ['email', 'phone', 'password', 'country', 'traffic', 'numberOfWebsites'];
+    const missingFields = requiredFields.filter(field => !body[field]);
+    
+    if (missingFields.length > 0) {
       return NextResponse.json(
-        { success: false, error: "Email and phone are required" },
+        { success: false, error: `Missing required fields: ${missingFields.join(', ')}` },
         { status: 400 }
       );
     }
 
-    const requestDoc = new RequestModel(body);
+    // Set default status to pending
+    const requestData = {
+      ...body,
+      status: 'pending'
+    };
+
+    const requestDoc = new RequestModel(requestData);
     await requestDoc.save();
 
-    return NextResponse.json({ success: true, message: "Request saved" });
+    return NextResponse.json({ 
+      success: true, 
+      message: "Request saved successfully",
+      id: requestDoc._id 
+    });
   } catch (error) {
     console.error("Error saving request:", error);
     return NextResponse.json(
-      { success: false, error: "DB error" },
+      { success: false, error: "Database error occurred" },
       { status: 500 }
     );
   }
@@ -76,6 +101,55 @@ export async function GET() {
     console.error("Error fetching requests:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch requests" },
+      { status: 500 }
+    );
+  }
+}
+
+// --- PATCH Handler (Update request status) ---
+// In your API route
+export async function PATCH(request) {
+  try {
+    await connectDB();
+    const { id, status } = await request.json();
+
+    if (!id || !status) {
+      return NextResponse.json(
+        { error: "Request ID and status are required" },
+        { status: 400 }
+      );
+    }
+
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return NextResponse.json(
+        { error: "Status must be either 'pending', 'approved' or 'rejected'" },
+        { status: 400 }
+      );
+    }
+
+    // Update the request status
+    const updatedRequest = await RequestModel.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!updatedRequest) {
+      return NextResponse.json(
+        { error: "Request not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "Request status updated successfully",
+      request: updatedRequest 
+    });
+  } catch (error) {
+    console.error("Error updating request:", error);
+    return NextResponse.json(
+      { error: "Failed to update request" },
       { status: 500 }
     );
   }
