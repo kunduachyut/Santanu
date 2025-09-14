@@ -7,6 +7,7 @@ type Website = {
   id: string;
   ownerId: string;
   userId?: string;
+  userEmail?: string;
   title: string;
   url: string;
   description: string;
@@ -24,7 +25,6 @@ type Website = {
   clicks?: number;
   DA?: number;
   PA?: number;
-
   Spam?: number;
   OrganicTraffic?: number;
   DR?: number;
@@ -305,8 +305,10 @@ const SuperAdminWebsitesSection: React.FC<SuperAdminWebsitesSectionProps> = ({
                         
                         {/* Owner */}
                         <div className="col-span-2 flex justify-center">
-                          <div className="text-sm text-gray-900 truncate max-w-[120px]" title={website.ownerId || ''}>
-                            {(website.ownerId || '').length > 15 ? `${(website.ownerId || '').substring(0, 15)}...` : (website.ownerId || '')}
+                          <div className="text-sm text-gray-900 truncate max-w-[120px]" title={website.userEmail || website.ownerId || ''}>
+                            {(website.userEmail || website.ownerId || '').length > 15 ? 
+                              `${(website.userEmail || website.ownerId || '').substring(0, 15)}...` : 
+                              (website.userEmail || website.ownerId || '')}
                           </div>
                         </div>
                         

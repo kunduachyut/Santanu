@@ -25,6 +25,7 @@ export async function GET(req: Request) {
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "10");
   const skip = (page - 1) * limit;
+  const role = searchParams.get("role"); // Get role parameter
 
   // Build filter object
   let filter: any = {};
@@ -97,17 +98,40 @@ export async function GET(req: Request) {
     const userId = authCheck;
     const userRole = await getUserRole(userId);
 
-    if (userRole === "superadmin") {
+    if (userRole === "superadmin" || role === "superadmin") {
+      // For super admin, populate user email information
       const websites = await Website.find(filter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec();
 
+      // Get unique user IDs
+      const userIds = [...new Set(websites.map(website => website.userId).filter(id => id))];
+      
+      // Fetch user emails
+      let userEmails: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const User = (await import("@/models/User")).default;
+        const users = await User.find({ clerkId: { $in: userIds } });
+        userEmails = users.reduce((acc, user) => {
+          acc[user.clerkId] = user.email;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+
+      // Add user email to each website
+      const websitesWithUserEmail = websites.map(website => {
+        const websiteObj: any = website.toJSON();
+        // Add userEmail field from user email lookup
+        websiteObj.userEmail = userEmails[website.userId] || website.userId || 'Unknown';
+        return websiteObj;
+      });
+
       const total = await safeCountDocuments(filter);
 
       return NextResponse.json({
-        websites,
+        websites: websitesWithUserEmail,
         pagination: {
           page,
           limit,
