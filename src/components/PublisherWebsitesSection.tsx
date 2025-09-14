@@ -8,6 +8,7 @@ type Website = {
   description: string;
   priceCents: number;
   status: "pending" | "approved" | "rejected";
+  available: boolean; // Add available field
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
@@ -24,6 +25,7 @@ type Website = {
   primaryCountry?: string; // Add primaryCountry field
 };
 
+// Add a new prop for updating website availability
 export default function PublisherWebsitesSection({ 
   mySites,
   refresh,
@@ -45,6 +47,31 @@ export default function PublisherWebsitesSection({
   getStatusBadge: (status: string, rejectionReason?: string) => React.ReactElement;
   formatPrice: (cents?: number) => string;
 }) {
+  // Function to toggle website availability
+  const toggleAvailability = async (websiteId: string, currentAvailability: boolean) => {
+    try {
+      const response = await fetch(`/api/websites/${websiteId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          available: !currentAvailability
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update availability');
+      }
+
+      // Refresh the websites list
+      refresh();
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      alert('Failed to update availability. Please try again.');
+    }
+  };
+
   const filteredSites = statusFilter === "all" ? mySites : mySites.filter((site) => site.status === statusFilter);
 
   return (
@@ -198,6 +225,28 @@ export default function PublisherWebsitesSection({
                     </div>
                   </div>
                 )}
+
+                {/* Availability Toggle */}
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Availability</h4>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm ${site.available ? 'text-green-600' : 'text-red-600'}`}>
+                      {site.available ? 'Available' : 'Not Available'}
+                    </span>
+                    <button
+                      onClick={() => toggleAvailability(site._id, site.available)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        site.available ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          site.available ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
 
                 <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                   <div className="text-sm text-gray-500">

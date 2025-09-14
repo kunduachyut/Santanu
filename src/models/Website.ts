@@ -11,6 +11,7 @@ export interface IWebsite extends mongoose.Document {
   image: string;
   userId: string;
   status: 'pending' | 'approved' | 'rejected' | 'priceConflict';
+  available: boolean; // Add availability field
   approvedAt?: Date;
   rejectedAt?: Date;
   rejectionReason?: string;
@@ -31,7 +32,7 @@ export interface IWebsite extends mongoose.Document {
   RD?: string;
 
   // Price conflict fields
-  conflictsWith?: string; // ID of the website this conflicts with
+  conflictsWith?: mongoose.Types.ObjectId; // ID of the website this conflicts with
   conflictGroup?: string; // Group ID for multiple conflicting websites
   isOriginal?: boolean;   // True for the original website, false for the new submission
 
@@ -118,6 +119,12 @@ const WebsiteSchema = new mongoose.Schema({
   userId: {
     type: String,
     required: true
+  },
+
+  // Add availability field with default to true
+  available: {
+    type: Boolean,
+    default: true
   },
 
   // Approval workflow
@@ -265,7 +272,7 @@ WebsiteSchema.methods.createPriceConflict = async function(this: IWebsite, origi
   
   // Update this website (new submission) to priceConflict status
   this.status = 'priceConflict';
-  this.conflictsWith = originalWebsite._id;
+  this.conflictsWith = originalWebsite._id as any; // Type assertion to avoid TypeScript error
   this.conflictGroup = conflictGroup;
   this.isOriginal = false;
   await this.save();
@@ -310,7 +317,9 @@ WebsiteSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
   transform: function(doc, ret) {
+    // @ts-ignore - TypeScript doesn't recognize _id properly in this context
     ret.id = ret._id?.toString();
+    // @ts-ignore - TypeScript doesn't recognize _id properly in this context
     delete ret._id;
   }
 });

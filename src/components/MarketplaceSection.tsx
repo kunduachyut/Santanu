@@ -31,6 +31,7 @@ type Website = {
   description: string;
   priceCents: number;
   status: "pending" | "approved" | "rejected";
+  available: boolean; // Add available field
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
@@ -603,6 +604,10 @@ export default function MarketplaceSection({
                           <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                             Purchased
                           </span>
+                        ) : w.available === false ? (
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                            Not Available
+                          </span>
                         ) : (
                           <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                             Available
@@ -631,9 +636,9 @@ export default function MarketplaceSection({
                               title: w.title,
                               priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.priceCents || 0) * 100),
                             })}
-                            disabled={isPurchased}
-                            className={`p-1 ${isPurchased ? 'text-green-500 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}
-                            title={isPurchased ? 'Already Purchased' : 'Add to Cart'}
+                            disabled={isPurchased || !w.available}
+                            className={`p-1 ${(isPurchased || !w.available) ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}
+                            title={isPurchased ? 'Already Purchased' : !w.available ? 'Not Available' : 'Add to Cart'}
                           >
                             {isPurchased ? (
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

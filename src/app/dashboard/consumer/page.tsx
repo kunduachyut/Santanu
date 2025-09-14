@@ -221,6 +221,7 @@ type Website = {
   description: string;
   priceCents: number;
   status: "pending" | "approved" | "rejected";
+  available: boolean; // Add available field
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
@@ -326,6 +327,7 @@ export default function ConsumerDashboard() {
             ? Math.round(w.price * 100)
             : 0,
         status: w.status,
+        available: w.available !== undefined ? w.available : true, // Add available field with default to true
         // Handle new fields
         views: w.views || 0,
         clicks: w.clicks || 0,
@@ -341,7 +343,7 @@ export default function ConsumerDashboard() {
         updatedAt: w.updatedAt || new Date().toISOString(),
       }));
       const approvedWebsites = websitesData.filter(
-        (w: Website) => w.status === "approved"
+        (w: Website) => w.status === "approved" && w.available !== false // Only show available websites
       );
 
       setWebsites(approvedWebsites);

@@ -72,6 +72,7 @@ export async function GET(req: Request) {
     // Public access → only approved websites
     if (!isAuthenticated) {
       filter.status = "approved";
+      filter.available = true; // Only show available websites
 
       const websites = await Website.find(filter)
         .sort({ createdAt: -1 })
@@ -116,6 +117,7 @@ export async function GET(req: Request) {
       });
     } else if (userRole === "consumer") {
       filter.status = "approved";
+      filter.available = true; // Only show available websites
 
       const websites = await Website.find(filter)
         .sort({ createdAt: -1 })
@@ -136,7 +138,10 @@ export async function GET(req: Request) {
       });
     } else if (userRole === "publisher") {
       const orFilter = {
-        $or: [{ ownerId: userId }, { status: "approved" }],
+        $or: [
+          { userId: userId }, 
+          { status: "approved", available: true }
+        ],
       };
 
       const websites = await Website.find(orFilter)
@@ -158,8 +163,9 @@ export async function GET(req: Request) {
       });
     }
 
-    // Default fallback → only approved
+    // Default fallback → only approved and available
     filter.status = "approved";
+    filter.available = true;
     const websites = await Website.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)

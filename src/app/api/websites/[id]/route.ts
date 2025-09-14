@@ -86,9 +86,15 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
       // When a publisher edits content, set status to pending for admin review
       // Exception: Don't change priceConflict status as it needs admin resolution
-      if (originalStatus !== 'priceConflict') {
+      // Exception: Don't change status when only updating availability
+      const updatedFields = Object.keys(body);
+      const isOnlyAvailabilityUpdate = updatedFields.length === 1 && updatedFields[0] === 'available';
+      
+      if (originalStatus !== 'priceConflict' && !isOnlyAvailabilityUpdate) {
         website.status = "pending";
         console.log('🔄 Setting status to pending due to publisher edit');
+      } else if (isOnlyAvailabilityUpdate) {
+        console.log('🔄 Only availability updated, keeping current status');
       } else {
         console.log('⚠️ Keeping priceConflict status - requires admin resolution');
       }

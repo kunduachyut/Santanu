@@ -9,7 +9,7 @@ type SidebarProps = {
 
 const SuperAdminSidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   return (
-    <aside className="w-64 min-h-screen border-r border-gray-200 bg-white flex flex-col" style={{ backgroundColor: 'var(--base-primary)' }}>
+    <aside className="w-64 min-h-screen border-r border-gray-200 bg-white flex flex-col sticky top-0 h-screen overflow-y-auto" style={{ backgroundColor: 'var(--base-primary)' }}>
       <div className="p-6 border-b border-gray-200" style={{ borderColor: 'var(--base-tertiary)' }}>
         <h2 className="text-xl font-bold" style={{ color: 'var(--secondary-primary)' }}>Admin Dashboard</h2>
       </div>
