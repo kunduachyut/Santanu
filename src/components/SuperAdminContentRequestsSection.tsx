@@ -68,7 +68,6 @@ const SuperAdminContentRequestsSection: React.FC<SuperAdminContentRequestsSectio
                     <th className="px-6 py-4 text-left font-semibold text-gray-700">Website</th>
                     <th className="px-6 py-4 text-left font-semibold text-gray-700">Topic</th>
                     <th className="px-6 py-4 text-left font-semibold text-gray-700">Word Count</th>
-                    <th className="px-6 py-4 text-left font-semibold text-gray-700">Customer</th>
                     <th className="px-6 py-4 text-left font-semibold text-gray-700">Email</th>
                     <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>
                     <th className="px-6 py-4 text-left font-semibold text-gray-700">Created At</th>
@@ -96,9 +95,6 @@ const SuperAdminContentRequestsSection: React.FC<SuperAdminContentRequestsSectio
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
-                      </td>
-                      <td className="px-6 py-4 text-gray-600 font-medium">
-                        {req.customerId || 'N/A'}
                       </td>
                       <td className="px-6 py-4 text-gray-600">
                         {req.customerEmail || <span className="text-gray-400 italic">No email</span>}
