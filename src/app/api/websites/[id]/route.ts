@@ -51,7 +51,7 @@ export async function GET(req: Request, { params }: RouteParams) {
 export async function PATCH(req: Request, { params }: RouteParams) {
   try {
     const body = await req.json();
-    const id = params.id; 
+    const { id } = await params;
 
     const website = await Website.findById(id);
     if (!website) {

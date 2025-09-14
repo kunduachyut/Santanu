@@ -4,9 +4,12 @@ import Website from "@/models/Website";
 import { requireAuth } from "@/lib/auth";
 
 async function getUserRole(userId: string): Promise<string> {
-  // This should be implemented based on your user system
-  // For now, returning 'superadmin' for testing
-  return "superadmin";
+  if (
+    userId === "user_31H9OiuHhU5R5ITj5AlP4aJBosn" ||
+    userId === "user_31XHCLTOeZ74gf9COPnuyjHpQY6"
+  )
+    return "superadmin";
+  return "consumer";
 }
 
 // GET: Fetch all price conflicts

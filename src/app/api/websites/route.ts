@@ -47,7 +47,7 @@ export async function GET(req: Request) {
       if (!isAuthenticated) {
         return NextResponse.json({ error: "Authentication required" }, { status: 401 });
       }
-      const userId = authCheck;
+      const userId = authCheck as string;
       filter.userId = userId;
 
       const websites = await Website.find(filter)
@@ -187,7 +187,7 @@ export async function POST(req: Request) {
   await dbConnect();
   const authResult = await requireAuth();
   if (authResult instanceof NextResponse) return authResult;
-  const userId = authResult;
+  const userId = authResult as string;
 
   try {
     const json = await req.json();
@@ -346,6 +346,10 @@ export async function POST(req: Request) {
 }
 
 async function getUserRole(userId: string): Promise<string> {
-  // implement with your user model
-  return "superadmin";
+  if (
+    userId === "user_31H9OiuHhU5R5ITj5AlP4aJBosn" ||
+    userId === "user_31XHCLTOeZ74gf9COPnuyjHpQY6"
+  )
+    return "superadmin";
+  return "consumer";
 }

@@ -4,51 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getOrCreateUser } from '@/lib/user';
 
 // In-memory storage for demo purposes (replace with database in production)
-let purchaseRequests: any[] = [
-  // Sample data for testing
-  {
-    id: "sample1",
-    _id: "sample1",
-    websiteId: "website1",
-    websiteTitle: "Sample Website 1",
-    priceCents: 2500,
-    totalCents: 2500,
-    amountCents: 2500,
-    customerId: "user_123",
-    customerEmail: "john.doe@gmail.com", // Real-looking email
-    status: "approved",
-    contentType: "content", // User uploaded their own content
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "sample2", 
-    _id: "sample2",
-    websiteId: "website2",
-    websiteTitle: "Sample Website 2",
-    priceCents: 1500,
-    totalCents: 1500,
-    amountCents: 1500,
-    customerId: "user_123",
-    customerEmail: "john.doe@gmail.com", // Real-looking email
-    status: "pending",
-    contentType: "request", // User requested content to be created
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "sample3", 
-    _id: "sample3",
-    websiteId: "website3",
-    websiteTitle: "Sample Website 3",
-    priceCents: 3000,
-    totalCents: 3000,
-    amountCents: 3000,
-    customerId: "user_456",
-    customerEmail: "sarah.wilson@outlook.com", // Real-looking email
-    status: "pending",
-    contentType: null, // User didn't select any content option
-    createdAt: new Date().toISOString()
-  }
-];
+let purchaseRequests: any[] = [];
 
 export async function GET(req: NextRequest) {
   try {
