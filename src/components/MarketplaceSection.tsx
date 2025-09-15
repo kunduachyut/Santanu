@@ -31,7 +31,7 @@ type Website = {
   description: string;
   priceCents: number;
   status: "pending" | "approved" | "rejected";
-  available: boolean; // Add available field
+  available: boolean;
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
@@ -45,7 +45,20 @@ type Website = {
   RD?: string;
   category?: string | string[];
   primaryCountry?: string;
+  // New fields
+  trafficValue?: number;
+  locationTraffic?: number;
+  greyNicheAccepted?: boolean;
+  specialNotes?: string;
 };
+
+// Define column configuration
+interface ColumnConfig {
+  id: string;
+  label: string;
+  visible: boolean;
+  span: number;
+}
 
 export default function MarketplaceSection({ 
   websites, 
@@ -85,7 +98,43 @@ export default function MarketplaceSection({
     maxOrganicTraffic: '',
     category: '',
     country: '',
+    minTrafficValue: '',
+    maxTrafficValue: '',
+    greyNicheAccepted: '',
   });
+
+  // Column visibility state
+  const [columns, setColumns] = useState<ColumnConfig[]>([
+    { id: 'checkbox', label: 'Checkbox', visible: true, span: 1 },
+    { id: 'domain', label: 'Domain Name', visible: true, span: 4 },
+    { id: 'category', label: 'Category', visible: true, span: 2 },
+    { id: 'price', label: 'Price', visible: true, span: 1 },
+    { id: 'da', label: 'DA', visible: true, span: 1 },
+    { id: 'spam', label: 'Spam', visible: true, span: 1 },
+    { id: 'dr', label: 'DR', visible: true, span: 1 },
+    { id: 'traffic', label: 'Traffic', visible: true, span: 1 },
+    { id: 'trafficValue', label: 'Traffic Value', visible: true, span: 1 },
+    { id: 'topLocation', label: 'Top Location', visible: true, span: 1 },
+    { id: 'locationTraffic', label: 'Location Traffic', visible: true, span: 1 },
+    { id: 'rd', label: 'RD', visible: true, span: 2 },
+    { id: 'greyNiche', label: 'Grey Niche', visible: true, span: 2 },
+    { id: 'specialNotes', label: 'Special Notes', visible: true, span: 2 },
+    { id: 'actions', label: 'Actions', visible: true, span: 2 },
+  ]);
+
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  // Toggle column visibility
+  const toggleColumnVisibility = (columnId: string) => {
+    setColumns(prev => prev.map(col => 
+      col.id === columnId ? { ...col, visible: !col.visible } : col
+    ));
+  };
+
+  // Reset all columns to visible
+  const resetColumns = () => {
+    setColumns(prev => prev.map(col => ({ ...col, visible: true })));
+  };
 
   // Get unique categories and countries from websites
   const uniqueCategories = Array.from(
@@ -121,6 +170,10 @@ export default function MarketplaceSection({
     if (filters.minOrganicTraffic && (w.OrganicTraffic || 0) < parseInt(filters.minOrganicTraffic)) return false;
     if (filters.maxOrganicTraffic && (w.OrganicTraffic || 0) > parseInt(filters.maxOrganicTraffic)) return false;
 
+    // Traffic Value filters
+    if (filters.minTrafficValue && (w.trafficValue || 0) < parseInt(filters.minTrafficValue)) return false;
+    if (filters.maxTrafficValue && (w.trafficValue || 0) > parseInt(filters.maxTrafficValue)) return false;
+
     // Category filter
     if (filters.category) {
       const websiteCategories = Array.isArray(w.category) ? w.category : w.category ? [w.category] : [];
@@ -129,6 +182,12 @@ export default function MarketplaceSection({
 
     // Country filter
     if (filters.country && w.primaryCountry !== filters.country) return false;
+
+    // Grey Niche filter
+    if (filters.greyNicheAccepted !== '') {
+      const filterValue = filters.greyNicheAccepted === 'true';
+      if (w.greyNicheAccepted !== filterValue) return false;
+    }
 
     return true;
   });
@@ -150,8 +209,14 @@ export default function MarketplaceSection({
       maxOrganicTraffic: '',
       category: '',
       country: '',
+      minTrafficValue: '',
+      maxTrafficValue: '',
+      greyNicheAccepted: '',
     });
   };
+
+  // Calculate total span for grid based on visible columns
+  const totalSpan = columns.filter(col => col.visible).reduce((sum, col) => sum + col.span, 0);
 
   return (
     <div>
@@ -216,6 +281,46 @@ export default function MarketplaceSection({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
+          
+          {/* Column Visibility Dropdown */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowColumnDropdown(!showColumnDropdown)}
+              className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+            </button>
+            
+            {showColumnDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase border-b">
+                  Show Columns
+                </div>
+                {columns.map((column) => (
+                  <label key={column.id} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={column.visible}
+                      onChange={() => toggleColumnVisibility(column.id)}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 mr-2"
+                    />
+                    {column.label}
+                  </label>
+                ))}
+                <div className="border-t border-gray-100">
+                  <button
+                    onClick={resetColumns}
+                    className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
+                  >
+                    Reset to Default
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          
           <button 
             onClick={() => setShowFilters(!showFilters)}
             className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100 relative"
@@ -226,7 +331,8 @@ export default function MarketplaceSection({
             {/* Filter indicator dot */}
             {(filters.minPrice || filters.maxPrice || filters.minDA || filters.maxDA || 
               filters.minDR || filters.maxDR || filters.minOrganicTraffic || filters.maxOrganicTraffic || 
-              filters.category || filters.country) && (
+              filters.category || filters.country || filters.minTrafficValue || filters.maxTrafficValue ||
+              filters.greyNicheAccepted) && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
             )}
           </button>
@@ -355,6 +461,29 @@ export default function MarketplaceSection({
               </div>
             </div>
             
+            {/* Traffic Value Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Traffic Value Range</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  name="minTrafficValue"
+                  placeholder="Min"
+                  value={filters.minTrafficValue}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  type="number"
+                  name="maxTrafficValue"
+                  placeholder="Max"
+                  value={filters.maxTrafficValue}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
             {/* Country */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
@@ -368,6 +497,21 @@ export default function MarketplaceSection({
                 {uniqueCountries.map(country => (
                   <option key={country} value={country}>{country}</option>
                 ))}
+              </select>
+            </div>
+            
+            {/* Grey Niche Accepted */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Grey Niche</label>
+              <select
+                name="greyNicheAccepted"
+                value={filters.greyNicheAccepted}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All</option>
+                <option value="true">Accepted</option>
+                <option value="false">Not Accepted</option>
               </select>
             </div>
           </div>
@@ -425,242 +569,330 @@ export default function MarketplaceSection({
               )}
             </div>
           ) : (
-            <div>
+            <div className="overflow-x-auto">
               {/* Table Header */}
-              <div className="grid grid-cols-24 gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div className="col-span-1 flex justify-center">
-                  <input 
-                    type="checkbox" 
-                    checked={selectAll}
-                    onChange={(e) => {
-                      const isChecked = e.target.checked;
-                      setSelectAll(isChecked);
-                      const newSelectedItems: Record<string, boolean> = {};
-                      websites.forEach(w => {
-                        const id = w._id || w.id || `${w.title}-${w.url}`;
-                        newSelectedItems[id] = isChecked;
-                      });
-                      setSelectedItems(prev => newSelectedItems);
-                    }}
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="col-span-4 flex items-center">WEBSITE NAME</div>
-                <div className="col-span-2 flex justify-center">PRICE</div>
-                <div className="col-span-1 flex justify-center">DA</div>
-                <div className="col-span-1 flex justify-center">DR</div>
-                <div className="col-span-2 flex justify-center">ORGANIC TRAFFIC</div>
-                <div className="col-span-1 flex justify-center">SPAM</div>
-                <div className="col-span-2 flex justify-center">RD LINK</div>
-                <div className="col-span-1 flex justify-center">COUNTRY</div>
-                <div className="col-span-2 flex justify-center">CATEGORY</div>
-                <div className="col-span-2 flex justify-center">DESCRIPTION</div>
-                <div className="col-span-2 flex justify-center">STATUS</div>
-                <div className="col-span-2 flex justify-center">ACTIONS</div>
-                <div className="col-span-1"></div>
+              <div 
+                className={`grid gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[1600px]`}
+                style={{ gridTemplateColumns: `repeat(${totalSpan}, minmax(0, 1fr))` }}
+              >
+                {columns.find(col => col.id === 'checkbox')?.visible && (
+                  <div className="flex justify-center">
+                    <input 
+                      type="checkbox" 
+                      checked={selectAll}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setSelectAll(isChecked);
+                        const newSelectedItems: Record<string, boolean> = {};
+                        websites.forEach(w => {
+                          const id = w._id || w.id || `${w.title}-${w.url}`;
+                          newSelectedItems[id] = isChecked;
+                        });
+                        setSelectedItems(prev => newSelectedItems);
+                      }}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'domain')?.visible && (
+                  <div className="flex items-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'domain')?.span || 1}` }}>
+                    Domain Name
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'category')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'category')?.span || 1}` }}>
+                    CATEGORY
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'price')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'price')?.span || 1}` }}>
+                    PRICE
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'da')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'da')?.span || 1}` }}>
+                    DA
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'spam')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'spam')?.span || 1}` }}>
+                    SPAM
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'dr')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'dr')?.span || 1}` }}>
+                    DR
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'traffic')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'traffic')?.span || 1}` }}>
+                    TRAFFIC
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'trafficValue')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'trafficValue')?.span || 1}` }}>
+                    TRAFFIC VALUE
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'topLocation')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'topLocation')?.span || 1}` }}>
+                    TOP LOCATION
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'locationTraffic')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'locationTraffic')?.span || 1}` }}>
+                    LOCATION TRAFFIC
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'rd')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'rd')?.span || 1}` }}>
+                    RD
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'greyNiche')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'greyNiche')?.span || 1}` }}>
+                    GREY NICHE
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'specialNotes')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'specialNotes')?.span || 1}` }}>
+                    SPECIAL NOTES
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'actions')?.visible && (
+                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'actions')?.span || 1}` }}>
+                    ACTIONS
+                  </div>
+                )}
               </div>
               
               {/* Table Body */}
-              <div className="divide-y divide-gray-200">
-                {filteredWebsites
-                  .map((w) => {
+              <div className="divide-y divide-gray-200 min-w-[1600px]">
+                {filteredWebsites.map((w) => {
                   const stableId = w._id || w.id || `${w.title}-${w.url}`;
                   const isPurchased = paidSiteIds.has(stableId);
                   
                   return (
-                    <div key={stableId} className="grid grid-cols-24 gap-4 px-6 py-4 hover:bg-gray-50 items-center">
+                    <div 
+                      key={stableId} 
+                      className={`grid gap-4 px-6 py-4 hover:bg-gray-50 items-center`}
+                      style={{ gridTemplateColumns: `repeat(${totalSpan}, minmax(0, 1fr))` }}
+                    >
                       {/* Checkbox */}
-                      <div className="col-span-1 flex justify-center">
-                        <input 
-                          type="checkbox" 
-                          checked={selectedItems[stableId] || false}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            setSelectedItems((prev) => ({
-                              ...prev,
-                              [stableId]: isChecked
-                            }));
-                            const allSelected = Object.keys(selectedItems).length === websites.length - 1 && isChecked;
-                            setSelectAll(allSelected);
-                          }}
-                          className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" 
-                        />
-                      </div>
-                      
-                      {/* Website Title */}
-                      <div className="col-span-4">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
-                            {w.title.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{w.title}</div>
-                            <div className="text-xs text-gray-500 truncate max-w-[150px]" title={w.url}>
-                              {w.url.length > 30 ? `${w.url.substring(0, 30)}...` : w.url}
-                            </div>
-                          </div>
+                      {columns.find(col => col.id === 'checkbox')?.visible && (
+                        <div className="flex justify-center">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedItems[stableId] || false}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              setSelectedItems((prev) => ({
+                                ...prev,
+                                [stableId]: isChecked
+                              }));
+                              const allSelected = Object.keys(selectedItems).length === websites.length - 1 && isChecked;
+                              setSelectAll(allSelected);
+                            }}
+                            className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" 
+                          />
                         </div>
-                      </div>
+                      )}
                       
-                      {/* Price */}
-                      <div className="col-span-2 flex justify-center">
-                        <div className="text-sm font-medium text-green-600">${(w.priceCents / 100).toFixed(2)}</div>
-                      </div>
-                      
-                      {/* DA */}
-                      <div className="col-span-1 flex justify-center">
-                        <div className="text-sm font-medium text-gray-900">{w.DA || 0}</div>
-                      </div>
-                      
-                      {/* DR */}
-                      <div className="col-span-1 flex justify-center">
-                        <div className="text-sm font-medium text-gray-900">{w.DR || 0}</div>
-                      </div>
-                      
-                      {/* Organic Traffic */}
-                      <div className="col-span-2 flex justify-center">
-                        <div className="text-sm font-medium text-gray-900">{w.OrganicTraffic || 0}</div>
-                      </div>
-                      
-                      {/* Spam */}
-                      <div className="col-span-1 flex justify-center">
-                        <div className="text-sm font-medium text-gray-900">{w.Spam || 0}</div>
-                      </div>
-                      
-                      {/* RD */}
-                      <div className="col-span-2 flex justify-center">
-                        {w.RD ? (
-                          <a 
-                            href={w.RD} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-blue-600 hover:text-blue-800"
-                            title="Open RD Link"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
-                        ) : (
-                          <span className="text-sm font-medium text-gray-400">0</span>
-                        )}
-                      </div>
-                      
-                      {/* Country */}
-                      <div className="col-span-1 flex justify-center">
-                        {w.primaryCountry ? (
-                          <div className="relative group">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
-                              {getCountryFlag(w.primaryCountry)}
+                      {/* Domain Name */}
+                      {columns.find(col => col.id === 'domain')?.visible && (
+                        <div style={{ gridColumn: `span ${columns.find(col => col.id === 'domain')?.span || 1}` }}>
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
+                              {w.title.charAt(0).toUpperCase()}
                             </div>
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
-                              {w.primaryCountry}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-sm font-medium text-gray-400">-</span>
-                        )}
-                      </div>
-                      
-                      {/* Category */}
-                      <div className="col-span-2 flex justify-center">
-                        {w.category ? (
-                          <div className="relative group">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold cursor-help">
-                              C
-                            </div>
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
-                              {Array.isArray(w.category) ? w.category.join(', ') : w.category}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-sm font-medium text-gray-400">-</span>
-                        )}
-                      </div>
-                      
-                      {/* Description */}
-                      <div className="col-span-2 flex justify-center">
-                        {w.description ? (
-                          <div className="relative group">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </div>
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 z-10 max-w-xs">
-                              <div className="max-h-20 overflow-y-auto">
-                                {w.description}
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{w.title}</div>
+                              <div className="text-xs text-gray-500 truncate max-w-[150px]" title={w.url}>
+                                {w.url.length > 30 ? `${w.url.substring(0, 30)}...` : w.url}
                               </div>
                             </div>
                           </div>
-                        ) : (
-                          <span className="text-sm font-medium text-gray-400">-</span>
-                        )}
-                      </div>
+                        </div>
+                      )}
+
+                      {/* Category */}
+                      {columns.find(col => col.id === 'category')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'category')?.span || 1}` }}>
+                          {w.category ? (
+                            <div className="relative group">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold cursor-help">
+                                C
+                              </div>
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                                {Array.isArray(w.category) ? w.category.join(', ') : w.category}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm font-medium text-gray-400">-</span>
+                          )}
+                        </div>
+                      )}
                       
-                      {/* Status */}
-                      <div className="col-span-2 flex justify-center">
-                        {isPurchased ? (
-                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Purchased
-                          </span>
-                        ) : w.available === false ? (
-                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                            Not Available
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                            Available
-                          </span>
-                        )}
-                      </div>
+                      {/* Price */}
+                      {columns.find(col => col.id === 'price')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'price')?.span || 1}` }}>
+                          <div className="text-sm font-medium text-green-600">${(w.priceCents / 100).toFixed(2)}</div>
+                        </div>
+                      )}
+                      
+                      {/* DA */}
+                      {columns.find(col => col.id === 'da')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'da')?.span || 1}` }}>
+                          <div className="text-sm font-medium text-gray-900">{w.DA || 0}</div>
+                        </div>
+                      )}
+
+                      {/* Spam */}
+                      {columns.find(col => col.id === 'spam')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'spam')?.span || 1}` }}>
+                          <div className="text-sm font-medium text-gray-900">{w.Spam || 0}</div>
+                        </div>
+                      )}
+                      
+                      {/* DR */}
+                      {columns.find(col => col.id === 'dr')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'dr')?.span || 1}` }}>
+                          <div className="text-sm font-medium text-gray-900">{w.DR || 0}</div>
+                        </div>
+                      )}
+                      
+                      {/* Traffic */}
+                      {columns.find(col => col.id === 'traffic')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'traffic')?.span || 1}` }}>
+                          <div className="text-sm font-medium text-gray-900">{w.OrganicTraffic || 0}</div>
+                        </div>
+                      )}
+
+                      {/* Traffic Value */}
+                      {columns.find(col => col.id === 'trafficValue')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'trafficValue')?.span || 1}` }}>
+                          <div className="text-sm font-medium text-gray-900">{w.trafficValue || 0}</div>
+                        </div>
+                      )}
+
+                      {/* Top Location */}
+                      {columns.find(col => col.id === 'topLocation')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'topLocation')?.span || 1}` }}>
+                          {w.primaryCountry ? (
+                            <div className="relative group">
+                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
+                                {getCountryFlag(w.primaryCountry)}
+                              </div>
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                                {w.primaryCountry}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm font-medium text-gray-400">-</span>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Location Traffic */}
+                      {columns.find(col => col.id === 'locationTraffic')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'locationTraffic')?.span || 1}` }}>
+                          <div className="text-sm font-medium text-gray-900">{w.locationTraffic || 0}</div>
+                        </div>
+                      )}
+                      
+                      {/* RD */}
+                      {columns.find(col => col.id === 'rd')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'rd')?.span || 1}` }}>
+                          {w.RD ? (
+                            <a 
+                              href={w.RD} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="text-blue-600 hover:text-blue-800"
+                              title="Open RD Link"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          ) : (
+                            <span className="text-sm font-medium text-gray-400">0</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Grey Niche Accepted */}
+                      {columns.find(col => col.id === 'greyNiche')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'greyNiche')?.span || 1}` }}>
+                          <div className="text-sm font-medium text-gray-900">
+                            {w.greyNicheAccepted ? 'Yes' : 'No'}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Special Notes */}
+                      {columns.find(col => col.id === 'specialNotes')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'specialNotes')?.span || 1}` }}>
+                          {w.specialNotes ? (
+                            <div className="relative group">
+                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 z-10 max-w-xs">
+                                <div className="max-h-20 overflow-y-auto">
+                                  {w.specialNotes}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm font-medium text-gray-400">-</span>
+                          )}
+                        </div>
+                      )}
                       
                       {/* Actions */}
-                      <div className="col-span-2 flex justify-center">
-                        <div className="flex space-x-2">
-                          <a
-                            href={w.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-gray-500 hover:text-gray-700 p-1"
-                            title="Visit Website"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
-                          
-                          <button
-                            onClick={() => addToCart({
-                              _id: stableId,
-                              title: w.title,
-                              priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.priceCents || 0) * 100),
-                            })}
-                            disabled={isPurchased || !w.available}
-                            className={`p-1 ${(isPurchased || !w.available) ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}
-                            title={isPurchased ? 'Already Purchased' : !w.available ? 'Not Available' : 'Add to Cart'}
-                          >
-                            {isPurchased ? (
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            ) : (
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                              </svg>
-                            )}
-                          </button>
+                      {columns.find(col => col.id === 'actions')?.visible && (
+                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'actions')?.span || 1}` }}>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => addToCart({
+                                _id: stableId,
+                                title: w.title,
+                                priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.priceCents || 0) * 100),
+                              })}
+                              disabled={isPurchased || !w.available}
+                              className={`p-1 ${(isPurchased || !w.available) ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}
+                              title={isPurchased ? 'Already Purchased' : !w.available ? 'Not Available' : 'Add to Cart'}
+                            >
+                              {isPurchased ? (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* More Options */}
-                      <div className="col-span-1 flex justify-end">
-                        <button className="text-gray-400 hover:text-gray-500">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                            </svg>
-                          </button>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
