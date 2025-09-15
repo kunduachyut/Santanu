@@ -173,7 +173,6 @@ export default function MarketplaceSection({
             onClick={() => {
               const selectedCount = Object.values(selectedItems).filter(Boolean).length;
               if (selectedCount === 0) {
-                alert("Please select at least one website");
                 return;
               }
               
@@ -192,8 +191,6 @@ export default function MarketplaceSection({
               // Reset selection
               setSelectedItems(prev => ({}));
               setSelectAll(false);
-              
-              alert(`${selectedCount} website(s) added to cart!`);
             }}
             disabled={Object.values(selectedItems).filter(Boolean).length === 0}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center mr-4"

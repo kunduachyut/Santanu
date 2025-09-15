@@ -43,7 +43,11 @@ export default function CartPage() {
   const [uploadsByWebsite, setUploadsByWebsite] = useState<Record<string, number>>({});
   const [modalKey, setModalKey] = useState(0); // Add key to force re-render
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({}); // Track which option is selected for each item
-  
+  const [showCheckoutConfirmation, setShowCheckoutConfirmation] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showErrorMessage, setShowErrorMessage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
   // Create ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -92,10 +96,27 @@ export default function CartPage() {
 
   const handleCheckout = async () => {
     if (!isSignedIn) {
-      alert("Please sign in to proceed with checkout");
+      setShowErrorMessage(true);
+      setErrorMessage("Please sign in to proceed with checkout");
       return;
     }
 
+    // Check if all items have a content selection
+    const unselectedItems = cart.filter(item => !selectedOptions[item._id]);
+    if (unselectedItems.length > 0) {
+      setShowErrorMessage(true);
+      setErrorMessage("Please select 'My Content' or 'Request' for all items in your cart before proceeding to checkout.");
+      return;
+    }
+
+    // Show confirmation popup instead of proceeding directly
+    setShowCheckoutConfirmation(true);
+  };
+
+  const confirmCheckout = async () => {
+    // Close confirmation popup
+    setShowCheckoutConfirmation(false);
+    
     setIsProcessing(true);
     try {
       // Send purchase requests to super admin
@@ -144,11 +165,13 @@ export default function CartPage() {
       // Reset file input
       resetFileInput();
       
-      alert("Purchase request sent! The administrator will review your order.");
+      // Show success popup
+      setShowSuccessMessage(true);
       
     } catch (err) {
       console.error("Failed to complete purchase:", err);
-      alert("Failed to complete purchase. Please try again.");
+      setShowErrorMessage(true);
+      setErrorMessage("Failed to complete purchase. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -356,8 +379,8 @@ export default function CartPage() {
               backgroundColor: 'var(--accent-primary)',
               color: 'white'
             }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--accent-hover)'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--accent-primary)'}
+            onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--accent-hover)'}
+            onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--accent-primary)'}
           >
             Continue Shopping
           </Link>
@@ -374,8 +397,8 @@ export default function CartPage() {
           href="/dashboard/consumer"
           className="flex items-center transition-colors"
           style={{color: 'var(--accent-primary)'}}
-          onMouseEnter={(e) => e.target.style.color = 'var(--accent-hover)'}
-          onMouseLeave={(e) => e.target.style.color = 'var(--accent-primary)'}
+          onMouseEnter={(e) => (e.target as HTMLElement).style.color = 'var(--accent-hover)'}
+          onMouseLeave={(e) => (e.target as HTMLElement).style.color = 'var(--accent-primary)'}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
@@ -1023,6 +1046,103 @@ export default function CartPage() {
           </div>
         </div>
       )}
+
+      {/* Checkout Confirmation Popup */}
+      {showCheckoutConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-gray-800">Confirm Checkout</h3>
+              <button
+                onClick={() => setShowCheckoutConfirmation(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="mb-4">
+              <p className="text-gray-600">Are you sure you want to proceed with the checkout?</p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowCheckoutConfirmation(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmCheckout}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Message Popup */}
+      {showSuccessMessage && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-green-600">Success!</h3>
+              <button
+                onClick={() => setShowSuccessMessage(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="mb-4">
+              <p className="text-gray-600">Purchase request sent! The administrator will review your order.</p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowSuccessMessage(false)}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message Popup */}
+      {showErrorMessage && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-red-600">Error</h3>
+              <button
+                onClick={() => setShowErrorMessage(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="mb-4">
+              <p className="text-gray-600">{errorMessage}</p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowErrorMessage(false)}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
