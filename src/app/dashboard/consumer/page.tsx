@@ -336,29 +336,17 @@ export default function ConsumerDashboard() {
       const data = await res.json();
       const rawWebsites = Array.isArray(data) ? data : data.websites || [];
       const websitesData: Website[] = rawWebsites.map((w: any) => ({
+        ...w, // <-- This brings in ALL fields from the API, including new ones!
         _id: w._id ?? w.id,
-        id: w.id,
-        title: w.title,
-        url: w.url,
-        description: w.description,
+        id: w.id ?? w._id,
         priceCents: typeof w.priceCents === 'number' && !Number.isNaN(w.priceCents)
           ? w.priceCents
           : typeof w.price === 'number' && !Number.isNaN(w.price)
             ? Math.round(w.price * 100)
             : 0,
-        status: w.status,
-        available: w.available !== undefined ? w.available : true, // Add available field with default to true
-        // Handle new fields
-        views: w.views || 0,
-        clicks: w.clicks || 0,
-        DA: w.DA || 0,
-        PA: w.PA || 0,
-        Spam: w.Spam || 0,
-        OrganicTraffic: w.OrganicTraffic || 0,
-        DR: w.DR || 0,
-        RD: w.RD || "",
-        category: w.category || [], // Add category field
-        primaryCountry: w.primaryCountry || "", // Add primaryCountry field
+        available: w.available !== undefined ? w.available : true,
+        category: w.category || [],
+        primaryCountry: w.primaryCountry || "",
         createdAt: w.createdAt || new Date().toISOString(),
         updatedAt: w.updatedAt || new Date().toISOString(),
       }));

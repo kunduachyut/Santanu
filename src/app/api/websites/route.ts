@@ -3,6 +3,8 @@ import { dbConnect } from "@/lib/db";
 import Website from "@/models/Website";
 import { requireAuth } from "@/lib/auth";
 import { WebsiteCreateSchema } from "@/utils/types";
+import type { Model } from "mongoose";
+import type { IUser } from "@/models/User"; // Adjust path if needed
 
 // Helper function to safely count documents
 async function safeCountDocuments(filter: any): Promise<number> {
@@ -112,8 +114,8 @@ export async function GET(req: Request) {
       // Fetch user emails
       let userEmails: Record<string, string> = {};
       if (userIds.length > 0) {
-        const User = (await import("@/models/User")).default;
-        const users = await User.find({ clerkId: { $in: userIds } });
+        const UserModel = (await import("@/models/User")).default as Model<IUser>;
+        const users = await UserModel.find({ clerkId: { $in: userIds } });
         userEmails = users.reduce((acc, user) => {
           acc[user.clerkId] = user.email;
           return acc;
@@ -221,7 +223,7 @@ export async function POST(req: Request) {
 
   try {
     const json = await req.json();
-    const { title, url, description, priceCents, category, tags, DA, PA, Spam, OrganicTraffic, DR, RD, primaryCountry } = json;
+    const { title, url, description, priceCents, category, tags, DA, PA, Spam, OrganicTraffic, DR, RD, primaryCountry, trafficValue, locationTraffic, greyNicheAccepted, specialNotes } = json;
 
     if (!title || !url || !description || priceCents === undefined) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -355,6 +357,10 @@ export async function POST(req: Request) {
       userId: userId,
       image: "/default-website-image.png",
       status: "pending",
+      trafficValue: trafficValue ? Number(trafficValue) : undefined,
+      locationTraffic: locationTraffic ? Number(locationTraffic) : undefined,
+      greyNicheAccepted: greyNicheAccepted === "true" || greyNicheAccepted === true,
+      specialNotes: specialNotes || "",
     });
 
     return NextResponse.json(site, { status: 201 });

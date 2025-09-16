@@ -75,7 +75,7 @@ export default function PublisherAddWebsiteSection({
     title: string;
     url: string;
     description: string;
-    category: string | string[]; // Updated to accept both string and array
+    category: string | string[];
     price: string;
     DA: string;
     PA: string;
@@ -83,8 +83,11 @@ export default function PublisherAddWebsiteSection({
     OrganicTraffic: string;
     DR: string;
     RD: string;
-    primaryCountry?: string; // Add primaryCountry field
-    // Removed tags field
+    primaryCountry?: string;
+    trafficValue?: string;        // <-- Add this
+    locationTraffic?: string;     // <-- Add this
+    greyNicheAccepted?: string;   // <-- Add this
+    specialNotes?: string;        // <-- Add this
   };
   handleFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
@@ -386,33 +389,73 @@ export default function PublisherAddWebsiteSection({
           </div>
         </div>
 
-        {/* Country Selection */}
+        {/* Traffic Value */}
         <div>
-          <label htmlFor="primaryCountry" className="block text-sm font-medium text-gray-700 mb-1">
-            Primary Traffic Country
+          <label htmlFor="trafficValue" className="block text-sm font-medium text-gray-700 mb-1">
+            Traffic Value (USD)
+          </label>
+          <input
+            type="number"
+            id="trafficValue"
+            name="trafficValue"
+            value={formData.trafficValue || ''}
+            onChange={handleFormChange}
+            min="0"
+            step="0.01"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="0.00"
+          />
+        </div>
+
+        {/* Location Traffic */}
+        <div>
+          <label htmlFor="locationTraffic" className="block text-sm font-medium text-gray-700 mb-1">
+            Location Traffic
+          </label>
+          <input
+            type="number"
+            id="locationTraffic"
+            name="locationTraffic"
+            value={formData.locationTraffic || ''}
+            onChange={handleFormChange}
+            min="0"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="0"
+          />
+        </div>
+
+        {/* Grey Niche Accepted */}
+        <div>
+          <label htmlFor="greyNicheAccepted" className="block text-sm font-medium text-gray-700 mb-1">
+            Grey Niche Accepted?
           </label>
           <select
-            id="primaryCountry"
-            name="primaryCountry"
-            value={formData.primaryCountry || ''}
+            id="greyNicheAccepted"
+            name="greyNicheAccepted"
+            value={formData.greyNicheAccepted || ''}
             onChange={handleFormChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">Select a country</option>
-            <option value="United States">United States</option>
-            <option value="United Kingdom">United Kingdom</option>
-            <option value="Canada">Canada</option>
-            <option value="Australia">Australia</option>
-            <option value="Germany">Germany</option>
-            <option value="France">France</option>
-            <option value="India">India</option>
-            <option value="Brazil">Brazil</option>
-            <option value="Japan">Japan</option>
-            <option value="China">China</option>
-            <option value="Russia">Russia</option>
-            <option value="Other">Other</option>
+            <option value="">Select</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
           </select>
-          <p className="mt-1 text-sm text-gray-500">Select the country where your website receives the most traffic</p>
+        </div>
+
+        {/* Special Notes */}
+        <div>
+          <label htmlFor="specialNotes" className="block text-sm font-medium text-gray-700 mb-1">
+            Special Notes
+          </label>
+          <textarea
+            id="specialNotes"
+            name="specialNotes"
+            value={formData.specialNotes || ''}
+            onChange={handleFormChange}
+            rows={2}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Any special notes about your website"
+          />
         </div>
 
         {/* Submit Button */}
