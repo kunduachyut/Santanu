@@ -47,10 +47,22 @@ export default function CartPage() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [showErrorMessage, setShowErrorMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [websiteDetails, setWebsiteDetails] = useState<Record<string, any>>({}); // Store detailed website info
+  const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({}); // Track loading state for each website
+  const [activeDetailsItem, setActiveDetailsItem] = useState<string | null>(null); // Track which item's details are being shown
+
+  // State to track uploads per cart item (not per website)
+  const [uploadsByCartItem, setUploadsByCartItem] = useState<Record<string, any[]>>({});
+
+  // State to track temporary uploads per cart item (not saved to database yet)
+  const [tempUploadsByCartItem, setTempUploadsByCartItem] = useState<Record<string, any[]>>({});
+
+  // State to track file data per cart item
+  const [fileDataByCartItem, setFileDataByCartItem] = useState<Record<string, {file: File, requirements: string}[]>>({});
 
   // Create ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // New state for the content request form
   const [contentRequestData, setContentRequestData] = useState({
     titleSuggestion: '',
@@ -65,21 +77,22 @@ export default function CartPage() {
   });
 
   useEffect(() => {
-    if (!isSignedIn) { setUploadsByWebsite({}); return; }
-    fetch("/api/my-content")
-      .then(r => r.ok ? r.json() : Promise.reject(r))
-      .then((data) => {
-        const items: any[] = data.items || [];
-        const map: Record<string, number> = {};
-        for (const it of items) {
-          const wid = it.websiteId || "";
-          if (!wid) continue;
-          map[wid] = (map[wid] || 0) + 1;
-        }
-        setUploadsByWebsite(map);
-      })
-      .catch(() => setUploadsByWebsite({}));
-  }, [isSignedIn, cart.length]);
+    if (!isSignedIn) { 
+      setUploadsByWebsite({}); 
+      return; 
+    }
+    
+    // Calculate content counts based on temporary uploads
+    // This creates a map of websiteId to count of temporary uploads
+    const map: Record<string, number> = {};
+    
+    // Iterate through all temporary uploads and count them by websiteId
+    Object.entries(tempUploadsByCartItem).forEach(([websiteId, uploads]) => {
+      map[websiteId] = uploads.length;
+    });
+    
+    setUploadsByWebsite(map);
+  }, [isSignedIn, tempUploadsByCartItem]);
 
   // Reset file input when modal opens/closes
   useEffect(() => {
@@ -119,8 +132,8 @@ export default function CartPage() {
     
     setIsProcessing(true);
     try {
-      // Send purchase requests to super admin
-      const res = await fetch("/api/purchases", {
+      // First, create the purchases to get purchase IDs
+      const purchaseRes = await fetch("/api/purchases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -133,9 +146,45 @@ export default function CartPage() {
         }),
       });
 
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!purchaseRes.ok) throw new Error(`HTTP error! status: ${purchaseRes.status}`);
 
-      const data = await res.json();
+      const purchaseData = await purchaseRes.json();
+      const purchases = purchaseData.purchases || [];
+      
+      // Create a map of websiteId to purchaseId
+      const purchaseIdMap: Record<string, string> = {};
+      purchases.forEach((purchase: any) => {
+        purchaseIdMap[purchase.websiteId] = purchase.id;
+      });
+
+      // Save temporary uploads to database for each cart item that has uploads
+      const uploadPromises = Object.entries(fileDataByCartItem).map(async ([websiteId, files]) => {
+        // Get the purchase ID for this website
+        const purchaseId = purchaseIdMap[websiteId];
+        
+        // Process each file for this cart item
+        return Promise.all(files.map(async (fileData) => {
+          const { file, requirements } = fileData;
+          const fd = new FormData();
+          fd.append("pdfFile", file);
+          fd.append("requirements", requirements);
+          fd.append("websiteId", websiteId);
+          if (purchaseId) {
+            fd.append("purchaseId", purchaseId); // Associate with purchase ID
+          }
+          
+          const res = await fetch("/api/my-content", { method: "POST", body: fd });
+          if (!res.ok) {
+            let msg = `HTTP ${res.status}`;
+            try { const j = await res.json(); if (j?.error) msg = j.error; } catch {}
+            throw new Error(msg);
+          }
+          return res.json();
+        }));
+      });
+      
+      // Wait for all uploads to be processed
+      await Promise.all(uploadPromises);
 
       // Clear cart and reset all states for fresh experience
       clearCart();
@@ -143,6 +192,10 @@ export default function CartPage() {
       // Clear cached upload data
       setUploadsByWebsite({});
       setMyUploads([]);
+      // Clear cart item uploads
+      setUploadsByCartItem({});
+      setTempUploadsByCartItem({});
+      setFileDataByCartItem({});
       
       // Reset modal states
       setShowContentModal(false);
@@ -180,7 +233,6 @@ export default function CartPage() {
   const openContentModal = (item: any) => {
     setSelectedItem(item);
     setShowContentModal(true);
-    setModalKey(prev => prev + 1); // Increment key to force fresh render
     // Set this item's selected option to 'content'
     setSelectedOptions(prev => ({
       ...prev,
@@ -190,20 +242,8 @@ export default function CartPage() {
     setTimeout(() => {
       resetFileInput();
     }, 100);
-    // preload existing uploads for this website
-    fetch(`/api/my-content?websiteId=${encodeURIComponent(item._id)}`)
-      .then(r => r.ok ? r.json() : Promise.reject(r))
-      .then(data => {
-        setMyUploads(data.items ?? []);
-        // Update the uploadsByWebsite count for this item
-        if (data.items && data.items.length > 0) {
-          setUploadsByWebsite(prev => ({
-            ...prev,
-            [item._id]: data.items.length
-          }));
-        }
-      })
-      .catch(() => setMyUploads([]));
+    // Use temporary uploads for this specific cart item, or start with empty array
+    setMyUploads(tempUploadsByCartItem[item._id] || []);
   };
 
   const openRequestModal = (item: any) => {
@@ -292,6 +332,41 @@ export default function CartPage() {
     }
   };
 
+  const fetchWebsiteDetails = async (websiteId: string) => {
+    console.log('Fetching website details for ID:', websiteId);
+    
+    // If we already have the details or are loading them, don't fetch again
+    if (websiteDetails[websiteId] || loadingDetails[websiteId]) {
+      console.log('Already have details or loading for:', websiteId);
+      return;
+    }
+
+    // Set loading state
+    setLoadingDetails(prev => ({ ...prev, [websiteId]: true }));
+    console.log('Set loading state for:', websiteId);
+
+    try {
+      const res = await fetch(`/api/websites/${websiteId}`);
+      console.log('API response status:', res.status);
+      
+      if (res.ok) {
+        const data = await res.json();
+        console.log('Received website data:', data);
+        setWebsiteDetails(prev => ({ ...prev, [websiteId]: data }));
+      } else if (res.status === 401) {
+        // Handle authentication error
+        console.log("Authentication required to fetch website details");
+      } else {
+        console.error("Failed to fetch website details:", res.status, res.statusText);
+      }
+    } catch (error) {
+      console.error("Failed to fetch website details:", error);
+    } finally {
+      setLoadingDetails(prev => ({ ...prev, [websiteId]: false }));
+      console.log('Cleared loading state for:', websiteId);
+    }
+  };
+
   const resetFileInput = () => {
     // Reset file state
     setPdfFile(null);
@@ -325,6 +400,10 @@ export default function CartPage() {
     // Clear cached upload data
     setUploadsByWebsite({});
     setMyUploads([]);
+    // Clear cart item uploads
+    setUploadsByCartItem({});
+    setTempUploadsByCartItem({});
+    setFileDataByCartItem({});
     
     // Reset modal states
     setShowContentModal(false);
@@ -349,6 +428,48 @@ export default function CartPage() {
     
     alert("Cart cleared successfully!");
   };
+
+  const getCountryFlag = (countryName: string | undefined): string => {
+    if (!countryName) return '🌐';
+    
+    const countryFlags: Record<string, string> = {
+      'United States': '🇺🇸',
+      'United Kingdom': '🇬🇧',
+      'Canada': '🇨🇦',
+      'Australia': '🇦🇺',
+      'Germany': '🇩🇪',
+      'France': '🇫🇷',
+      'India': '🇮🇳',
+      'Brazil': '🇧🇷',
+      'Japan': '🇯🇵',
+      'China': '🇨🇳',
+      'Russia': '🇷🇺',
+      'Other': '🌐'
+    };
+    
+    return countryFlags[countryName] || '🌐';
+  };
+
+  // Add a useEffect to debug the state changes
+  useEffect(() => {
+    console.log('Website details updated:', websiteDetails);
+  }, [websiteDetails]);
+
+  useEffect(() => {
+    console.log('Loading details updated:', loadingDetails);
+  }, [loadingDetails]);
+
+  // Handle escape key to close details modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeDetailsItem) {
+        setActiveDetailsItem(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [activeDetailsItem]);
 
   if (cart.length === 0) {
     return (
@@ -410,15 +531,16 @@ export default function CartPage() {
       <div className="rounded-lg shadow-sm overflow-hidden" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
         <div className="p-6" style={{borderBottom: '1px solid var(--base-tertiary)'}}>
           <div className="grid grid-cols-12 gap-4 font-semibold uppercase tracking-wider text-xs pb-4" style={{color: 'var(--secondary-lighter)'}}>
-            <div className="col-span-5">Product</div>
-            <div className="col-span-2 text-center">Price</div>
-            <div className="col-span-2 text-center">Content Status</div>
-            <div className="col-span-3 text-right">Actions</div>
+            <div className="col-span-3 flex items-center">Product</div>
+            <div className="col-span-2 flex items-center justify-center">Price</div>
+            <div className="col-span-2 flex items-center justify-center">Content Status</div>
+            <div className="col-span-1 flex items-center justify-center">Details</div>
+            <div className="col-span-4 flex items-center justify-end">Actions</div>
           </div>
 
           {cart.map((item, idx) => (
             <div key={item._id ?? idx} className="grid grid-cols-12 gap-4 py-4 border-b hover:bg-gray-50 items-center">
-              <div className="col-span-5">
+              <div className="col-span-3 flex items-center">
                 <div className="flex items-center">
                   <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
                     {item.title.charAt(0).toUpperCase()}
@@ -428,10 +550,10 @@ export default function CartPage() {
                   </div>
                 </div>
               </div>
-              <div className="col-span-2 text-center">
+              <div className="col-span-2 flex items-center justify-center">
                 <div className="text-sm font-medium text-gray-900">${(item.priceCents / 100).toFixed(2)}</div>
               </div>
-              <div className="col-span-2 text-center">
+              <div className="col-span-2 flex items-center justify-center">
                 {selectedOptions[item._id] === 'content' && (
                   <div className="flex flex-col items-center">
                     <span className="text-xs text-blue-600 font-medium">My Content</span>
@@ -444,8 +566,11 @@ export default function CartPage() {
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        {uploadsByWebsite[item._id] > 0 && (
-                          <span className="ml-1 text-xs font-medium">{uploadsByWebsite[item._id]}</span>
+                        {/* Show count based on temporary uploads for this specific cart item */}
+                        {tempUploadsByCartItem[item._id] && tempUploadsByCartItem[item._id].length > 0 && (
+                          <span className="ml-1 text-xs font-medium">
+                            {tempUploadsByCartItem[item._id].length}
+                          </span>
                         )}
                       </button>
                       <button
@@ -454,6 +579,12 @@ export default function CartPage() {
                             const newOptions = {...prev};
                             delete newOptions[item._id];
                             return newOptions;
+                          });
+                          // Also clear temporary uploads for this item
+                          setTempUploadsByCartItem(prev => {
+                            const newUploads = {...prev};
+                            delete newUploads[item._id];
+                            return newUploads;
                           });
                         }}
                         className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
@@ -504,7 +635,126 @@ export default function CartPage() {
                   </div>
                 )}
               </div>
-              <div className="col-span-3 flex items-center justify-end gap-1">
+              <div className="col-span-1 flex items-center justify-center">
+                <div className="relative">
+                  <button 
+                    className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
+                    onMouseEnter={async () => {
+                      console.log('Hovered over details icon for website:', item._id);
+                      // Fetch details on hover if not already loaded
+                      if (!websiteDetails[item._id] && !loadingDetails[item._id]) {
+                        // Define fetchWebsiteDetails inline to avoid scoping issues
+                        const fetchDetails = async (websiteId: string) => {
+                          console.log('Fetching website details for ID:', websiteId);
+                          
+                          // If we already have the details or are loading them, don't fetch again
+                          if (websiteDetails[websiteId] || loadingDetails[websiteId]) {
+                            console.log('Already have details or loading for:', websiteId);
+                            return;
+                          }
+
+                          // Set loading state
+                          setLoadingDetails(prev => ({ ...prev, [websiteId]: true }));
+                          console.log('Set loading state for:', websiteId);
+
+                          try {
+                            const res = await fetch(`/api/websites/${websiteId}`);
+                            console.log('API response status:', res.status);
+                            
+                            if (res.ok) {
+                              const data = await res.json();
+                              console.log('Received website data:', data);
+                              setWebsiteDetails(prev => ({ ...prev, [websiteId]: data }));
+                            } else if (res.status === 401) {
+                              // Handle authentication error
+                              console.log("Authentication required to fetch website details");
+                            } else {
+                              console.error("Failed to fetch website details:", res.status, res.statusText);
+                            }
+                          } catch (error) {
+                            console.error("Failed to fetch website details:", error);
+                          } finally {
+                            setLoadingDetails(prev => ({ ...prev, [websiteId]: false }));
+                            console.log('Cleared loading state for:', websiteId);
+                          }
+                        };
+                        
+                        await fetchDetails(item._id);
+                      }
+                      // Set this item as the active details item
+                      setActiveDetailsItem(item._id);
+                    }}
+                    onMouseLeave={() => {
+                      // Clear the active details item when mouse leaves
+                      setActiveDetailsItem(null);
+                    }}
+                  >
+                    {loadingDetails[item._id] ? (
+                      <svg className="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                      </svg>
+                    )}
+                  </button>
+                  
+                  {/* Floating tooltip with website details */}
+                  {activeDetailsItem === item._id && (
+                    <div className="absolute z-50 mt-2 w-64 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 left-1/2 transform -translate-x-1/2">
+                      <div className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="text-sm font-semibold text-gray-900 truncate">{websiteDetails[item._id]?.title || 'Loading...'}</h3>
+                        </div>
+                        
+                        {loadingDetails[item._id] ? (
+                          <div className="flex justify-center items-center h-16">
+                            <div className="text-gray-500 text-sm">Loading details...</div>
+                          </div>
+                        ) : websiteDetails[item._id] ? (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-gray-600">URL:</span>
+                              <span className="font-medium text-blue-600 truncate max-w-[120px]" title={websiteDetails[item._id].url}>
+                                {websiteDetails[item._id].url}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-gray-600">Price:</span>
+                              <span className="font-medium">${(websiteDetails[item._id].priceCents / 100).toFixed(2)}</span>
+                            </div>
+                            {websiteDetails[item._id].DA !== undefined && websiteDetails[item._id].DA !== null && (
+                              <div className="flex justify-between text-xs">
+                                <span className="text-gray-600">DA:</span>
+                                <span className="font-medium">{websiteDetails[item._id].DA}</span>
+                              </div>
+                            )}
+                            {websiteDetails[item._id].DR !== undefined && websiteDetails[item._id].DR !== null && (
+                              <div className="flex justify-between text-xs">
+                                <span className="text-gray-600">DR:</span>
+                                <span className="font-medium">{websiteDetails[item._id].DR}</span>
+                              </div>
+                            )}
+                            {websiteDetails[item._id].OrganicTraffic !== undefined && websiteDetails[item._id].OrganicTraffic !== null && (
+                              <div className="flex justify-between text-xs">
+                                <span className="text-gray-600">Traffic:</span>
+                                <span className="font-medium">{websiteDetails[item._id].OrganicTraffic}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-gray-500 text-center py-2 text-sm">
+                            Failed to load details
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="col-span-4 flex items-center justify-end gap-1">
                 <button
                   onClick={() => openContentModal(item)}
                   disabled={selectedOptions[item._id] === 'request'}
@@ -988,49 +1238,37 @@ export default function CartPage() {
                   try {
                     setUploading(true);
                     setShowConfirmModal(false);
-                    const fd = new FormData();
-                    fd.append("pdfFile", pdfFile!);
-                    fd.append("requirements", requirements);
-                    fd.append("websiteId", selectedItem._id);
-                    const res = await fetch("/api/my-content", { method: "POST", body: fd });
-                    if (!res.ok) {
-                      let msg = `HTTP ${res.status}`;
-                      try { const j = await res.json(); if (j?.error) msg = j.error; } catch {}
-                      throw new Error(msg);
-                    }
-                    // refresh list
-                    const listRes = await fetch(`/api/my-content?websiteId=${encodeURIComponent(selectedItem._id)}`);
-                    const list = await listRes.json();
-                    setMyUploads(list.items ?? []);
-                    // refresh counts across cart
-                    try {
-                      const allRes = await fetch("/api/my-content");
-                      if (allRes.ok) {
-                        const all = await allRes.json();
-                        const items: any[] = all.items || [];
-                        const map: Record<string, number> = {};
-                        for (const it of items) {
-                          const wid = it.websiteId || "";
-                          if (!wid) continue;
-                          map[wid] = (map[wid] || 0) + 1;
-                        }
-                        setUploadsByWebsite(map);
-                        
-                        // Ensure the selected option is set to 'content' for this item
-                        if (selectedItem && selectedItem._id) {
-                          setSelectedOptions(prev => ({
-                            ...prev,
-                            [selectedItem._id]: 'content'
-                          }));
-                        }
-                      }
-                    } catch {}
-                                         setRequirements("");
+                    
+                    // Store uploads temporarily per cart item instead of saving to database immediately
+                    const newUpload = {
+                      requirements,
+                      createdAt: new Date(),
+                      pdf: {
+                        filename: pdfFile?.name,
+                        size: pdfFile?.size,
+                      },
+                      tempId: Date.now() // Temporary ID for frontend tracking
+                    };
+
+                    setTempUploadsByCartItem(prev => ({
+                      ...prev,
+                      [selectedItem._id]: [...(prev[selectedItem._id] || []), newUpload]
+                    }));
+                    // Store file data for later upload with purchase ID
+                    setFileDataByCartItem(prev => ({
+                      ...prev,
+                      [selectedItem._id]: [...(prev[selectedItem._id] || []), { file: pdfFile, requirements }]
+                    }));
+                    // Update the shared myUploads state to show current temporary uploads
+                    setMyUploads(prev => [...prev, newUpload]);
+                    
+                    // The useEffect will now automatically update uploadsByWebsite based on tempUploadsByCartItem
+                     setRequirements("");
                      setPdfFile(null);
                      if (fileInputRef.current) {
                        fileInputRef.current.value = "";
                      }
-                     alert("Uploaded successfully");
+                     alert("File added temporarily. It will be uploaded when you proceed to checkout.");
                   } catch (err: any) {
                     alert(`Upload failed: ${err?.message ?? "Unknown error"}`);
                   } finally {

@@ -1,8 +1,9 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
 export interface IUserContent extends Document {
   userId: string;
   websiteId?: string;
+  purchaseId?: Types.ObjectId; // Change to ObjectId type
   requirements: string;
   pdf: {
     data: Buffer;
@@ -18,6 +19,7 @@ const UserContentSchema = new Schema<IUserContent>(
   {
     userId: { type: String, required: true, index: true },
     websiteId: { type: String },
+    purchaseId: { type: Schema.Types.ObjectId, ref: "Purchase" }, // Change to ObjectId type
     requirements: { type: String, required: true },
     pdf: {
       data: { type: Buffer, required: true },
@@ -29,8 +31,9 @@ const UserContentSchema = new Schema<IUserContent>(
   { timestamps: true }
 );
 
+// Add index for purchase ID
+UserContentSchema.index({ purchaseId: 1 });
+
 export const UserContent: Model<IUserContent> =
   (mongoose.models.UserContent as Model<IUserContent>) ||
   mongoose.model<IUserContent>("UserContent", UserContentSchema);
-
-

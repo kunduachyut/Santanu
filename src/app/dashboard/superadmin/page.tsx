@@ -510,8 +510,8 @@ export default function SuperAdminDashboard() {
 
     try {
       if (purchase.contentType === 'content') {
-        // Fetch uploaded content for this website and customer
-        const response = await fetch(`/api/my-content?websiteId=${purchase.websiteId}&userId=${purchase.customerId}`);
+        // Fetch uploaded content for this specific purchase using purchaseId
+        const response = await fetch(`/api/my-content?purchaseId=${purchase.id}`);
         if (response.ok) {
           const data = await response.json();
           setContentDetails({
