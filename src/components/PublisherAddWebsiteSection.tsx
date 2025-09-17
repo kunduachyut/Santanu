@@ -381,7 +381,7 @@ export default function PublisherAddWebsiteSection({
         {/* SEO Metrics */}
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-4">SEO Metrics (Optional)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div>
               <label htmlFor="DA" className="block text-sm font-medium text-gray-700 mb-1">
                 DA
@@ -473,73 +473,76 @@ export default function PublisherAddWebsiteSection({
           </div>
         </div>
 
-        {/* Traffic Value */}
-        <div>
-          <label htmlFor="trafficValue" className="block text-sm font-medium text-gray-700 mb-1">
-            Traffic Value (USD)
-          </label>
-          <input
-            type="number"
-            id="trafficValue"
-            name="trafficValue"
-            value={formData.trafficValue || ''}
-            onChange={handleFormChange}
-            min="0"
-            step="0.01"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="0.00"
-          />
-        </div>
+        {/* Additional Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Traffic Value */}
+          <div>
+            <label htmlFor="trafficValue" className="block text-sm font-medium text-gray-700 mb-1">
+              Traffic Value (USD)
+            </label>
+            <input
+              type="number"
+              id="trafficValue"
+              name="trafficValue"
+              value={formData.trafficValue || ''}
+              onChange={handleFormChange}
+              min="0"
+              step="0.01"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="0.00"
+            />
+          </div>
 
-        {/* Location Traffic */}
-        <div>
-          <label htmlFor="locationTraffic" className="block text-sm font-medium text-gray-700 mb-1">
-            Location Traffic
-          </label>
-          <input
-            type="number"
-            id="locationTraffic"
-            name="locationTraffic"
-            value={formData.locationTraffic || ''}
-            onChange={handleFormChange}
-            min="0"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="0"
-          />
-        </div>
+          {/* Location Traffic */}
+          <div>
+            <label htmlFor="locationTraffic" className="block text-sm font-medium text-gray-700 mb-1">
+              Location Traffic
+            </label>
+            <input
+              type="number"
+              id="locationTraffic"
+              name="locationTraffic"
+              value={formData.locationTraffic || ''}
+              onChange={handleFormChange}
+              min="0"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="0"
+            />
+          </div>
 
-        {/* Grey Niche Accepted */}
-        <div>
-          <label htmlFor="greyNicheAccepted" className="block text-sm font-medium text-gray-700 mb-1">
-            Grey Niche Accepted?
-          </label>
-          <select
-            id="greyNicheAccepted"
-            name="greyNicheAccepted"
-            value={formData.greyNicheAccepted || ''}
-            onChange={handleFormChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Select</option>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
-        </div>
+          {/* Grey Niche Accepted */}
+          <div>
+            <label htmlFor="greyNicheAccepted" className="block text-sm font-medium text-gray-700 mb-1">
+              Grey Niche Accepted?
+            </label>
+            <select
+              id="greyNicheAccepted"
+              name="greyNicheAccepted"
+              value={formData.greyNicheAccepted || ''}
+              onChange={handleFormChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
 
-        {/* Special Notes */}
-        <div>
-          <label htmlFor="specialNotes" className="block text-sm font-medium text-gray-700 mb-1">
-            Special Notes
-          </label>
-          <textarea
-            id="specialNotes"
-            name="specialNotes"
-            value={formData.specialNotes || ''}
-            onChange={handleFormChange}
-            rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Any special notes about your website"
-          />
+          {/* Special Notes */}
+          <div>
+            <label htmlFor="specialNotes" className="block text-sm font-medium text-gray-700 mb-1">
+              Special Notes
+            </label>
+            <textarea
+              id="specialNotes"
+              name="specialNotes"
+              value={formData.specialNotes || ''}
+              onChange={handleFormChange}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Any special notes about your website"
+            />
+          </div>
         </div>
 
         {/* Prime Traffic Countries */}

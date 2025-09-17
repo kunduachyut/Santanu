@@ -321,13 +321,18 @@ export default function MarketplaceSection({
     greyNicheAccepted: '',
   });
 
-  // State for highlighting multiple rows
-  const [highlightedRows, setHighlightedRows] = useState<Record<string, boolean>>({});
+  // Wishlist state with server-side persistence
+  const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
+  const [showWishlistOnly, setShowWishlistOnly] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
 
   // State for country flags
   const [countryFlags, setCountryFlags] = useState<Record<string, string>>({});
   const [loadingFlags, setLoadingFlags] = useState(false);
   const [failedFlags, setFailedFlags] = useState<Record<string, boolean>>({});
+
+  // State for highlighting multiple rows
+  const [highlightedRows, setHighlightedRows] = useState<Record<string, boolean>>({});
 
   // Load country flags from REST Countries API
   useEffect(() => {
@@ -356,6 +361,78 @@ export default function MarketplaceSection({
 
     loadCountryFlags();
   }, [websites]);
+
+  // Load wishlist from server
+  useEffect(() => {
+    const loadWishlist = async () => {
+      try {
+        setWishlistLoading(true);
+        const response = await fetch('/api/wishlist');
+        if (response.ok) {
+          const data = await response.json();
+          // Convert array of IDs to object for easy lookup
+          const wishlistObj: Record<string, boolean> = {};
+          data.websiteIds.forEach((id: string) => {
+            wishlistObj[id] = true;
+          });
+          setWishlist(wishlistObj);
+        }
+      } catch (error) {
+        console.error("Failed to load wishlist:", error);
+        // Fallback to localStorage if server fails
+        if (typeof window !== 'undefined') {
+          const savedWishlist = localStorage.getItem('marketplaceWishlist');
+          if (savedWishlist) {
+            setWishlist(JSON.parse(savedWishlist));
+          }
+        }
+      } finally {
+        setWishlistLoading(false);
+      }
+    };
+
+    loadWishlist();
+  }, []);
+
+  // Update wishlist on server
+  const updateWishlist = async (websiteId: string, action: 'add' | 'remove') => {
+    try {
+      const response = await fetch('/api/wishlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ websiteId, action }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update local state with server response
+        const wishlistObj: Record<string, boolean> = {};
+        data.websiteIds.forEach((id: string) => {
+          wishlistObj[id] = true;
+        });
+        setWishlist(wishlistObj);
+      } else {
+        throw new Error('Failed to update wishlist');
+      }
+    } catch (error) {
+      console.error("Failed to update wishlist:", error);
+      // Fallback to localStorage if server fails
+      setWishlist(prev => {
+        const newWishlist = { ...prev };
+        if (action === 'add') {
+          newWishlist[websiteId] = true;
+        } else {
+          delete newWishlist[websiteId];
+        }
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('marketplaceWishlist', JSON.stringify(newWishlist));
+        }
+        return newWishlist;
+      });
+    }
+  };
 
   // State for highlighting
   const [highlightedRow, setHighlightedRow] = useState<string | null>(null);
@@ -405,6 +482,11 @@ export default function MarketplaceSection({
 
   // Apply filters to websites
   const filteredWebsites = websites.filter(w => {
+    // Wishlist filter
+    if (showWishlistOnly && !wishlist[w._id || w.id || `${w.title}-${w.url}`]) {
+      return false;
+    }
+
     // Search filter
     if (searchQuery) {
       const matchesSearch = w.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -419,6 +501,7 @@ export default function MarketplaceSection({
     // DA filters
     if (filters.minDA && (w.DA || 0) < parseInt(filters.minDA)) return false;
     if (filters.maxDA && (w.DA || 0) > parseInt(filters.maxDA)) return false;
+
 
     // DR filters
     if (filters.minDR && (w.DR || 0) < parseInt(filters.minDR)) return false;
@@ -489,9 +572,24 @@ export default function MarketplaceSection({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
-          <span className="text-sm font-medium text-gray-500">{filteredWebsites.length} websites available</span>
+          <span className="text-sm font-medium text-gray-500">
+            {showWishlistOnly ? `${filteredWebsites.length} wishlist items` : `${filteredWebsites.length} websites available`}
+          </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Wishlist Toggle Button */}
+          <button
+            onClick={() => setShowWishlistOnly(!showWishlistOnly)}
+            disabled={wishlistLoading}
+            className={`p-2 rounded-md ${wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''} ${showWishlistOnly ? 'bg-red-100 text-red-600' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+            title={showWishlistOnly ? "Show all websites" : "Show wishlist only"}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={showWishlistOnly ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
+          
+          {/* Add Selected to Cart Button */}
           <button
             onClick={() => {
               const selectedCount = Object.values(selectedItems).filter(Boolean).length;
@@ -541,33 +639,37 @@ export default function MarketplaceSection({
           <div className="relative">
             <button 
               onClick={() => setShowColumnDropdown(!showColumnDropdown)}
-              className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100"
+              className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-200"
+              title="Show Columns"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 11-14 0 2 2 0 0114 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6v12" />
               </svg>
             </button>
             
             {showColumnDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
-                <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase border-b">
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg py-2 z-10 border border-gray-200">
+                <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Show Columns
                 </div>
-                {columns.map((column) => (
-                  <label key={column.id} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    <input
-                      type="checkbox"
-                      checked={column.visible}
-                      onChange={() => toggleColumnVisibility(column.id)}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 mr-2"
-                    />
-                    {column.label}
-                  </label>
-                ))}
-                <div className="border-t border-gray-100">
+                <div className="max-h-60 overflow-y-auto">
+                  {columns.map((column) => (
+                    <label key={column.id} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={column.visible}
+                        onChange={() => toggleColumnVisibility(column.id)}
+                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 mr-3 rounded-sm"
+                      />
+                      <span className="truncate">{column.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="border-t border-gray-100 mt-1 pt-1">
                   <button
                     onClick={resetColumns}
-                    className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
+                    className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-50 font-medium"
                   >
                     Reset to Default
                   </button>
@@ -827,142 +929,134 @@ export default function MarketplaceSection({
             <div className="overflow-x-auto">
               {/* Table Header */}
               <div 
-                className={`grid gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[1600px]`}
-                style={{ gridTemplateColumns: `repeat(${totalSpan}, minmax(0, 1fr))` }}
+                className={`grid gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-center text-xs font-medium text-gray-500 uppercase tracking-wider`}
+                style={{ gridTemplateColumns: `repeat(${columns.filter(col => col.visible).reduce((sum, col) => sum + col.span, 0)}, minmax(0, 1fr))` }}
               >
-                {columns.find(col => col.id === 'checkbox')?.visible && (
-                  <div className="flex items-center justify-center">
-                    <input 
-                      type="checkbox" 
-                      checked={selectAll}
-                      onChange={(e) => {
-                        const isChecked = e.target.checked;
-                        setSelectAll(isChecked);
-                        const newSelectedItems: Record<string, boolean> = {};
-                        websites.forEach(w => {
-                          const id = w._id || w.id || `${w.title}-${w.url}`;
-                          newSelectedItems[id] = isChecked;
-                        });
-                        setSelectedItems(prev => newSelectedItems);
-                        
-                        // Also highlight/unhighlight all rows when select all is clicked
-                        const newHighlightedRows: Record<string, boolean> = {};
-                        if (isChecked) {
-                          websites.forEach(w => {
-                            const id = w._id || w.id || `${w.title}-${w.url}`;
-                            newHighlightedRows[id] = true;
-                          });
-                        }
-                        setHighlightedRows(newHighlightedRows);
-                      }}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'domain')?.visible && (
-                  <div className="flex items-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'domain')?.span || 1}` }}>
-                    Domain Name
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'category')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'category')?.span || 1}` }}>
-                    Category
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'price')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'price')?.span || 1}` }}>
-                    Price
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'da')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'da')?.span || 1}` }}>
-                    DA
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'spam')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'spam')?.span || 1}` }}>
-                    Spam
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'dr')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'dr')?.span || 1}` }}>
-                    DR
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'traffic')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'traffic')?.span || 1}` }}>
-                    Traffic
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'trafficValue')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'trafficValue')?.span || 1}` }}>
-                    Traffic Value
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'topLocation')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'topLocation')?.span || 1}` }}>
-                    Top Location
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'locationTraffic')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'locationTraffic')?.span || 1}` }}>
-                    Location Traffic
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'primeTrafficCountries')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'primeTrafficCountries')?.span || 1}` }}>
-                    Prime Traffic Countries
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'rd')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'rd')?.span || 1}` }}>
-                    RD
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'greyNiche')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'greyNiche')?.span || 1}` }}>
-                    Grey Niche
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'specialNotes')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'specialNotes')?.span || 1}` }}>
-                    Special Notes
-                  </div>
-                )}
-                
-                {columns.find(col => col.id === 'actions')?.visible && (
-                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'actions')?.span || 1}` }}>
-                    Actions
-                  </div>
-                )}
+                {columns.filter(col => col.visible).map((col, index) => {
+                  const columnComponents: Record<string, React.ReactNode> = {
+                    'checkbox': (
+                      <div key={col.id} className="flex items-center justify-center">
+                        <input 
+                          type="checkbox" 
+                          checked={selectAll}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setSelectAll(isChecked);
+                            const newSelectedItems: Record<string, boolean> = {};
+                            websites.forEach(w => {
+                              const id = w._id || w.id || `${w.title}-${w.url}`;
+                              newSelectedItems[id] = isChecked;
+                            });
+                            setSelectedItems(prev => newSelectedItems);
+                            
+                            // Also highlight/unhighlight all rows when select all is clicked
+                            const newHighlightedRows: Record<string, boolean> = {};
+                            if (isChecked) {
+                              websites.forEach(w => {
+                                const id = w._id || w.id || `${w.title}-${w.url}`;
+                                newHighlightedRows[id] = true;
+                              });
+                            }
+                            setHighlightedRows(newHighlightedRows);
+                          }}
+                          className="h-3 w-3 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        />
+                      </div>
+                    ),
+                    'domain': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Domain Name
+                      </div>
+                    ),
+                    'category': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Category
+                      </div>
+                    ),
+                    'price': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Price
+                      </div>
+                    ),
+                    'da': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        DA
+                      </div>
+                    ),
+                    'spam': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Spam
+                      </div>
+                    ),
+                    'dr': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        DR
+                      </div>
+                    ),
+                    'traffic': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Traffic
+                      </div>
+                    ),
+                    'trafficValue': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Traffic Value
+                      </div>
+                    ),
+                    'topLocation': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Top Location
+                      </div>
+                    ),
+                    'locationTraffic': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Location Traffic
+                      </div>
+                    ),
+                    'primeTrafficCountries': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Prime Traffic Countries
+                      </div>
+                    ),
+                    'rd': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        RD
+                      </div>
+                    ),
+                    'greyNiche': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Grey Niche
+                      </div>
+                    ),
+                    'specialNotes': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Special Notes
+                      </div>
+                    ),
+                    'actions': (
+                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                        Actions
+                      </div>
+                    )
+                  };
+                  
+                  return columnComponents[col.id] || null;
+                })}
               </div>
               
               {/* Table Body */}
-              <div className="divide-y divide-gray-200 min-w-[1600px]">
+              <div className="divide-y divide-gray-200">
                 {filteredWebsites.map((w) => {
                   const stableId = w._id || w.id || `${w.title}-${w.url}`;
                   const isPurchased = paidSiteIds.has(stableId);
                   const isHighlighted = highlightedRows[stableId] || false;
+                  const isInWishlist = wishlist[stableId] || false;
                   
                   return (
                     <div 
                       key={stableId} 
                       className={`grid gap-4 px-6 py-4 hover:bg-gray-50 items-center transition-all duration-200 ease-in-out rounded-lg ${isHighlighted ? 'bg-blue-50 border-l-4 border-blue-400' : ''}`}
-                      style={{ gridTemplateColumns: `repeat(${totalSpan}, minmax(0, 1fr))` }}
+                      style={{ gridTemplateColumns: `repeat(${columns.filter(col => col.visible).reduce((sum, col) => sum + col.span, 0)}, minmax(0, 1fr))` }}
                       onClick={() => {
                         setHighlightedRows(prev => ({
                           ...prev,
@@ -970,268 +1064,275 @@ export default function MarketplaceSection({
                         }));
                       }}
                     >
-                      {/* Checkbox */}
-                      {columns.find(col => col.id === 'checkbox')?.visible && (
-                        <div className="flex justify-center">
-                          <input 
-                            type="checkbox" 
-                            checked={selectedItems[stableId] || false}
-                            onChange={(e) => {
-                              const isChecked = e.target.checked;
-                              setSelectedItems((prev) => ({
-                                ...prev,
-                                [stableId]: isChecked
-                              }));
-                              setSelectAll(Object.keys(selectedItems).length === websites.length - 1 && isChecked);
-                              // Highlight row when selected
-                              setHighlightedRows(prev => ({
-                                ...prev,
-                                [stableId]: isChecked
-                              }));
-                            }}
-                            className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" 
-                          />
-                        </div>
-                      )}
-                      
-                      {/* Domain Name */}
-                      {columns.find(col => col.id === 'domain')?.visible && (
-                        <div style={{ gridColumn: `span ${columns.find(col => col.id === 'domain')?.span || 1}` }}>
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
-                              {w.title.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{w.title}</div>
-                              <div className="text-xs text-gray-500 truncate max-w-[150px]" title={w.url}>
-                                {w.url.length > 30 ? `${w.url.substring(0, 30)}...` : w.url}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Category */}
-                      {columns.find(col => col.id === 'category')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'category')?.span || 1}` }}>
-                          {w.category ? (
-                            <div className="relative group">
-                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold cursor-help">
-                                C
-                              </div>
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
-                                {Array.isArray(w.category) ? w.category.join(', ') : w.category}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-sm font-medium text-gray-400">-</span>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Price */}
-                      {columns.find(col => col.id === 'price')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'price')?.span || 1}` }}>
-                          <div className="text-sm font-medium text-green-600">${(w.priceCents / 100).toFixed(2)}</div>
-                        </div>
-                      )}
-                      
-                      {/* DA */}
-                      {columns.find(col => col.id === 'da')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'da')?.span || 1}` }}>
-                          <div className="text-sm font-medium text-gray-900">{w.DA || 0}</div>
-                        </div>
-                      )}
-
-                      {/* Spam */}
-                      {columns.find(col => col.id === 'spam')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'spam')?.span || 1}` }}>
-                          <div className="text-sm font-medium text-gray-900">{w.Spam || 0}</div>
-                        </div>
-                      )}
-                      
-                      {/* DR */}
-                      {columns.find(col => col.id === 'dr')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'dr')?.span || 1}` }}>
-                          <div className="text-sm font-medium text-gray-900">{w.DR || 0}</div>
-                        </div>
-                      )}
-                      
-                      {/* Traffic */}
-                      {columns.find(col => col.id === 'traffic')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'traffic')?.span || 1}` }}>
-                          <div className="text-sm font-medium text-gray-900">{w.OrganicTraffic || 0}</div>
-                        </div>
-                      )}
-
-                      {/* Traffic Value */}
-                      {columns.find(col => col.id === 'trafficValue')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'trafficValue')?.span || 1}` }}>
-                          <div className="text-sm font-medium text-gray-900">{w.trafficValue || 0}</div>
-                        </div>
-                      )}
-
-                      {/* Top Location */}
-                      {columns.find(col => col.id === 'topLocation')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'topLocation')?.span || 1}` }}>
-                          {w.primaryCountry ? (
-                            <div className="relative group">
-                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
-                                {getCountryFlag(w.primaryCountry)}
-                              </div>
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
-                                {w.primaryCountry}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-sm font-medium text-gray-400">-</span>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Location Traffic */}
-                      {columns.find(col => col.id === 'locationTraffic')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'locationTraffic')?.span || 1}` }}>
-                          <div className="text-sm font-medium text-gray-900">{w.locationTraffic || 0}</div>
-                        </div>
-                      )}
-                      
-                      {/* Prime Traffic Countries */}
-                      {columns.find(col => col.id === 'primeTrafficCountries')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'primeTrafficCountries')?.span || 1}` }}>
-                          {w.primeTrafficCountries && w.primeTrafficCountries.length > 0 ? (
-                            <div className="flex flex-wrap gap-1 justify-center">
-                              {w.primeTrafficCountries.slice(0, 3).map((country, index) => {
-                                const flagUrl = countryFlags[country];
-                                const hasFailed = failedFlags[country];
-                                
-                                return (
-                                  <div key={index} className="relative group">
-                                    {flagUrl && !hasFailed ? (
-                                      <img 
-                                        src={flagUrl} 
-                                        alt={country} 
-                                        className="w-6 h-4 rounded-sm object-cover cursor-help"
-                                        onError={() => {
-                                          // Mark this country's flag as failed
-                                          setFailedFlags(prev => ({ ...prev, [country]: true }));
-                                        }}
-                                      />
-                                    ) : (
-                                      <div className="w-6 h-4 rounded-sm bg-gray-100 flex items-center justify-center text-xs cursor-help overflow-hidden">
-                                        <span className="text-xs">{getCountryFlagEmoji(country)}</span>
-                                      </div>
-                                    )}
-                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
-                                      {country}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                              {w.primeTrafficCountries.length > 3 && (
-                                <div className="relative group">
-                                  <div className="w-6 h-4 rounded-sm bg-gray-200 flex items-center justify-center text-xs cursor-help">
-                                    +{w.primeTrafficCountries.length - 3}
-                                  </div>
-                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
-                                    {w.primeTrafficCountries.slice(3).join(', ')}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-sm font-medium text-gray-400">-</span>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* RD */}
-                      {columns.find(col => col.id === 'rd')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'rd')?.span || 1}` }}>
-                          {w.RD ? (
-                            <a 
-                              href={w.RD} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
-                              title={w.RD}
-                            >
-                              Link
-                            </a>
-                          ) : (
-                            <span className="text-sm font-medium text-gray-400">-</span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Grey Niche Accepted */}
-                      {columns.find(col => col.id === 'greyNiche')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'greyNiche')?.span || 1}` }}>
-                          <div className="text-sm font-medium text-gray-900">
-                            {w.greyNicheAccepted ? 'Yes' : 'No'}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Special Notes */}
-                      {columns.find(col => col.id === 'specialNotes')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'specialNotes')?.span || 1}` }}>
-                          {w.specialNotes ? (
-                            <div className="relative group">
-                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                              </div>
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 z-10 max-w-xs">
-                                <div className="max-h-20 overflow-y-auto">
-                                  {w.specialNotes}
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-sm font-medium text-gray-400">-</span>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Actions */}
-                      {columns.find(col => col.id === 'actions')?.visible && (
-                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'actions')?.span || 1}` }}>
-                          <div className="flex space-x-2">
-                            {isPurchased ? (
-                              <div className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded font-medium">
-                                Purchased
-                              </div>
-                            ) : !w.available ? (
-                              <div className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded font-medium">
-                                Unavailable
-                              </div>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation(); // Prevent row click from triggering
-                                  addToCart({
-                                    _id: stableId,
-                                    title: w.title,
-                                    priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.priceCents || 0) * 100),
-                                  });
-                                  // Highlight row when "Buy Now" is clicked
+                      {columns.filter(col => col.visible).map((col, index) => {
+                        const columnComponents: Record<string, React.ReactNode> = {
+                          'checkbox': (
+                            <div key={col.id} className="flex justify-center">
+                              <input 
+                                type="checkbox" 
+                                checked={selectedItems[stableId] || false}
+                                onChange={(e) => {
+                                  const isChecked = e.target.checked;
+                                  setSelectedItems((prev) => ({
+                                    ...prev,
+                                    [stableId]: isChecked
+                                  }));
+                                  setSelectAll(Object.keys(selectedItems).length === websites.length - 1 && isChecked);
+                                  // Highlight row when selected
                                   setHighlightedRows(prev => ({
                                     ...prev,
-                                    [stableId]: true
+                                    [stableId]: isChecked
                                   }));
                                 }}
-                                className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 font-medium transition-colors"
-                                title="Add to Cart"
-                              >
-                                Buy Now
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
+                                className="h-3 w-3 text-blue-600 rounded border-gray-300 focus:ring-blue-500" 
+                              />
+                            </div>
+                          ),
+                          'domain': (
+                            <div key={col.id} style={{ gridColumn: `span ${col.span}` }}>
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-7 w-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
+                                  {w.title.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="ml-4 flex items-center">
+                                  <div className="text-sm font-medium text-gray-900">{w.title}</div>
+                                  {/* Wishlist Heart Icon */}
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const newWishlistState = !isInWishlist;
+                                      setWishlist(prev => ({
+                                        ...prev,
+                                        [stableId]: newWishlistState
+                                      }));
+                                      // Update server
+                                      updateWishlist(stableId, newWishlistState ? 'add' : 'remove');
+                                    }}
+                                    className={`ml-2 ${isInWishlist ? 'text-red-500' : 'text-gray-300 hover:text-red-400'}`}
+                                    title={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                                    disabled={wishlistLoading}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill={isInWishlist ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    </svg>
+                                  </button>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(w.url, '_blank');
+                                    }}
+                                    className="ml-2 text-blue-500 hover:text-blue-700"
+                                    title={w.url}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ),
+                          'category': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.category ? (
+                                <div className="relative group">
+                                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold cursor-help">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                    </svg>
+                                  </div>
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                                    {Array.isArray(w.category) ? w.category.join(', ') : w.category}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-sm font-medium text-gray-400">-</span>
+                              )}
+                            </div>
+                          ),
+                          'price': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              <div className="text-sm font-medium text-green-600">${(w.priceCents / 100).toFixed(2)}</div>
+                            </div>
+                          ),
+                          'da': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              <div className="text-sm font-medium text-gray-900">{w.DA || 0}</div>
+                            </div>
+                          ),
+                          'spam': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              <div className="text-sm font-medium text-gray-900">{w.Spam || 0}</div>
+                            </div>
+                          ),
+                          'dr': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              <div className="text-sm font-medium text-gray-900">{w.DR || 0}</div>
+                            </div>
+                          ),
+                          'traffic': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              <div className="text-sm font-medium text-gray-900">{w.OrganicTraffic || 0}</div>
+                            </div>
+                          ),
+                          'trafficValue': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              <div className="text-sm font-medium text-gray-900">{w.trafficValue || 0}</div>
+                            </div>
+                          ),
+                          'topLocation': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.primaryCountry ? (
+                                <div className="relative group">
+                                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
+                                    {getCountryFlag(w.primaryCountry)}
+                                  </div>
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                                    {w.primaryCountry}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-sm font-medium text-gray-400">-</span>
+                              )}
+                            </div>
+                          ),
+                          'locationTraffic': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              <div className="text-sm font-medium text-gray-900">{w.locationTraffic || 0}</div>
+                            </div>
+                          ),
+                          'primeTrafficCountries': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.primeTrafficCountries && w.primeTrafficCountries.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 justify-center">
+                                  {w.primeTrafficCountries.slice(0, 3).map((country, index) => {
+                                    const flagUrl = countryFlags[country];
+                                    const hasFailed = failedFlags[country];
+                                    
+                                    return (
+                                      <div key={index} className="relative group">
+                                        {flagUrl && !hasFailed ? (
+                                          <img 
+                                            src={flagUrl} 
+                                            alt={country} 
+                                            className="w-6 h-4 rounded-sm object-cover cursor-help"
+                                            onError={() => {
+                                              // Mark this country's flag as failed
+                                              setFailedFlags(prev => ({ ...prev, [country]: true }));
+                                            }}
+                                          />
+                                        ) : (
+                                          <div className="w-6 h-4 rounded-sm bg-gray-100 flex items-center justify-center text-xs cursor-help overflow-hidden">
+                                            <span className="text-xs">{getCountryFlagEmoji(country)}</span>
+                                          </div>
+                                        )}
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                                          {country}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  {w.primeTrafficCountries.length > 3 && (
+                                    <div className="relative group">
+                                      <div className="w-6 h-4 rounded-sm bg-gray-200 flex items-center justify-center text-xs cursor-help">
+                                        +{w.primeTrafficCountries.length - 3}
+                                      </div>
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                                        {w.primeTrafficCountries.slice(3).join(', ')}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-sm font-medium text-gray-400">-</span>
+                              )}
+                            </div>
+                          ),
+                          'rd': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.RD ? (
+                                <a 
+                                  href={w.RD} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                                  title={w.RD}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                  </svg>
+                                </a>
+                              ) : (
+                                <span className="text-sm font-medium text-gray-400">-</span>
+                              )}
+                            </div>
+                          ),
+                          'greyNiche': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              <div className="text-sm font-medium text-gray-900">
+                                {w.greyNicheAccepted ? 'Yes' : 'No'}
+                              </div>
+                            </div>
+                          ),
+                          'specialNotes': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.specialNotes ? (
+                                <div className="relative group">
+                                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                  </div>
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 z-10 max-w-xs">
+                                    <div className="max-h-20 overflow-y-auto">
+                                      {w.specialNotes}
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-sm font-medium text-gray-400">-</span>
+                              )}
+                            </div>
+                          ),
+                          'actions': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              <div className="flex space-x-2">
+                                {isPurchased ? (
+                                  <div className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded font-medium">
+                                    Purchased
+                                  </div>
+                                ) : !w.available ? (
+                                  <div className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded font-medium">
+                                    Unavailable
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Prevent row click from triggering
+                                      addToCart({
+                                        _id: stableId,
+                                        title: w.title,
+                                        priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.priceCents || 0) * 100),
+                                      });
+                                      // Highlight row when "Buy Now" is clicked
+                                      setHighlightedRows(prev => ({
+                                        ...prev,
+                                        [stableId]: true
+                                      }));
+                                    }}
+                                    className="px-2 py-1 bg-blue-400 text-white text-[0.65rem] rounded hover:bg-blue-700 font-medium transition-colors"
+                                    title="Add to Cart"
+                                  >
+                                    Buy Now
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        };
+                        
+                        return columnComponents[col.id] || null;
+                      })}
                     </div>
                   );
                 })}
@@ -1270,7 +1371,7 @@ export default function MarketplaceSection({
                       >
                         <span className="sr-only">Next</span>
                         <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10l7.293-3.293a1 1 0 011.414-1.414l-4-4a1 1 0 010-1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                         </svg>
                       </a>
                     </nav>

@@ -38,7 +38,18 @@ export default function Header() {
           </SignUpButton>
         </SignedOut>
         <SignedIn>
-          <UserButton />
+          <UserButton 
+            appearance={{
+              elements: {
+                avatarBox: {
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  border: '2px solid var(--accent-primary)',
+                }
+              }
+            }}
+          />
         </SignedIn>
       </div>
     </header>
