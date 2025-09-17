@@ -321,6 +321,9 @@ export default function MarketplaceSection({
     greyNicheAccepted: '',
   });
 
+  // State for highlighting multiple rows
+  const [highlightedRows, setHighlightedRows] = useState<Record<string, boolean>>({});
+
   // State for country flags
   const [countryFlags, setCountryFlags] = useState<Record<string, string>>({});
   const [loadingFlags, setLoadingFlags] = useState(false);
@@ -353,6 +356,9 @@ export default function MarketplaceSection({
 
     loadCountryFlags();
   }, [websites]);
+
+  // State for highlighting
+  const [highlightedRow, setHighlightedRow] = useState<string | null>(null);
 
   // Column visibility state
   const [columns, setColumns] = useState<ColumnConfig[]>([
@@ -513,7 +519,7 @@ export default function MarketplaceSection({
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center mr-4"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0H15" />
             </svg>
             Add Selected to Cart
           </button>
@@ -538,7 +544,7 @@ export default function MarketplaceSection({
               className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 11-14 0 2 2 0 0114 0z" />
               </svg>
             </button>
             
@@ -799,7 +805,7 @@ export default function MarketplaceSection({
             <div className="p-8 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Websites Found</h3>
@@ -838,6 +844,16 @@ export default function MarketplaceSection({
                           newSelectedItems[id] = isChecked;
                         });
                         setSelectedItems(prev => newSelectedItems);
+                        
+                        // Also highlight/unhighlight all rows when select all is clicked
+                        const newHighlightedRows: Record<string, boolean> = {};
+                        if (isChecked) {
+                          websites.forEach(w => {
+                            const id = w._id || w.id || `${w.title}-${w.url}`;
+                            newHighlightedRows[id] = true;
+                          });
+                        }
+                        setHighlightedRows(newHighlightedRows);
                       }}
                       className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
@@ -940,12 +956,19 @@ export default function MarketplaceSection({
                 {filteredWebsites.map((w) => {
                   const stableId = w._id || w.id || `${w.title}-${w.url}`;
                   const isPurchased = paidSiteIds.has(stableId);
+                  const isHighlighted = highlightedRows[stableId] || false;
                   
                   return (
                     <div 
                       key={stableId} 
-                      className={`grid gap-4 px-6 py-4 hover:bg-gray-50 items-center`}
+                      className={`grid gap-4 px-6 py-4 hover:bg-gray-50 items-center transition-all duration-200 ease-in-out rounded-lg ${isHighlighted ? 'bg-blue-50 border-l-4 border-blue-400' : ''}`}
                       style={{ gridTemplateColumns: `repeat(${totalSpan}, minmax(0, 1fr))` }}
+                      onClick={() => {
+                        setHighlightedRows(prev => ({
+                          ...prev,
+                          [stableId]: !prev[stableId]
+                        }));
+                      }}
                     >
                       {/* Checkbox */}
                       {columns.find(col => col.id === 'checkbox')?.visible && (
@@ -959,8 +982,12 @@ export default function MarketplaceSection({
                                 ...prev,
                                 [stableId]: isChecked
                               }));
-                              const allSelected = Object.keys(selectedItems).length === websites.length - 1 && isChecked;
-                              setSelectAll(allSelected);
+                              setSelectAll(Object.keys(selectedItems).length === websites.length - 1 && isChecked);
+                              // Highlight row when selected
+                              setHighlightedRows(prev => ({
+                                ...prev,
+                                [stableId]: isChecked
+                              }));
                             }}
                             className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" 
                           />
@@ -1182,11 +1209,19 @@ export default function MarketplaceSection({
                               </div>
                             ) : (
                               <button
-                                onClick={() => addToCart({
-                                  _id: stableId,
-                                  title: w.title,
-                                  priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.priceCents || 0) * 100),
-                                })}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent row click from triggering
+                                  addToCart({
+                                    _id: stableId,
+                                    title: w.title,
+                                    priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.priceCents || 0) * 100),
+                                  });
+                                  // Highlight row when "Buy Now" is clicked
+                                  setHighlightedRows(prev => ({
+                                    ...prev,
+                                    [stableId]: true
+                                  }));
+                                }}
                                 className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 font-medium transition-colors"
                                 title="Add to Cart"
                               >
