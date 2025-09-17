@@ -8,19 +8,19 @@ import { useAuth } from "@clerk/nextjs";
 
 export default function CartPage() {
   const { cart, removeFromCart: originalRemoveFromCart, clearCart: originalClearCart, totalCents } = useCart();
-
+  
   // Wrap removeFromCart to also clear selected option
   const removeFromCart = (itemId: string) => {
     // Clear the selected option for this item
     setSelectedOptions(prev => {
-      const newOptions = { ...prev };
+      const newOptions = {...prev};
       delete newOptions[itemId];
       return newOptions;
     });
     // Call the original removeFromCart function
     originalRemoveFromCart(itemId);
   };
-
+  
   // Wrap clearCart to also clear all selected options
   const clearCart = () => {
     // Clear all selected options
@@ -43,7 +43,23 @@ export default function CartPage() {
   const [uploadsByWebsite, setUploadsByWebsite] = useState<Record<string, number>>({});
   const [modalKey, setModalKey] = useState(0); // Add key to force re-render
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({}); // Track which option is selected for each item
-  
+  const [showCheckoutConfirmation, setShowCheckoutConfirmation] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showErrorMessage, setShowErrorMessage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [websiteDetails, setWebsiteDetails] = useState<Record<string, any>>({}); // Store detailed website info
+  const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({}); // Track loading state for each website
+  const [activeDetailsItem, setActiveDetailsItem] = useState<string | null>(null); // Track which item's details are being shown
+
+  // State to track uploads per cart item (not per website)
+  const [uploadsByCartItem, setUploadsByCartItem] = useState<Record<string, any[]>>({});
+
+  // State to track temporary uploads per cart item (not saved to database yet)
+  const [tempUploadsByCartItem, setTempUploadsByCartItem] = useState<Record<string, any[]>>({});
+
+  // State to track file data per cart item
+  const [fileDataByCartItem, setFileDataByCartItem] = useState<Record<string, {file: File, requirements: string}[]>>({});
+
   // Create ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -120,7 +136,7 @@ export default function CartPage() {
       const purchaseRes = await fetch("/api/purchases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.stringify({ 
           items: cart.map(item => ({
             websiteId: item._id,
             title: item.title,
@@ -172,16 +188,20 @@ export default function CartPage() {
 
       // Clear cart and reset all states for fresh experience
       clearCart();
-
+      
       // Clear cached upload data
       setUploadsByWebsite({});
       setMyUploads([]);
+      // Clear cart item uploads
+      setUploadsByCartItem({});
+      setTempUploadsByCartItem({});
+      setFileDataByCartItem({});
       
       // Reset modal states
       setShowContentModal(false);
       setShowRequestModal(false);
       setShowConfirmModal(false);
-
+      
       // Reset form data
       setContentRequestData({
         titleSuggestion: '',
@@ -194,11 +214,12 @@ export default function CartPage() {
         landingPageUrl: '',
         briefNote: ''
       });
-
+      
       // Reset file input
       resetFileInput();
       
-      alert("Purchase request sent! The administrator will review your order.");
+      // Show success popup
+      setShowSuccessMessage(true);
       
     } catch (err) {
       console.error("Failed to complete purchase:", err);
@@ -228,16 +249,18 @@ export default function CartPage() {
   const openRequestModal = (item: any) => {
     setSelectedItem(item);
     setShowRequestModal(true);
+    // Set this item's selected option to 'request'
     setSelectedOptions(prev => ({
       ...prev,
       [item._id]: 'request'
     }));
+    // Reset form data when opening modal
     setContentRequestData({
       titleSuggestion: '',
       keywords: '',
       anchorText: '',
       targetAudience: '',
-      wordCount: requestWordCounts[item._id] || '',
+      wordCount: '',
       category: '',
       referenceLink: '',
       landingPageUrl: '',
@@ -251,12 +274,6 @@ export default function CartPage() {
       ...prevState,
       [name]: value
     }));
-    if (name === "wordCount" && selectedItem) {
-      setRequestWordCounts(prev => ({
-        ...prev,
-        [selectedItem._id]: value
-      }));
-    }
   };
 
   const handleContentRequest = async () => {
@@ -308,7 +325,7 @@ export default function CartPage() {
       const data = await res.json();
       alert("Content request submitted successfully!");
       setShowRequestModal(false);
-
+      
     } catch (err: any) {
       console.error("Failed to submit content request:", err);
       alert(`Failed to submit content request: ${err.message || "Please try again."}`);
@@ -354,14 +371,14 @@ export default function CartPage() {
     // Reset file state
     setPdfFile(null);
     setRequirements("");
-
+    
     // Reset file input using ref - with additional safety checks
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
       // Force a re-render by triggering a change event
       fileInputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
     }
-
+    
     // Also try to reset any other file inputs that might exist
     const allFileInputs = document.querySelectorAll('input[type="file"]');
     allFileInputs.forEach((input: any) => {
@@ -376,19 +393,23 @@ export default function CartPage() {
     if (!confirm("Are you sure you want to clear your cart? This action cannot be undone.")) {
       return;
     }
-
+    
     // Clear cart
     clearCart();
-
+    
     // Clear cached upload data
     setUploadsByWebsite({});
     setMyUploads([]);
+    // Clear cart item uploads
+    setUploadsByCartItem({});
+    setTempUploadsByCartItem({});
+    setFileDataByCartItem({});
     
     // Reset modal states
     setShowContentModal(false);
     setShowRequestModal(false);
     setShowConfirmModal(false);
-
+    
     // Reset form data
     setContentRequestData({
       titleSuggestion: '',
@@ -401,21 +422,63 @@ export default function CartPage() {
       landingPageUrl: '',
       briefNote: ''
     });
-
+    
     // Reset file input
     resetFileInput();
-
+    
     alert("Cart cleared successfully!");
   };
 
+  const getCountryFlag = (countryName: string | undefined): string => {
+    if (!countryName) return '🌐';
+    
+    const countryFlags: Record<string, string> = {
+      'United States': '🇺🇸',
+      'United Kingdom': '🇬🇧',
+      'Canada': '🇨🇦',
+      'Australia': '🇦🇺',
+      'Germany': '🇩🇪',
+      'France': '🇫🇷',
+      'India': '🇮🇳',
+      'Brazil': '🇧🇷',
+      'Japan': '🇯🇵',
+      'China': '🇨🇳',
+      'Russia': '🇷🇺',
+      'Other': '🌐'
+    };
+    
+    return countryFlags[countryName] || '🌐';
+  };
+
+  // Add a useEffect to debug the state changes
+  useEffect(() => {
+    console.log('Website details updated:', websiteDetails);
+  }, [websiteDetails]);
+
+  useEffect(() => {
+    console.log('Loading details updated:', loadingDetails);
+  }, [loadingDetails]);
+
+  // Handle escape key to close details modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeDetailsItem) {
+        setActiveDetailsItem(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [activeDetailsItem]);
+
   if (cart.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto p-6" style={{ backgroundColor: 'var(--base-primary)' }}>
-        <div className="rounded-lg shadow-sm p-8 text-center" style={{ backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)' }}>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--base-secondary)' }}>
+      <div className="max-w-4xl mx-auto p-6" style={{backgroundColor: 'var(--base-primary)'}}>
+        <div className="rounded-lg shadow-sm p-8 text-center" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: 'var(--base-secondary)'}}>
             <svg
               className="w-8 h-8"
-              style={{ color: 'var(--secondary-lighter)' }}
+              style={{color: 'var(--secondary-lighter)'}}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -428,8 +491,8 @@ export default function CartPage() {
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--secondary-primary)' }}>Your cart is empty</h3>
-          <p className="mb-6" style={{ color: 'var(--secondary-lighter)' }}>Add some websites to your cart to get started.</p>
+          <h3 className="text-lg font-medium mb-2" style={{color: 'var(--secondary-primary)'}}>Your cart is empty</h3>
+          <p className="mb-6" style={{color: 'var(--secondary-lighter)'}}>Add some websites to your cart to get started.</p>
           <Link
             href="/dashboard/consumer"
             className="px-4 py-2 rounded-md transition-colors font-medium text-sm"
@@ -437,8 +500,8 @@ export default function CartPage() {
               backgroundColor: 'var(--accent-primary)',
               color: 'white'
             }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--accent-hover)'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--accent-primary)'}
+            onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--accent-hover)'}
+            onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--accent-primary)'}
           >
             Continue Shopping
           </Link>
@@ -447,24 +510,16 @@ export default function CartPage() {
     );
   }
 
-  // Check if all items have either 'content' or 'request' selected
-  const allItemsSelected = cart.every(item => selectedOptions[item._id] === 'content' || selectedOptions[item._id] === 'request');
-
-  const totalWithExtras = cart.reduce(
-    (sum, item) => sum + item.priceCents + getRequestExtraCents(item),
-    0
-  );
-
   return (
-    <div className="max-w-4xl mx-auto p-6" style={{ backgroundColor: 'var(--base-primary)' }}>
+    <div className="max-w-4xl mx-auto p-6" style={{backgroundColor: 'var(--base-primary)'}}>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold" style={{ color: 'var(--secondary-primary)' }}>Shopping Cart</h1>
+        <h1 className="text-3xl font-bold" style={{color: 'var(--secondary-primary)'}}>Shopping Cart</h1>
         <Link
           href="/dashboard/consumer"
           className="flex items-center transition-colors"
           style={{color: 'var(--accent-primary)'}}
-          onMouseEnter={(e) => e.target.style.color = 'var(--accent-hover)'}
-          onMouseLeave={(e) => e.target.style.color = 'var(--accent-primary)'}
+          onMouseEnter={(e) => (e.target as HTMLElement).style.color = 'var(--accent-hover)'}
+          onMouseLeave={(e) => (e.target as HTMLElement).style.color = 'var(--accent-primary)'}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
@@ -476,10 +531,11 @@ export default function CartPage() {
       <div className="rounded-lg shadow-sm overflow-hidden" style={{backgroundColor: 'var(--base-primary)', border: '1px solid var(--base-tertiary)'}}>
         <div className="p-6" style={{borderBottom: '1px solid var(--base-tertiary)'}}>
           <div className="grid grid-cols-12 gap-4 font-semibold uppercase tracking-wider text-xs pb-4" style={{color: 'var(--secondary-lighter)'}}>
-            <div className="col-span-5">Product</div>
-            <div className="col-span-2 text-center">Price</div>
-            <div className="col-span-2 text-center">Content Status</div>
-            <div className="col-span-3 text-right">Actions</div>
+            <div className="col-span-3 flex items-center">Product</div>
+            <div className="col-span-2 flex items-center justify-center">Price</div>
+            <div className="col-span-2 flex items-center justify-center">Content Status</div>
+            <div className="col-span-1 flex items-center justify-center">Details</div>
+            <div className="col-span-4 flex items-center justify-end">Actions</div>
           </div>
 
           {cart.map((item, idx) => (
@@ -494,7 +550,7 @@ export default function CartPage() {
                   </div>
                 </div>
               </div>
-              <div className="col-span-2 text-center">
+              <div className="col-span-2 flex items-center justify-center">
                 <div className="text-sm font-medium text-gray-900">${(item.priceCents / 100).toFixed(2)}</div>
               </div>
               <div className="col-span-2 flex items-center justify-center">
@@ -502,7 +558,7 @@ export default function CartPage() {
                   <div className="flex flex-col items-center">
                     <span className="text-xs text-blue-600 font-medium">My Content</span>
                     <div className="flex gap-1 mt-1">
-                      <button
+                      <button 
                         onClick={() => openContentModal(item)}
                         className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center"
                         title="View uploaded documents"
@@ -520,7 +576,7 @@ export default function CartPage() {
                       <button
                         onClick={() => {
                           setSelectedOptions(prev => {
-                            const newOptions = { ...prev };
+                            const newOptions = {...prev};
                             delete newOptions[item._id];
                             return newOptions;
                           });
@@ -545,7 +601,7 @@ export default function CartPage() {
                   <div className="flex flex-col items-center">
                     <span className="text-xs text-green-600 font-medium">Request</span>
                     <div className="flex gap-1 mt-1">
-                      <button
+                      <button 
                         onClick={() => openRequestModal(item)}
                         className="p-1 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors flex items-center justify-center"
                         title="View request details"
@@ -558,7 +614,7 @@ export default function CartPage() {
                       <button
                         onClick={() => {
                           setSelectedOptions(prev => {
-                            const newOptions = { ...prev };
+                            const newOptions = {...prev};
                             delete newOptions[item._id];
                             return newOptions;
                           });
@@ -702,24 +758,26 @@ export default function CartPage() {
                 <button
                   onClick={() => openContentModal(item)}
                   disabled={selectedOptions[item._id] === 'request'}
-                  className={`px-2 py-0.5 text-white rounded text-xs transition-colors font-medium ${selectedOptions[item._id] === 'request'
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : selectedOptions[item._id] === 'content'
+                  className={`px-2 py-0.5 text-white rounded text-xs transition-colors font-medium ${
+                    selectedOptions[item._id] === 'request' 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : selectedOptions[item._id] === 'content'
                       ? 'bg-blue-800 hover:bg-blue-900'
                       : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
+                  }`}
                 >
                   {selectedOptions[item._id] === 'content' ? '✓ My Content' : 'My Content'}
                 </button>
                 <button
                   onClick={() => openRequestModal(item)}
                   disabled={selectedOptions[item._id] === 'content'}
-                  className={`px-2 py-0.5 text-white rounded text-xs transition-colors font-medium ${selectedOptions[item._id] === 'content'
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : selectedOptions[item._id] === 'request'
+                  className={`px-2 py-0.5 text-white rounded text-xs transition-colors font-medium ${
+                    selectedOptions[item._id] === 'content' 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : selectedOptions[item._id] === 'request'
                       ? 'bg-green-800 hover:bg-green-900'
                       : 'bg-green-600 hover:bg-green-700'
-                    }`}
+                  }`}
                 >
                   {selectedOptions[item._id] === 'request' ? '✓ Request' : 'Request'}
                 </button>
@@ -753,20 +811,15 @@ export default function CartPage() {
 
           <div className="text-right">
             <div className="text-xl font-bold text-gray-900 mb-3">
-              Total: ${(totalWithExtras / 100).toFixed(2)}
+              Total: ${(totalCents / 100).toFixed(2)}
             </div>
             <button
               onClick={handleCheckout}
-              disabled={isProcessing || !isSignedIn || !allItemsSelected}
+              disabled={isProcessing || !isSignedIn}
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
             >
               {isProcessing ? "Processing..." : "Proceed to Checkout"}
             </button>
-            {!allItemsSelected && (
-              <p className="text-sm text-red-600 mt-2">
-                Please select either <b>My Content</b> or <b>Request</b> for each item before checkout.
-              </p>
-            )}
             {!isSignedIn && (
               <p className="text-sm text-red-600 mt-2">Please sign in to checkout</p>
             )}
@@ -780,15 +833,15 @@ export default function CartPage() {
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold">Content for {selectedItem.title}</h3>
-              <button
-                onClick={() => {
-                  setShowContentModal(false);
-                  resetFileInput();
-                  // Keep the selected option when user closes modal
-                  // Only reset if user explicitly removes the selection
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
+                             <button
+                 onClick={() => {
+                   setShowContentModal(false);
+                   resetFileInput();
+                   // Keep the selected option when user closes modal
+                   // Only reset if user explicitly removes the selection
+                 }}
+                 className="text-gray-500 hover:text-gray-700"
+               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -876,18 +929,18 @@ export default function CartPage() {
                 />
               </div>
               <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowContentModal(false);
-                    resetFileInput();
-                    // Keep the selected option when user closes modal
-                    // Only reset if user explicitly removes the selection
-                  }}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
-                >
-                  Close
-                </button>
+                                 <button
+                   type="button"
+                   onClick={() => {
+                     setShowContentModal(false);
+                     resetFileInput();
+                     // Keep the selected option when user closes modal
+                     // Only reset if user explicitly removes the selection
+                   }}
+                   className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                 >
+                   Close
+                 </button>
                 <button
                   type="submit"
                   disabled={!pdfFile || !requirements.trim()}
@@ -949,7 +1002,7 @@ export default function CartPage() {
                 </svg>
               </button>
             </div>
-
+            
             <div className="mb-6 p-4 bg-blue-50 rounded-md">
               <h4 className="font-bold text-lg mb-2">Language*</h4>
               <div className="mb-2">
@@ -994,7 +1047,7 @@ export default function CartPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1 required">
                   Anchor Text*
-                </label>
+                  </label>
                 <input
                   type="text"
                   name="anchorText"
@@ -1045,14 +1098,14 @@ export default function CartPage() {
                     onChange={handleContentRequestChange}
                     className="w-full p-2 border rounded-md"
                     required
-                  >
-                    <option value="">Select Word Count</option>
-                    <option value="500">500 words</option>
-                    <option value="1000">1000 words</option>
-                    <option value="1500">1500 words</option>
-                    <option value="2000">2000 words</option>
-                    <option value="2500">2500+ words</option>
-                  </select>
+                >
+                  <option value="">Select Word Count</option>
+                  <option value="500">500 words</option>
+                  <option value="1000">1000 words</option>
+                  <option value="1500">1500 words</option>
+                  <option value="2000">2000 words</option>
+                  <option value="2500">2500+ words</option>
+                </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 required">
@@ -1124,7 +1177,7 @@ export default function CartPage() {
                 />
               </div>
             </form>
-
+            
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => {
@@ -1162,7 +1215,7 @@ export default function CartPage() {
                 </svg>
               </button>
             </div>
-
+            
             <div className="mb-4">
               <p className="text-gray-600 mb-3">Please confirm your upload details:</p>
               <div className="space-y-2 text-sm">
@@ -1172,7 +1225,7 @@ export default function CartPage() {
                 <div><strong>Requirements:</strong> {requirements}</div>
               </div>
             </div>
-
+            
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowConfirmModal(false)}
@@ -1185,49 +1238,37 @@ export default function CartPage() {
                   try {
                     setUploading(true);
                     setShowConfirmModal(false);
-                    const fd = new FormData();
-                    fd.append("pdfFile", pdfFile!);
-                    fd.append("requirements", requirements);
-                    fd.append("websiteId", selectedItem._id);
-                    const res = await fetch("/api/my-content", { method: "POST", body: fd });
-                    if (!res.ok) {
-                      let msg = `HTTP ${res.status}`;
-                      try { const j = await res.json(); if (j?.error) msg = j.error; } catch {}
-                      throw new Error(msg);
-                    }
-                    // refresh list
-                    const listRes = await fetch(`/api/my-content?websiteId=${encodeURIComponent(selectedItem._id)}`);
-                    const list = await listRes.json();
-                    setMyUploads(list.items ?? []);
-                    // refresh counts across cart
-                    try {
-                      const allRes = await fetch("/api/my-content");
-                      if (allRes.ok) {
-                        const all = await allRes.json();
-                        const items: any[] = all.items || [];
-                        const map: Record<string, number> = {};
-                        for (const it of items) {
-                          const wid = it.websiteId || "";
-                          if (!wid) continue;
-                          map[wid] = (map[wid] || 0) + 1;
-                        }
-                        setUploadsByWebsite(map);
-                        
-                        // Ensure the selected option is set to 'content' for this item
-                        if (selectedItem && selectedItem._id) {
-                          setSelectedOptions(prev => ({
-                            ...prev,
-                            [selectedItem._id]: 'content'
-                          }));
-                        }
-                      }
-                    } catch {}
-                                         setRequirements("");
+                    
+                    // Store uploads temporarily per cart item instead of saving to database immediately
+                    const newUpload = {
+                      requirements,
+                      createdAt: new Date(),
+                      pdf: {
+                        filename: pdfFile?.name,
+                        size: pdfFile?.size,
+                      },
+                      tempId: Date.now() // Temporary ID for frontend tracking
+                    };
+
+                    setTempUploadsByCartItem(prev => ({
+                      ...prev,
+                      [selectedItem._id]: [...(prev[selectedItem._id] || []), newUpload]
+                    }));
+                    // Store file data for later upload with purchase ID
+                    setFileDataByCartItem(prev => ({
+                      ...prev,
+                      [selectedItem._id]: [...(prev[selectedItem._id] || []), { file: pdfFile, requirements }]
+                    }));
+                    // Update the shared myUploads state to show current temporary uploads
+                    setMyUploads(prev => [...prev, newUpload]);
+                    
+                    // The useEffect will now automatically update uploadsByWebsite based on tempUploadsByCartItem
+                     setRequirements("");
                      setPdfFile(null);
                      if (fileInputRef.current) {
                        fileInputRef.current.value = "";
                      }
-                     alert("Uploaded successfully");
+                     alert("File added temporarily. It will be uploaded when you proceed to checkout.");
                   } catch (err: any) {
                     alert(`Upload failed: ${err?.message ?? "Unknown error"}`);
                   } finally {

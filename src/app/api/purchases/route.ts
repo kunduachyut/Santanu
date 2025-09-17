@@ -192,8 +192,23 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    purchaseRequests[purchaseIndex].status = status;
-    purchaseRequests[purchaseIndex].updatedAt = new Date().toISOString();
+    // Transform to match expected format
+    const formattedPurchase = {
+      id: purchase._id.toString(),
+      _id: purchase._id.toString(),
+      websiteId: purchase.websiteId.toString(),
+      websiteTitle: '', // We don't have this information in this context
+      priceCents: purchase.amountCents,
+      totalCents: purchase.amountCents,
+      amountCents: purchase.amountCents,
+      customerId: purchase.buyerId,
+      customerEmail: '', // We don't have this information in this context
+      status: purchase.status,
+      contentType: purchase.contentSelection, // Use stored content selection
+      createdAt: purchase.createdAt.toISOString(),
+      updatedAt: purchase.updatedAt?.toISOString(),
+      contentIds: purchase.contentIds?.map(id => id.toString()) || [] // Add contentIds
+    };
 
     return NextResponse.json({ 
       success: true, 
