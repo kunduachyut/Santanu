@@ -4,6 +4,8 @@ import { requireAuth } from "@/lib/auth";
 import { UserContent } from "@/models/Content";
 import Website from "@/models/Website";
 import User from "@/models/User";
+import Purchase from "@/models/Purchase";
+import { Types } from "mongoose";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get("pdfFile");
     const requirements = String(formData.get("requirements") || "").trim();
     const websiteId = String(formData.get("websiteId") || "").trim() || undefined;
+    const purchaseId = String(formData.get("purchaseId") || "").trim() || undefined;
 
     if (!requirements) {
       return NextResponse.json({ error: "requirements is required" }, { status: 400 });
@@ -58,7 +61,7 @@ export async function POST(req: NextRequest) {
     // Get user information
     let userEmail = "unknown";
     try {
-      const user = await User.findOne({ clerkId: userId });
+      const user = await (User as any).findOne({ clerkId: userId });
       if (user) {
         userEmail = user.email;
       }
@@ -74,9 +77,11 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await fileLike.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // Create content with proper purchaseId linking
     const created = await UserContent.create({
       userId,
       websiteId,
+      purchaseId: purchaseId ? new Types.ObjectId(purchaseId) : undefined, // Use purchaseId if provided
       requirements,
       pdf: {
         data: buffer,
@@ -85,6 +90,20 @@ export async function POST(req: NextRequest) {
         size: fileLike.size,
       },
     });
+
+    // If we have a purchaseId, link this content to the purchase using direct database update
+    if (purchaseId && Types.ObjectId.isValid(purchaseId)) {
+      try {
+        // Use $addToSet to avoid duplicates
+        await Purchase.findByIdAndUpdate(
+          purchaseId,
+          { $addToSet: { contentIds: created._id } },
+          { new: true }
+        );
+      } catch (err) {
+        console.error("Error linking content to purchase:", err);
+      }
+    }
 
     return NextResponse.json({ id: created._id }, { status: 201 });
   } catch (err: any) {
@@ -103,12 +122,17 @@ export async function GET(req: NextRequest) {
     await dbConnect();
 
     const { searchParams } = new URL(req.url);
-    const websiteId = searchParams.get("websiteId") || undefined as any;
-    const items = await UserContent.find(
-      websiteId ? { userId, websiteId } : { userId }
-    )
+    const websiteId = searchParams.get("websiteId") || undefined;
+    const purchaseId = searchParams.get("purchaseId") || undefined;
+    
+    // Build query based on provided parameters
+    const query: any = { userId };
+    if (websiteId) query.websiteId = websiteId;
+    if (purchaseId && Types.ObjectId.isValid(purchaseId)) query.purchaseId = new Types.ObjectId(purchaseId);
+    
+    const items = await UserContent.find(query)
       .sort({ createdAt: -1 })
-      .select("requirements createdAt pdf.filename pdf.size websiteId");
+      .select("requirements createdAt pdf.filename pdf.size websiteId purchaseId");
 
     return NextResponse.json({ items });
   } catch (err) {

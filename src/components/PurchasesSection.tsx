@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 export default function PurchasesSection({ 
   purchases, 
   loading, 
@@ -13,6 +15,49 @@ export default function PurchasesSection({
   messages: { [key: string]: string };
   setMessages: (updater: (prev: { [key: string]: string }) => { [key: string]: string }) => void;
 }) {
+  const [contentUploads, setContentUploads] = useState<Record<string, any[]>>({});
+  const [loadingUploads, setLoadingUploads] = useState<Record<string, boolean>>({});
+
+  // Fetch content uploads for each purchase
+  useEffect(() => {
+    const fetchContentUploads = async () => {
+      if (purchases.length === 0) return;
+      
+      // Create a map of purchaseId to websiteId for lookup
+      const purchaseToWebsiteMap: Record<string, string> = {};
+      purchases.forEach(purchase => {
+        const websiteId = getWebsiteId(purchase);
+        if (websiteId) {
+          purchaseToWebsiteMap[purchase._id] = websiteId;
+        }
+      });
+      
+      // Fetch uploads for each purchase
+      Object.keys(purchaseToWebsiteMap).forEach(async (purchaseId) => {
+        const websiteId = purchaseToWebsiteMap[purchaseId];
+        if (!websiteId) return;
+        
+        setLoadingUploads(prev => ({ ...prev, [purchaseId]: true }));
+        try {
+          const res = await fetch(`/api/my-content?purchaseId=${purchaseId}`);
+          if (res.ok) {
+            const data = await res.json();
+            setContentUploads(prev => ({
+              ...prev,
+              [purchaseId]: data.items || []
+            }));
+          }
+        } catch (err) {
+          console.error("Failed to fetch content uploads:", err);
+        } finally {
+          setLoadingUploads(prev => ({ ...prev, [purchaseId]: false }));
+        }
+      });
+    };
+    
+    fetchContentUploads();
+  }, [purchases]);
+
   const getWebsiteId = (purchase: any): string => {
     if (typeof purchase.websiteId === "string") {
       return purchase.websiteId;
@@ -172,6 +217,8 @@ export default function PurchasesSection({
                   const websiteUrl = getWebsiteUrl(purchase);
                   const amountCents = getAmountCents(purchase);
                   const websiteId = getWebsiteId(purchase);
+                  const uploads = contentUploads[purchase._id] || [];
+                  const isLoadingUploads = loadingUploads[purchase._id] || false;
                   
                   return (
                     <div key={purchase._id || index} className="grid grid-cols-16 gap-4 px-6 py-4 hover:bg-gray-50 items-center">
@@ -186,6 +233,12 @@ export default function PurchasesSection({
                             <div className="text-xs text-gray-500 truncate max-w-[200px]" title={websiteUrl}>
                               {websiteUrl.length > 40 ? `${websiteUrl.substring(0, 40)}...` : websiteUrl}
                             </div>
+                            {/* Show content uploads count */}
+                            {uploads.length > 0 && (
+                              <div className="mt-1 text-xs text-blue-600">
+                                {uploads.length} content upload{uploads.length !== 1 ? 's' : ''}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

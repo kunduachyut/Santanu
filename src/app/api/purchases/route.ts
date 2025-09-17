@@ -1,10 +1,10 @@
-// app/api/purchases/route.ts (updated)
+// app/api/purchases/route.ts (updated to use database models)
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getOrCreateUser } from '@/lib/user';
-
-// In-memory storage for demo purposes (replace with database in production)
-let purchaseRequests: any[] = [];
+import { dbConnect } from '@/lib/db';
+import Purchase from '@/models/Purchase';
+import { UserContent } from '@/models/Content';
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,16 +17,57 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    await dbConnect();
+
     // Check if user is super admin (you might want to implement proper role checking)
     const url = new URL(req.url);
     const isSuperAdmin = url.searchParams.get('role') === 'superadmin';
     
-    // If super admin, return all purchases, otherwise filter for current user
-    const userPurchases = isSuperAdmin 
-      ? purchaseRequests 
-      : purchaseRequests.filter(purchase => purchase.customerId === userId);
+    let userPurchases;
+    if (isSuperAdmin) {
+      // If super admin, return all purchases with populated website data
+      userPurchases = await Purchase.find()
+        .populate('websiteId')
+        .sort({ createdAt: -1 })
+        .exec();
+    } else {
+      // Otherwise filter for current user
+      userPurchases = await Purchase.find({ buyerId: userId })
+        .populate('websiteId')
+        .sort({ createdAt: -1 })
+        .exec();
+    }
     
-    return NextResponse.json(userPurchases);
+    // Transform the data to match the expected format
+    const formattedPurchases = userPurchases.map(purchase => ({
+      id: purchase._id.toString(),
+      _id: purchase._id.toString(),
+      websiteId: purchase.websiteId?._id?.toString() || purchase.websiteId?.toString(),
+      websiteTitle: purchase.websiteId?.title || 'Unknown Website',
+      priceCents: purchase.amountCents,
+      totalCents: purchase.amountCents,
+      amountCents: purchase.amountCents,
+      customerId: purchase.buyerId,
+      customerEmail: '', // We'll populate this below
+      status: purchase.status,
+      contentType: purchase.contentSelection, // Use stored content selection
+      createdAt: purchase.createdAt.toISOString(),
+      updatedAt: purchase.updatedAt?.toISOString(),
+      contentIds: purchase.contentIds?.map(id => id.toString()) || [] // Add contentIds
+    }));
+    
+    // Populate customer email information
+    for (const purchase of formattedPurchases) {
+      try {
+        const user = await getOrCreateUser(purchase.customerId);
+        purchase.customerEmail = user.email;
+      } catch (err) {
+        console.error('Error fetching user email:', err);
+        purchase.customerEmail = 'Unknown';
+      }
+    }
+
+    return NextResponse.json(formattedPurchases);
   } catch (error) {
     console.error('Failed to fetch purchases:', error);
     return NextResponse.json(
@@ -56,6 +97,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    await dbConnect();
+
     // Get or create user to fetch real email
     const user = await getOrCreateUser(userId);
 
@@ -66,13 +109,37 @@ export async function POST(req: NextRequest) {
       // Get content selection for this item
       const contentSelection = contentSelections?.[item.websiteId];
       
-      // Create a purchase request for each item
-      const purchase = await createPurchase(item, userId, user.email, contentSelection);
-      purchaseResults.push(purchase);
-      purchaseRequests.push(purchase);
+      // Create a purchase in the database
+      const purchase = await Purchase.create({
+        websiteId: item.websiteId,
+        buyerId: userId,
+        amountCents: item.priceCents,
+        status: 'pending',
+        contentIds: [], // Initialize with empty array
+        contentSelection: contentSelections?.[item.websiteId] || null // Store user's content selection
+      });
+      
+      // Transform to match expected format
+      const formattedPurchase = {
+        id: purchase._id.toString(),
+        _id: purchase._id.toString(),
+        websiteId: purchase.websiteId.toString(),
+        websiteTitle: item.title,
+        priceCents: purchase.amountCents,
+        totalCents: purchase.amountCents,
+        amountCents: purchase.amountCents,
+        customerId: purchase.buyerId,
+        customerEmail: user.email,
+        status: purchase.status,
+        contentType: purchase.contentSelection, // Use stored content selection
+        createdAt: purchase.createdAt.toISOString(),
+        updatedAt: purchase.updatedAt?.toISOString(),
+        contentIds: purchase.contentIds?.map(id => id.toString()) || [] // Add contentIds
+      };
+      
+      purchaseResults.push(formattedPurchase);
     }
 
-    // For now, we'll just return a success message
     return NextResponse.json({ 
       success: true, 
       message: 'Purchase requests sent to administrator for approval',
@@ -88,28 +155,18 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Mock function to create a purchase
-async function createPurchase(item: any, customerId: string, customerEmail: string, contentSelection?: string) {
-  // This would typically create a database record
-  return {
-    id: Math.random().toString(36).substr(2, 9),
-    _id: Math.random().toString(36).substr(2, 9), // Add _id for compatibility
-    websiteId: item.websiteId,
-    websiteTitle: item.title,
-    priceCents: item.priceCents,
-    totalCents: item.priceCents,
-    amountCents: item.priceCents, // Add amountCents for compatibility
-    customerId,
-    customerEmail,
-    status: 'pending',
-    contentType: contentSelection || null, // 'content' for My Content, 'request' for Request Content
-    createdAt: new Date().toISOString()
-  };
-}
-
 // API endpoint to update purchase status
 export async function PATCH(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { purchaseId, status } = await req.json();
     
     if (!purchaseId || !status) {
@@ -119,29 +176,29 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Find and update the purchase request
-    const purchaseIndex = purchaseRequests.findIndex(p => p.id === purchaseId);
-    if (purchaseIndex === -1) {
+    await dbConnect();
+
+    // Find and update the purchase
+    const purchase = await Purchase.findByIdAndUpdate(
+      purchaseId,
+      { status, updatedAt: new Date() },
+      { new: true }
+    );
+    
+    if (!purchase) {
       return NextResponse.json(
         { error: 'Purchase request not found' },
         { status: 404 }
       );
     }
 
-    const allowedStatuses = ["pending", "ongoing", "pendingPayment", "approved", "rejected"];
-    if (!allowedStatuses.includes(status)) {
-      return NextResponse.json(
-        { error: 'Invalid status' },
-        { status: 400 }
-      );
-    }
     purchaseRequests[purchaseIndex].status = status;
     purchaseRequests[purchaseIndex].updatedAt = new Date().toISOString();
 
     return NextResponse.json({ 
       success: true, 
       message: 'Purchase status updated',
-      purchase: purchaseRequests[purchaseIndex]
+      purchase: formattedPurchase
     });
 
   } catch (error) {
