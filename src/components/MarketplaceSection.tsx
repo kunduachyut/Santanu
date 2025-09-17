@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCart } from "../app/context/CartContext";
 
 // Country flag mapping function
@@ -23,6 +23,223 @@ const getCountryFlag = (countryName: string | undefined): string => {
   return countryFlags[countryName] || '🌐';
 };
 
+// Function to get flag emoji for any country name
+const getCountryFlagEmoji = (countryName: string): string => {
+  // This is a simplified mapping. In a real application, you might want to use a more comprehensive library
+  const flagMap: Record<string, string> = {
+    'Afghanistan': '🇦🇫',
+    'Albania': '🇦🇱',
+    'Algeria': '🇩🇿',
+    'Andorra': '🇦🇩',
+    'Angola': '🇦🇴',
+    'Antigua and Barbuda': '🇦🇬',
+    'Argentina': '🇦🇷',
+    'Armenia': '🇦🇲',
+    'Australia': '🇦🇺',
+    'Austria': '🇦🇹',
+    'Azerbaijan': '🇦🇿',
+    'Bahamas': '🇧🇸',
+    'Bahrain': '🇧🇭',
+    'Bangladesh': '🇧🇩',
+    'Barbados': '🇧🇧',
+    'Belarus': '🇧🇾',
+    'Belgium': '🇧🇪',
+    'Belize': '🇧🇿',
+    'Benin': '🇧🇯',
+    'Bhutan': '🇧🇹',
+    'Bolivia': '🇧🇴',
+    'Bosnia and Herzegovina': '🇧🇦',
+    'Botswana': '🇧🇼',
+    'Brazil': '🇧🇷',
+    'Brunei': '🇧🇳',
+    'Bulgaria': '🇧🇬',
+    'Burkina Faso': '🇧🇫',
+    'Burundi': '🇧🇮',
+    'Cabo Verde': '🇨🇻',
+    'Cambodia': '🇰🇭',
+    'Cameroon': '🇨🇲',
+    'Canada': '🇨🇦',
+    'Central African Republic': '🇨🇫',
+    'Chad': '🇹🇩',
+    'Chile': '🇨🇱',
+    'China': '🇨🇳',
+    'Colombia': '🇨🇴',
+    'Comoros': '🇰🇲',
+    'Congo (Congo-Brazzaville)': '🇨🇬',
+    'Costa Rica': '🇨🇷',
+    'Croatia': '🇭🇷',
+    'Cuba': '🇨🇺',
+    'Cyprus': '🇨🇾',
+    'Czechia (Czech Republic)': '🇨🇿',
+    'Democratic Republic of the Congo': '🇨🇩',
+    'Denmark': '🇩🇰',
+    'Djibouti': '🇩🇯',
+    'Dominica': '🇩🇲',
+    'Dominican Republic': '🇩🇴',
+    'Ecuador': '🇪🇨',
+    'Egypt': '🇪🇬',
+    'El Salvador': '🇸🇻',
+    'Equatorial Guinea': '🇬🇶',
+    'Eritrea': '🇪🇷',
+    'Estonia': '🇪🇪',
+    'Eswatini (fmr. "Swaziland")': '🇸🇿',
+    'Ethiopia': '🇪🇹',
+    'Fiji': '🇫🇯',
+    'Finland': '🇫🇮',
+    'France': '🇫🇷',
+    'Gabon': '🇬🇦',
+    'Gambia': '🇬🇲',
+    'Georgia': '🇬🇪',
+    'Germany': '🇩🇪',
+    'Ghana': '🇬🇭',
+    'Greece': '🇬🇷',
+    'Grenada': '🇬🇩',
+    'Guatemala': '🇬🇹',
+    'Guinea': '🇬🇳',
+    'Guinea-Bissau': '🇬🇼',
+    'Guyana': '🇬🇾',
+    'Haiti': '🇭🇹',
+    'Holy See': '🇻🇦',
+    'Honduras': '🇭🇳',
+    'Hungary': '🇭🇺',
+    'Iceland': '🇮🇸',
+    'India': '🇮🇳',
+    'Indonesia': '🇮🇩',
+    'Iran': '🇮🇷',
+    'Iraq': '🇮🇶',
+    'Ireland': '🇮🇪',
+    'Israel': '🇮🇱',
+    'Italy': '🇮🇹',
+    'Jamaica': '🇯🇲',
+    'Japan': '🇯🇵',
+    'Jordan': '🇯🇴',
+    'Kazakhstan': '🇰🇿',
+    'Kenya': '🇰🇪',
+    'Kiribati': '🇰🇮',
+    'Kuwait': '🇰🇼',
+    'Kyrgyzstan': '🇰🇬',
+    'Laos': '🇱🇦',
+    'Latvia': '🇱🇻',
+    'Lebanon': '🇱🇧',
+    'Lesotho': '🇱🇸',
+    'Liberia': '🇱🇷',
+    'Libya': '🇱🇾',
+    'Liechtenstein': '🇱🇮',
+    'Lithuania': '🇱🇹',
+    'Luxembourg': '🇱🇺',
+    'Madagascar': '🇲🇬',
+    'Malawi': '🇲🇼',
+    'Malaysia': '🇲🇾',
+    'Maldives': '🇲🇻',
+    'Mali': '🇲🇱',
+    'Malta': '🇲🇹',
+    'Marshall Islands': '🇲🇭',
+    'Mauritania': '🇲🇷',
+    'Mauritius': '🇲🇺',
+    'Mexico': '🇲🇽',
+    'Micronesia': '🇫🇲',
+    'Moldova': '🇲🇩',
+    'Monaco': '🇲🇨',
+    'Mongolia': '🇲🇳',
+    'Montenegro': '🇲🇪',
+    'Morocco': '🇲🇦',
+    'Mozambique': '🇲🇿',
+    'Myanmar (formerly Burma)': '🇲🇲',
+    'Namibia': '🇳🇦',
+    'Nauru': '🇳🇷',
+    'Nepal': '🇳🇵',
+    'Netherlands': '🇳🇱',
+    'New Zealand': '🇳🇿',
+    'Nicaragua': '🇳🇮',
+    'Niger': '🇳🇪',
+    'Nigeria': '🇳🇬',
+    'North Korea': '🇰🇵',
+    'North Macedonia': '🇲🇰',
+    'Norway': '🇳🇴',
+    'Oman': '🇴🇲',
+    'Pakistan': '🇵🇰',
+    'Palau': '🇵🇼',
+    'Palestine State': '🇵🇸',
+    'Panama': '🇵🇦',
+    'Papua New Guinea': '🇵🇬',
+    'Paraguay': '🇵🇾',
+    'Peru': '🇵🇪',
+    'Philippines': '🇵🇭',
+    'Poland': '🇵🇱',
+    'Portugal': '🇵🇹',
+    'Qatar': '🇶🇦',
+    'Romania': '🇷🇴',
+    'Russia': '🇷🇺',
+    'Rwanda': '🇷🇼',
+    'Saint Kitts and Nevis': '🇰🇳',
+    'Saint Lucia': '🇱🇨',
+    'Saint Vincent and the Grenadines': '🇻🇨',
+    'Samoa': '🇼🇸',
+    'San Marino': '🇸🇲',
+    'Sao Tome and Principe': '🇸🇹',
+    'Saudi Arabia': '🇸🇦',
+    'Senegal': '🇸🇳',
+    'Serbia': '🇷🇸',
+    'Seychelles': '🇸🇨',
+    'Sierra Leone': '🇸🇱',
+    'Singapore': '🇸🇬',
+    'Slovakia': '🇸🇰',
+    'Slovenia': '🇸🇮',
+    'Solomon Islands': '🇸🇧',
+    'Somalia': '🇸🇴',
+    'South Africa': '🇿🇦',
+    'South Korea': '🇰🇷',
+    'South Sudan': '🇸🇸',
+    'Spain': '🇪🇸',
+    'Sri Lanka': '🇱🇰',
+    'Sudan': '🇸🇩',
+    'Suriname': '🇸🇷',
+    'Sweden': '🇸🇪',
+    'Switzerland': '🇨🇭',
+    'Syria': '🇸🇾',
+    'Tajikistan': '🇹🇯',
+    'Tanzania': '🇹🇿',
+    'Thailand': '🇹🇭',
+    'Timor-Leste': '🇹🇱',
+    'Togo': '🇹🇬',
+    'Tonga': '🇹🇴',
+    'Trinidad and Tobago': '🇹🇹',
+    'Tunisia': '🇹🇳',
+    'Turkey': '🇹🇷',
+    'Turkmenistan': '🇹🇲',
+    'Tuvalu': '🇹🇻',
+    'Uganda': '🇺🇬',
+    'Ukraine': '🇺🇦',
+    'United Arab Emirates': '🇦🇪',
+    'United Kingdom': '🇬🇧',
+    'United States of America': '🇺🇸',
+    'Uruguay': '🇺🇾',
+    'Uzbekistan': '🇺🇿',
+    'Vanuatu': '🇻🇺',
+    'Venezuela': '🇻🇪',
+    'Vietnam': '🇻🇳',
+    'Yemen': '🇾🇪',
+    'Zambia': '🇿🇲',
+    'Zimbabwe': '🇿🇼'
+  };
+
+  // Try to find an exact match first
+  if (flagMap[countryName]) {
+    return flagMap[countryName];
+  }
+
+  // Try to find a partial match (for cases where the name might be slightly different)
+  const lowerCountryName = countryName.toLowerCase();
+  for (const [key, flag] of Object.entries(flagMap)) {
+    if (key.toLowerCase().includes(lowerCountryName) || lowerCountryName.includes(key.toLowerCase())) {
+      return flag;
+    }
+  }
+
+  // Return default globe emoji if no match found
+  return '🌐';
+};
+
 type Website = {
   _id?: string;
   id?: string;
@@ -45,6 +262,7 @@ type Website = {
   RD?: string;
   category?: string | string[];
   primaryCountry?: string;
+  primeTrafficCountries?: string[];
   // New fields
   trafficValue?: number;
   locationTraffic?: number;
@@ -103,10 +321,43 @@ export default function MarketplaceSection({
     greyNicheAccepted: '',
   });
 
+  // State for country flags
+  const [countryFlags, setCountryFlags] = useState<Record<string, string>>({});
+  const [loadingFlags, setLoadingFlags] = useState(false);
+  const [failedFlags, setFailedFlags] = useState<Record<string, boolean>>({});
+
+  // Load country flags from REST Countries API
+  useEffect(() => {
+    const loadCountryFlags = async () => {
+      // Only load if we have websites with primeTrafficCountries
+      const hasCountries = websites.some(w => w.primeTrafficCountries && w.primeTrafficCountries.length > 0);
+      if (!hasCountries || Object.keys(countryFlags).length > 0) return;
+
+      setLoadingFlags(true);
+      try {
+        const response = await fetch('https://restcountries.com/v3.1/all?fields=name,flags');
+        const data = await response.json();
+        const flags: Record<string, string> = {};
+        data.forEach((country: any) => {
+          if (country.name?.common && (country.flags?.svg || country.flags?.png)) {
+            flags[country.name.common] = country.flags.svg || country.flags.png;
+          }
+        });
+        setCountryFlags(flags);
+      } catch (error) {
+        console.error('Error loading country flags:', error);
+      } finally {
+        setLoadingFlags(false);
+      }
+    };
+
+    loadCountryFlags();
+  }, [websites]);
+
   // Column visibility state
   const [columns, setColumns] = useState<ColumnConfig[]>([
     { id: 'checkbox', label: 'Checkbox', visible: true, span: 1 },
-    { id: 'domain', label: 'Domain Name', visible: true, span: 4 },
+    { id: 'domain', label: 'Domain Name', visible: true, span: 3 },
     { id: 'category', label: 'Category', visible: true, span: 2 },
     { id: 'price', label: 'Price', visible: true, span: 1 },
     { id: 'da', label: 'DA', visible: true, span: 1 },
@@ -116,10 +367,11 @@ export default function MarketplaceSection({
     { id: 'trafficValue', label: 'Traffic Value', visible: true, span: 1 },
     { id: 'topLocation', label: 'Top Location', visible: true, span: 1 },
     { id: 'locationTraffic', label: 'Location Traffic', visible: true, span: 1 },
-    { id: 'rd', label: 'RD', visible: true, span: 2 },
-    { id: 'greyNiche', label: 'Grey Niche', visible: true, span: 2 },
-    { id: 'specialNotes', label: 'Special Notes', visible: true, span: 2 },
-    { id: 'actions', label: 'Actions', visible: true, span: 2 },
+    { id: 'primeTrafficCountries', label: 'Prime Traffic Countries', visible: true, span: 2 },
+    { id: 'rd', label: 'RD', visible: true, span: 1 },
+    { id: 'greyNiche', label: 'Grey Niche', visible: true, span: 1 },
+    { id: 'specialNotes', label: 'Special Notes', visible: true, span: 1 },
+    { id: 'actions', label: 'Actions', visible: true, span: 1 },
   ]);
 
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
@@ -286,7 +538,7 @@ export default function MarketplaceSection({
               className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </button>
             
@@ -573,7 +825,7 @@ export default function MarketplaceSection({
                 style={{ gridTemplateColumns: `repeat(${totalSpan}, minmax(0, 1fr))` }}
               >
                 {columns.find(col => col.id === 'checkbox')?.visible && (
-                  <div className="flex justify-center">
+                  <div className="flex items-center justify-center">
                     <input 
                       type="checkbox" 
                       checked={selectAll}
@@ -599,80 +851,86 @@ export default function MarketplaceSection({
                 )}
                 
                 {columns.find(col => col.id === 'category')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'category')?.span || 1}` }}>
-                    CATEGORY
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'category')?.span || 1}` }}>
+                    Category
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'price')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'price')?.span || 1}` }}>
-                    PRICE
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'price')?.span || 1}` }}>
+                    Price
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'da')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'da')?.span || 1}` }}>
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'da')?.span || 1}` }}>
                     DA
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'spam')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'spam')?.span || 1}` }}>
-                    SPAM
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'spam')?.span || 1}` }}>
+                    Spam
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'dr')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'dr')?.span || 1}` }}>
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'dr')?.span || 1}` }}>
                     DR
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'traffic')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'traffic')?.span || 1}` }}>
-                    TRAFFIC
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'traffic')?.span || 1}` }}>
+                    Traffic
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'trafficValue')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'trafficValue')?.span || 1}` }}>
-                    TRAFFIC VALUE
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'trafficValue')?.span || 1}` }}>
+                    Traffic Value
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'topLocation')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'topLocation')?.span || 1}` }}>
-                    TOP LOCATION
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'topLocation')?.span || 1}` }}>
+                    Top Location
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'locationTraffic')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'locationTraffic')?.span || 1}` }}>
-                    LOCATION TRAFFIC
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'locationTraffic')?.span || 1}` }}>
+                    Location Traffic
+                  </div>
+                )}
+                
+                {columns.find(col => col.id === 'primeTrafficCountries')?.visible && (
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'primeTrafficCountries')?.span || 1}` }}>
+                    Prime Traffic Countries
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'rd')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'rd')?.span || 1}` }}>
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'rd')?.span || 1}` }}>
                     RD
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'greyNiche')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'greyNiche')?.span || 1}` }}>
-                    GREY NICHE
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'greyNiche')?.span || 1}` }}>
+                    Grey Niche
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'specialNotes')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'specialNotes')?.span || 1}` }}>
-                    SPECIAL NOTES
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'specialNotes')?.span || 1}` }}>
+                    Special Notes
                   </div>
                 )}
                 
                 {columns.find(col => col.id === 'actions')?.visible && (
-                  <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'actions')?.span || 1}` }}>
-                    ACTIONS
+                  <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'actions')?.span || 1}` }}>
+                    Actions
                   </div>
                 )}
               </div>
@@ -728,7 +986,7 @@ export default function MarketplaceSection({
 
                       {/* Category */}
                       {columns.find(col => col.id === 'category')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'category')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'category')?.span || 1}` }}>
                           {w.category ? (
                             <div className="relative group">
                               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold cursor-help">
@@ -746,49 +1004,49 @@ export default function MarketplaceSection({
                       
                       {/* Price */}
                       {columns.find(col => col.id === 'price')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'price')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'price')?.span || 1}` }}>
                           <div className="text-sm font-medium text-green-600">${(w.priceCents / 100).toFixed(2)}</div>
                         </div>
                       )}
                       
                       {/* DA */}
                       {columns.find(col => col.id === 'da')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'da')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'da')?.span || 1}` }}>
                           <div className="text-sm font-medium text-gray-900">{w.DA || 0}</div>
                         </div>
                       )}
 
                       {/* Spam */}
                       {columns.find(col => col.id === 'spam')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'spam')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'spam')?.span || 1}` }}>
                           <div className="text-sm font-medium text-gray-900">{w.Spam || 0}</div>
                         </div>
                       )}
                       
                       {/* DR */}
                       {columns.find(col => col.id === 'dr')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'dr')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'dr')?.span || 1}` }}>
                           <div className="text-sm font-medium text-gray-900">{w.DR || 0}</div>
                         </div>
                       )}
                       
                       {/* Traffic */}
                       {columns.find(col => col.id === 'traffic')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'traffic')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'traffic')?.span || 1}` }}>
                           <div className="text-sm font-medium text-gray-900">{w.OrganicTraffic || 0}</div>
                         </div>
                       )}
 
                       {/* Traffic Value */}
                       {columns.find(col => col.id === 'trafficValue')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'trafficValue')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'trafficValue')?.span || 1}` }}>
                           <div className="text-sm font-medium text-gray-900">{w.trafficValue || 0}</div>
                         </div>
                       )}
 
                       {/* Top Location */}
                       {columns.find(col => col.id === 'topLocation')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'topLocation')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'topLocation')?.span || 1}` }}>
                           {w.primaryCountry ? (
                             <div className="relative group">
                               <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
@@ -806,35 +1064,82 @@ export default function MarketplaceSection({
                       
                       {/* Location Traffic */}
                       {columns.find(col => col.id === 'locationTraffic')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'locationTraffic')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'locationTraffic')?.span || 1}` }}>
                           <div className="text-sm font-medium text-gray-900">{w.locationTraffic || 0}</div>
+                        </div>
+                      )}
+                      
+                      {/* Prime Traffic Countries */}
+                      {columns.find(col => col.id === 'primeTrafficCountries')?.visible && (
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'primeTrafficCountries')?.span || 1}` }}>
+                          {w.primeTrafficCountries && w.primeTrafficCountries.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 justify-center">
+                              {w.primeTrafficCountries.slice(0, 3).map((country, index) => {
+                                const flagUrl = countryFlags[country];
+                                const hasFailed = failedFlags[country];
+                                
+                                return (
+                                  <div key={index} className="relative group">
+                                    {flagUrl && !hasFailed ? (
+                                      <img 
+                                        src={flagUrl} 
+                                        alt={country} 
+                                        className="w-6 h-4 rounded-sm object-cover cursor-help"
+                                        onError={() => {
+                                          // Mark this country's flag as failed
+                                          setFailedFlags(prev => ({ ...prev, [country]: true }));
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-6 h-4 rounded-sm bg-gray-100 flex items-center justify-center text-xs cursor-help overflow-hidden">
+                                        <span className="text-xs">{getCountryFlagEmoji(country)}</span>
+                                      </div>
+                                    )}
+                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                                      {country}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {w.primeTrafficCountries.length > 3 && (
+                                <div className="relative group">
+                                  <div className="w-6 h-4 rounded-sm bg-gray-200 flex items-center justify-center text-xs cursor-help">
+                                    +{w.primeTrafficCountries.length - 3}
+                                  </div>
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                                    {w.primeTrafficCountries.slice(3).join(', ')}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm font-medium text-gray-400">-</span>
+                          )}
                         </div>
                       )}
                       
                       {/* RD */}
                       {columns.find(col => col.id === 'rd')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'rd')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'rd')?.span || 1}` }}>
                           {w.RD ? (
                             <a 
                               href={w.RD} 
                               target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="text-blue-600 hover:text-blue-800"
-                              title="Open RD Link"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                              title={w.RD}
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                              </svg>
+                              Link
                             </a>
                           ) : (
-                            <span className="text-sm font-medium text-gray-400">0</span>
+                            <span className="text-sm font-medium text-gray-400">-</span>
                           )}
                         </div>
                       )}
 
                       {/* Grey Niche Accepted */}
                       {columns.find(col => col.id === 'greyNiche')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'greyNiche')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'greyNiche')?.span || 1}` }}>
                           <div className="text-sm font-medium text-gray-900">
                             {w.greyNicheAccepted ? 'Yes' : 'No'}
                           </div>
@@ -843,7 +1148,7 @@ export default function MarketplaceSection({
                       
                       {/* Special Notes */}
                       {columns.find(col => col.id === 'specialNotes')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'specialNotes')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'specialNotes')?.span || 1}` }}>
                           {w.specialNotes ? (
                             <div className="relative group">
                               <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
@@ -865,31 +1170,33 @@ export default function MarketplaceSection({
                       
                       {/* Actions */}
                       {columns.find(col => col.id === 'actions')?.visible && (
-                        <div className="flex justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'actions')?.span || 1}` }}>
+                        <div className="flex items-center justify-center" style={{ gridColumn: `span ${columns.find(col => col.id === 'actions')?.span || 1}` }}>
                           <div className="flex space-x-2">
-                            <button
-                              onClick={() => addToCart({
-                                _id: stableId,
-                                title: w.title,
-                                priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.priceCents || 0) * 100),
-                              })}
-                              disabled={isPurchased || !w.available}
-                              className={`p-1 ${(isPurchased || !w.available) ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}
-                              title={isPurchased ? 'Already Purchased' : !w.available ? 'Not Available' : 'Add to Cart'}
-                            >
-                              {isPurchased ? (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                              )}
-                            </button>
+                            {isPurchased ? (
+                              <div className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded font-medium">
+                                Purchased
+                              </div>
+                            ) : !w.available ? (
+                              <div className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded font-medium">
+                                Unavailable
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => addToCart({
+                                  _id: stableId,
+                                  title: w.title,
+                                  priceCents: typeof w.priceCents === 'number' ? w.priceCents : Math.round((w.priceCents || 0) * 100),
+                                })}
+                                className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 font-medium transition-colors"
+                                title="Add to Cart"
+                              >
+                                Buy Now
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
+
                     </div>
                   );
                 })}

@@ -223,7 +223,7 @@ export async function POST(req: Request) {
 
   try {
     const json = await req.json();
-    const { title, url, description, priceCents, category, tags, DA, PA, Spam, OrganicTraffic, DR, RD, primaryCountry, trafficValue, locationTraffic, greyNicheAccepted, specialNotes } = json;
+    const { title, url, description, priceCents, category, tags, DA, PA, Spam, OrganicTraffic, DR, RD, primaryCountry, primeTrafficCountries } = json;
 
     if (!title || !url || !description || priceCents === undefined) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -271,6 +271,23 @@ export async function POST(req: Request) {
       normalizedCategories = category.map((cat) => String(cat).trim()).filter((cat) => cat);
     }
 
+    // ✅ Normalize prime traffic countries into array of strings
+    let normalizedPrimeTrafficCountries: string[] = [];
+    if (typeof primeTrafficCountries === "string") {
+      // If it's a comma-separated string, split it
+      if (primeTrafficCountries.includes(",")) {
+        normalizedPrimeTrafficCountries = primeTrafficCountries
+          .split(",")
+          .map((country) => country.trim())
+          .filter((country) => country);
+      } else {
+        // Single country
+        normalizedPrimeTrafficCountries = [primeTrafficCountries.trim()];
+      }
+    } else if (Array.isArray(primeTrafficCountries)) {
+      normalizedPrimeTrafficCountries = primeTrafficCountries.map((country) => String(country).trim()).filter((country) => country);
+    }
+
     if (existingWebsite) {
       console.log('🔍 Found existing website:', {
         existingUserId: existingWebsite.userId,
@@ -299,6 +316,7 @@ export async function POST(req: Request) {
         category: normalizedCategories, // Use normalized categories
         tags: normalizedTags,
         primaryCountry: primaryCountry || undefined, // Add primaryCountry field
+        primeTrafficCountries: normalizedPrimeTrafficCountries, // Add prime traffic countries field
         DA: DA ? Number(DA) : undefined,
         PA: PA ? Number(PA) : undefined,
         Spam: Spam ? Number(Spam) : undefined,
@@ -348,6 +366,7 @@ export async function POST(req: Request) {
       category: normalizedCategories, // Use normalized categories
       tags: normalizedTags,
       primaryCountry: primaryCountry || undefined, // Add primaryCountry field
+      primeTrafficCountries: normalizedPrimeTrafficCountries, // Add prime traffic countries field
       DA: DA ? Number(DA) : undefined,
       PA: PA ? Number(PA) : undefined,
       Spam: Spam ? Number(Spam) : undefined,
@@ -357,10 +376,6 @@ export async function POST(req: Request) {
       userId: userId,
       image: "/default-website-image.png",
       status: "pending",
-      trafficValue: trafficValue ? Number(trafficValue) : undefined,
-      locationTraffic: locationTraffic ? Number(locationTraffic) : undefined,
-      greyNicheAccepted: greyNicheAccepted === "true" || greyNicheAccepted === true,
-      specialNotes: specialNotes || "",
     });
 
     return NextResponse.json(site, { status: 201 });

@@ -20,6 +20,7 @@ export interface IWebsite extends mongoose.Document {
   featured: boolean;
   tags: string[];
   primaryCountry?: string; // Add primaryCountry field
+  primeTrafficCountries?: string[]; // Add prime traffic countries field
   metaTitle?: string;
   metaDescription?: string;
 
@@ -178,6 +179,11 @@ const WebsiteSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Country name cannot exceed 100 characters']
   },
+  primeTrafficCountries: [{
+    type: String,
+    trim: true,
+    maxlength: [100, 'Country name cannot exceed 100 characters']
+  }],
 
   // SEO fields
   metaTitle: {

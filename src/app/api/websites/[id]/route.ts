@@ -80,7 +80,21 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       
       Object.keys(body).forEach((key) => {
         if (body[key] !== undefined) {
-          website[key] = body[key];
+          // Special handling for primeTrafficCountries to ensure it's an array
+          if (key === 'primeTrafficCountries' && typeof body[key] === 'string') {
+            // If it's a comma-separated string, convert to array
+            if (body[key].includes(",")) {
+              website[key] = body[key]
+                .split(",")
+                .map((country: string) => country.trim())
+                .filter((country: string) => country);
+            } else {
+              // Single country
+              website[key] = [body[key].trim()].filter((country: string) => country);
+            }
+          } else {
+            website[key] = body[key];
+          }
         }
       });
 

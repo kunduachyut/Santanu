@@ -45,39 +45,13 @@ const CATEGORIES = [
   { id: 34, name: "Private SEO Blog Networks (PSBN)", backendValue: "blog" }
 ];
 
-type Website = {
-  _id: string;
-  title: string;
-  url: string;
-  description: string;
-  priceCents: number;
-  status: "pending" | "approved" | "rejected";
-  rejectionReason?: string;
-  createdAt: string;
-  updatedAt: string;
-  views?: number;
-  clicks?: number;
-  DA?: number;
-  PA?: number;
-  Spam?: number;
-  OrganicTraffic?: number;
-  DR?: number;
-  RD?: string;
-  category?: string;
-  tags?: string;
-  primaryCountry?: string;
-  available: boolean; // <-- Add this line
-};
-
-
-
 export default function PublisherDashboard() {
-  const [mySites, setMySites] = useState<Website[]>([]);
+  const [mySites, setMySites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"dashboard" | "websites" | "add-website" | "analytics" | "earnings" | "settings">("websites");
-  const [editingWebsite, setEditingWebsite] = useState<Website | null>(null);
+  const [editingWebsite, setEditingWebsite] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     url: '',
@@ -91,7 +65,12 @@ export default function PublisherDashboard() {
     DR: '',
     RD: '',
     tags: '',
-    primaryCountry: '' // Add primaryCountry field
+    primaryCountry: '', // Add primaryCountry field
+    trafficValue: '',        // <-- Add this
+    locationTraffic: '',     // <-- Add this
+    greyNicheAccepted: '',   // <-- Add this
+    specialNotes: '',        // <-- Add this
+    primeTrafficCountries: '' // Add prime traffic countries field
   });
   const [formLoading, setFormLoading] = useState(false);
   const [stats, setStats] = useState({
@@ -122,9 +101,9 @@ export default function PublisherDashboard() {
   useEffect(() => {
     const newStats = {
       total: mySites.length,
-      pending: mySites.filter(site => site.status === 'pending').length,
-      approved: mySites.filter(site => site.status === 'approved').length,
-      rejected: mySites.filter(site => site.status === 'rejected').length
+      pending: mySites.filter((site: any) => site.status === 'pending').length,
+      approved: mySites.filter((site: any) => site.status === 'approved').length,
+      rejected: mySites.filter((site: any) => site.status === 'rejected').length
     };
     setStats(newStats);
   }, [mySites]);
@@ -176,12 +155,12 @@ export default function PublisherDashboard() {
                       !Number.isNaN(s.price)
                       ? Math.round(s.price * 100)
                       : 0,
-                available: s.available !== undefined ? s.available : true, // <-- Ensure available is set
+                available: s.available !== undefined ? s.available : true,
               };
             })
             .filter(Boolean)
           : [];
-        setMySites(normalizedSites.filter(site => site._id));
+        setMySites(normalizedSites.filter((site: any) => site._id));
       })
       .catch((err) => {
         console.error("Failed to fetch data:", err);
@@ -208,14 +187,14 @@ export default function PublisherDashboard() {
       const res = await fetch(`/api/websites/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
-        setMySites((prevSites) => prevSites.filter((site) => site._id !== id));
+        setMySites((prevSites) => prevSites.filter((site: any) => site._id !== id));
         alert("Website deleted successfully!");
       } else {
         if (res.status === 401) alert("Please log in to delete websites");
         else if (res.status === 403) alert("You don't have permission to delete this website");
         else if (res.status === 404) {
           alert("Website not found");
-          setMySites((prevSites) => prevSites.filter((site) => site._id !== id));
+          setMySites((prevSites) => prevSites.filter((site: any) => site._id !== id));
         } else alert("Failed to delete website: " + (data.error || "Unknown error"));
       }
     } catch (error) {
@@ -239,7 +218,12 @@ export default function PublisherDashboard() {
       DR: '',
       RD: '',
       tags: '',
-      primaryCountry: '' // Add primaryCountry field
+      primaryCountry: '', // Add primaryCountry field
+      trafficValue: '',        // <-- Add this
+      locationTraffic: '',     // <-- Add this
+      greyNicheAccepted: '',   // <-- Add this
+      specialNotes: '',        // <-- Add this
+      primeTrafficCountries: '' // Add prime traffic countries field
     });
     setEditingWebsite(null);
   }
@@ -256,7 +240,7 @@ export default function PublisherDashboard() {
   }
 
   // Function to handle editing a website with multiple categories
-  function editWebsite(website: Website) {
+  function editWebsite(website: any) {
     setEditingWebsite(website);
     
     // Handle category field - convert array to comma-separated string if needed
@@ -266,6 +250,16 @@ export default function PublisherDashboard() {
         categoryValue = website.category.join(',');
       } else {
         categoryValue = website.category;
+      }
+    }
+    
+    // Handle prime traffic countries field - convert array to comma-separated string if needed
+    let primeTrafficCountriesValue = '';
+    if (website.primeTrafficCountries) {
+      if (Array.isArray(website.primeTrafficCountries)) {
+        primeTrafficCountriesValue = website.primeTrafficCountries.join(',');
+      } else {
+        primeTrafficCountriesValue = website.primeTrafficCountries;
       }
     }
     
@@ -282,7 +276,12 @@ export default function PublisherDashboard() {
       DR: website.DR?.toString() || '',
       RD: website.RD || '',
       tags: website.tags || '',
-      primaryCountry: website.primaryCountry || '' // Add primaryCountry field
+      primaryCountry: website.primaryCountry || '', // Add primaryCountry field
+      trafficValue: website.trafficValue?.toString() || '',        // <-- Add this
+      locationTraffic: website.locationTraffic?.toString() || '',     // <-- Add this
+      greyNicheAccepted: website.greyNicheAccepted?.toString() || '',   // <-- Add this
+      specialNotes: website.specialNotes || '',        // <-- Add this
+      primeTrafficCountries: primeTrafficCountriesValue // Add prime traffic countries field
     });
     setActiveTab('add-website');
   }
@@ -451,4 +450,3 @@ export default function PublisherDashboard() {
     </div>
   );
 }
-

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 type Website = {
   _id: string;
@@ -88,6 +88,7 @@ export default function PublisherAddWebsiteSection({
     locationTraffic?: string;     // <-- Add this
     greyNicheAccepted?: string;   // <-- Add this
     specialNotes?: string;        // <-- Add this
+    primeTrafficCountries?: string | string[]; // Add prime traffic countries field
   };
   handleFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
@@ -121,6 +122,89 @@ export default function PublisherAddWebsiteSection({
     return [];
   });
 
+  // State for prime traffic countries
+  const [primeTrafficCountries, setPrimeTrafficCountries] = useState<string[]>(() => {
+    // Initialize from formData.primeTrafficCountries - handle different possible data types
+    if (!formData.primeTrafficCountries) return [];
+    
+    // Handle case where primeTrafficCountries is already an array
+    if (Array.isArray(formData.primeTrafficCountries)) {
+      return formData.primeTrafficCountries;
+    }
+    
+    // Handle case where primeTrafficCountries is a string (comma-separated)
+    if (typeof formData.primeTrafficCountries === 'string') {
+      return formData.primeTrafficCountries.split(',').map(name => name.trim()).filter(Boolean);
+    }
+    
+    // Fallback for any other case
+    return [];
+  });
+  
+  const [allCountries, setAllCountries] = useState<{name: string, flag: string}[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const [loadingCountries, setLoadingCountries] = useState(false);
+  
+  // Load countries from REST Countries API
+  useEffect(() => {
+    const loadCountries = async () => {
+      setLoadingCountries(true);
+      try {
+        const response = await fetch('https://restcountries.com/v3.1/all?fields=name,flags');
+        const data = await response.json();
+        const countries = data.map((country: any) => ({
+          name: country.name.common,
+          flag: country.flags?.svg || country.flags?.png || ''
+        })).sort((a: any, b: any) => a.name.localeCompare(b.name));
+        setAllCountries(countries);
+      } catch (error) {
+        console.error('Error loading countries:', error);
+      } finally {
+        setLoadingCountries(false);
+      }
+    };
+    
+    loadCountries();
+  }, []);
+  
+  // Filter countries based on search term
+  const filteredCountries = allCountries.filter(country => 
+    country.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  // Handle adding a country
+  const addCountry = (countryName: string) => {
+    if (!primeTrafficCountries.includes(countryName)) {
+      const newCountries = [...primeTrafficCountries, countryName];
+      setPrimeTrafficCountries(newCountries);
+      
+      // Update formData
+      handleFormChange({
+        target: {
+          name: 'primeTrafficCountries',
+          value: newCountries.join(',')
+        }
+      } as React.ChangeEvent<HTMLInputElement>);
+    }
+    setSearchTerm('');
+    setShowCountryDropdown(false);
+  };
+  
+  // Handle removing a country
+  const removeCountry = (countryName: string) => {
+    const newCountries = primeTrafficCountries.filter(name => name !== countryName);
+    setPrimeTrafficCountries(newCountries);
+    
+    // Update formData
+    handleFormChange({
+      target: {
+        name: 'primeTrafficCountries',
+        value: newCountries.join(',')
+      }
+    } as React.ChangeEvent<HTMLInputElement>);
+  };
+  
   // Function to handle category selection
   const toggleCategory = (categoryId: number) => {
     setSelectedCategories(prev => 
@@ -456,6 +540,86 @@ export default function PublisherAddWebsiteSection({
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Any special notes about your website"
           />
+        </div>
+
+        {/* Prime Traffic Countries */}
+        <div className="relative">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Prime Traffic Countries
+          </label>
+          <div className="border border-gray-300 rounded-md p-2 min-h-[42px] bg-white">
+            {primeTrafficCountries.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {primeTrafficCountries.map((country, index) => (
+                  <div key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
+                    <span>{country}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeCountry(country)}
+                      className="ml-2 text-blue-600 hover:text-blue-900"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="text-gray-500 text-sm">No countries selected</span>
+            )}
+          </div>
+          
+          <div className="mt-2 relative">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => setShowCountryDropdown(true)}
+              onBlur={() => {
+                // Delay hiding the dropdown to allow clicking on items
+                setTimeout(() => setShowCountryDropdown(false), 150);
+              }}
+              placeholder="Search and select countries..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+            
+            {showCountryDropdown && (
+              <div 
+                className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+                onMouseDown={(e) => e.preventDefault()} // Prevents blur when clicking on dropdown
+              >
+                {loadingCountries ? (
+                  <div className="px-4 py-2 text-gray-500">Loading countries...</div>
+                ) : filteredCountries.length > 0 ? (
+                  filteredCountries.map((country, index) => (
+                    <div
+                      key={index}
+                      onClick={() => addCountry(country.name)}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                    >
+                      {country.flag && (
+                        <img 
+                          src={country.flag} 
+                          alt={country.name} 
+                          className="w-5 h-3 mr-2 object-contain" 
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <span>{country.name}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-4 py-2 text-gray-500">No countries found</div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <p className="mt-1 text-sm text-gray-500">
+            Search and select the countries that generate the most traffic to your website
+          </p>
         </div>
 
         {/* Submit Button */}
