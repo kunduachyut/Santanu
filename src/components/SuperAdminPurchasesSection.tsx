@@ -11,14 +11,14 @@ type PurchaseRequest = {
   totalCents: number;
   customerId: string;
   customerEmail: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "ongoing" | "pendingPayment" | "approved" | "rejected";
   createdAt: string;
   updatedAt?: string;
   contentType?: "content" | "request" | null;
 };
 
-type FilterType = "all" | "pending" | "approved" | "rejected";
-
+// ...in SuperAdminPurchasesSection.tsx
+type FilterType = "all" | "pending" | "ongoing" | "pendingPayment" | "approved" | "rejected";
 type SuperAdminPurchasesSectionProps = {
   purchaseRequests: PurchaseRequest[];
   filteredPurchaseRequests: PurchaseRequest[];
@@ -26,6 +26,8 @@ type SuperAdminPurchasesSectionProps = {
   setPurchaseFilter: (filter: FilterType) => void;
   purchaseStats: {
     pending: number;
+    ongoing: number;         
+  pendingPayment: number;  
     approved: number;
     rejected: number;
     total: number;
@@ -42,8 +44,8 @@ type SuperAdminPurchasesSectionProps = {
   // Add new props for confirmation modal
   showConfirmationModal: boolean;
   setShowConfirmationModal: (show: boolean) => void;
-  confirmationAction: { purchaseId: string | null; status: "approved" | "rejected" | null };
-  setConfirmationAction: (action: { purchaseId: string | null; status: "approved" | "rejected" | null }) => void;
+  confirmationAction: { purchaseId: string | null; status: "approved" | "rejected" | "ongoing" | "pendingPayment" | null };
+setConfirmationAction: (action: { purchaseId: string | null; status: "approved" | "rejected" | "ongoing" | "pendingPayment" | null }) => void;
   confirmPurchaseStatusUpdate: () => void;
 };
 
@@ -138,7 +140,7 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
 
         {/* Purchase Filter Tabs */}
         <div className="flex space-x-1 mb-6 bg-white/60 backdrop-blur-sm rounded-xl p-1 border border-gray-200/50">
-          {(["all", "pending", "approved", "rejected"] as FilterType[]).map((tab) => (
+          {(["all", "pending", "ongoing", "pendingPayment", "approved", "rejected"] as FilterType[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setPurchaseFilter(tab)}
@@ -156,6 +158,30 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
                     : "bg-green-100 text-green-600"
                 }`}>
                   {purchaseStats.pending}
+                </span>
+              )}
+              {tab === "ongoing" && purchaseStats.ongoing > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-600">
+                  {purchaseStats.ongoing}
+                </span>
+              )}
+              {tab === "pendingPayment" && purchaseStats.pendingPayment > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-yellow-100 text-yellow-600">
+                  {purchaseStats.pendingPayment}
+                </span>
+              )}
+              {tab === "approved" && purchaseStats.approved > 0 && (
+                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                  purchaseFilter === tab 
+                    ? "bg-white text-green-500" 
+                    : "bg-green-100 text-green-600"
+                }`}>
+                  {purchaseStats.approved}
+                </span>
+              )}
+              {tab === "rejected" && purchaseStats.rejected > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-red-100 text-red-600">
+                  {purchaseStats.rejected}
                 </span>
               )}
             </button>
@@ -336,6 +362,48 @@ const SuperAdminPurchasesSection: React.FC<SuperAdminPurchasesSectionProps> = ({
                         <div className="text-xs text-gray-400">
                           {(request.status || 'pending') === 'approved' ? '✓ Approved' : '✗ Rejected'}
                         </div>
+                      )}
+                      {request.status === 'pending' && (
+                        <button
+                          onClick={() => {
+                            setConfirmationAction({ purchaseId: request.id, status: "ongoing" });
+                            setShowConfirmationModal(true);
+                          }}
+                          className="text-green-600 hover:text-green-800 p-1 rounded transition-colors"
+                          title="Mark as Ongoing"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </button>
+                      )}
+                      {request.status === 'ongoing' && (
+                        <button
+                          onClick={() => {
+                            setConfirmationAction({ purchaseId: request.id, status: "pendingPayment" });
+                            setShowConfirmationModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 p-1 rounded transition-colors"
+                          title="Mark as Pending Payment"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </button>
+                      )}
+                      {request.status === 'pendingPayment' && (
+                        <button
+                          onClick={() => {
+                            setConfirmationAction({ purchaseId: request.id, status: "approved" });
+                            setShowConfirmationModal(true);
+                          }}
+                          className="text-green-600 hover:text-green-800 p-1 rounded transition-colors"
+                          title="Mark as Approved (Payment Received)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
                       )}
                     </div>
                   </div>

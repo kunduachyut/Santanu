@@ -51,7 +51,7 @@ type PurchaseRequest = {
   totalCents: number;
   customerId: string;
   customerEmail: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "ongoing" | "pendingPayment" | "approved" | "rejected";
   createdAt: string;
   updatedAt?: string;
   contentType?: "content" | "request" | null;
@@ -136,6 +136,8 @@ export default function SuperAdminDashboard() {
   });
   const [purchaseStats, setPurchaseStats] = useState({
     pending: 0,
+    ongoing: 0,
+    pendingPayment: 0,
     approved: 0,
     rejected: 0,
     total: 0
@@ -157,11 +159,11 @@ export default function SuperAdminDashboard() {
   
   // Add state for purchase confirmation modal
   const [showPurchaseConfirmationModal, setShowPurchaseConfirmationModal] = useState(false);
-  const [confirmationAction, setConfirmationAction] = useState<{ 
-    purchaseId: string | null; 
-    status: "approved" | "rejected" | null 
-  }>({ purchaseId: null, status: null });
-  
+  // After
+const [confirmationAction, setConfirmationAction] = useState<{ 
+  purchaseId: string | null; 
+  status: "approved" | "rejected" | "ongoing" | "pendingPayment" | null 
+}>({ purchaseId: null, status: null });
   // Add state for success messages
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -563,12 +565,14 @@ export default function SuperAdminDashboard() {
   function calculatePurchaseStats(requests: PurchaseRequest[]) {
     const validRequests = requests || [];
     const stats = {
-      pending: validRequests.filter(r => r.status === "pending").length,
-      approved: validRequests.filter(r => r.status === "approved").length,
-      rejected: validRequests.filter(r => r.status === "rejected").length,
-      total: validRequests.length
-    };
-    setPurchaseStats(stats);
+  pending: requests.filter(r => r.status === "pending").length,
+  ongoing: requests.filter(r => r.status === "ongoing").length,
+  pendingPayment: requests.filter(r => r.status === "pendingPayment").length,
+  approved: requests.filter(r => r.status === "approved").length,
+  rejected: requests.filter(r => r.status === "rejected").length,
+  total: requests.length,
+};
+setPurchaseStats(stats);
   }
 
   async function updateWebsiteStatus(id: string, status: "approved" | "rejected", reason?: string) {
@@ -592,7 +596,10 @@ export default function SuperAdminDashboard() {
     }
   }
 
-  async function updatePurchaseStatus(purchaseId: string, status: "approved" | "rejected") {
+  async function updatePurchaseStatus(
+    purchaseId: string,
+    status: "approved" | "rejected" | "ongoing" | "pendingPayment"
+  ) {
     const res = await fetch("/api/purchases", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -604,8 +611,6 @@ export default function SuperAdminDashboard() {
 
     if (res.ok) {
       refreshPurchaseRequests();
-      // Remove the alert since we're using a confirmation modal and toast message
-      // alert("Purchase status updated successfully");
     } else {
       const err = await res.json();
       console.error("Failed to update purchase status:", err);
@@ -744,7 +749,7 @@ export default function SuperAdminDashboard() {
             purchaseRequests={purchaseRequests}
             filteredPurchaseRequests={filteredPurchaseRequests}
             purchaseFilter={purchaseFilter}
-            setPurchaseFilter={setPurchaseFilter}
+            setPurchaseFilter={setPurchaseFilter as (filter: FilterType) => void}
             purchaseStats={purchaseStats}
             selectedPurchases={selectedPurchases}
             isAllPurchasesSelected={isAllPurchasesSelected}

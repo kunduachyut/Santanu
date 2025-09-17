@@ -128,6 +128,13 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    const allowedStatuses = ["pending", "ongoing", "pendingPayment", "approved", "rejected"];
+    if (!allowedStatuses.includes(status)) {
+      return NextResponse.json(
+        { error: 'Invalid status' },
+        { status: 400 }
+      );
+    }
     purchaseRequests[purchaseIndex].status = status;
     purchaseRequests[purchaseIndex].updatedAt = new Date().toISOString();
 
