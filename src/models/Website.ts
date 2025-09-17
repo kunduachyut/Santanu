@@ -63,6 +63,11 @@ interface WebsiteModel extends mongoose.Model<IWebsite> {
 }
 
 const WebsiteSchema = new mongoose.Schema({
+  trafficValue: { type: Number, default: 0 },
+  locationTraffic: { type: Number, default: 0 },
+  greyNicheAccepted: { type: Boolean, default: false },
+  specialNotes: { type: String, default: "" },
+  
   // Existing fields
   title: {
     type: String,

@@ -63,9 +63,10 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
-  category?: string; // Revert to string only
+  category?: string;
   tags?: string;
-  primaryCountry?: string; // Add primaryCountry field
+  primaryCountry?: string;
+  available: boolean; // <-- Add this line
 };
 
 
@@ -175,6 +176,7 @@ export default function PublisherDashboard() {
                       !Number.isNaN(s.price)
                       ? Math.round(s.price * 100)
                       : 0,
+                available: s.available !== undefined ? s.available : true, // <-- Ensure available is set
               };
             })
             .filter(Boolean)
