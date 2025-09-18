@@ -7,11 +7,12 @@ import PurchasesSection from "@/components/PurchasesSection";
 import AdRequestsSection from "@/components/AdRequestsSection";
 import ContentRequestsSection from "@/components/ContentRequestsSection";
 import AnalyticsSection from "@/components/AnalyticsSection";
+import PendingPaymentsSection from "@/components/PendingPaymentsSection";
 
 // Sidebar component
 function Sidebar({ activeTab, setActiveTab, stats }: {
   activeTab: string;
-  setActiveTab: (tab: "marketplace" | "purchases" | "adRequests" | "contentRequests" | "analytics") => void;
+  setActiveTab: (tab: "marketplace" | "purchases" | "pendingPayments" | "adRequests" | "contentRequests" | "analytics") => void;
   stats: any;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -95,6 +96,38 @@ function Sidebar({ activeTab, setActiveTab, stats }: {
             {sidebarOpen && stats.purchases > 0 && (
               <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium" style={{backgroundColor: 'var(--success)', color: 'white'}}>
                 {stats.purchases}
+              </span>
+            )}
+          </button>
+          
+          {/* New Pending Payments Button */}
+          <button
+            onClick={() => setActiveTab("pendingPayments")}
+            className={`w-full flex items-center px-3 lg:px-4 py-2 lg:py-2.5 rounded-lg transition-colors text-sm lg:text-base ${
+              activeTab === "pendingPayments"
+                ? '' 
+                : ''
+            }`}
+            style={{
+              backgroundColor: activeTab === "pendingPayments" ? 'var(--accent-light)' : 'transparent',
+              color: activeTab === "pendingPayments" ? 'var(--accent-primary)' : 'var(--secondary-lighter)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== "pendingPayments") {
+                (e.target as HTMLElement).style.backgroundColor = 'var(--base-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== "pendingPayments") {
+                (e.target as HTMLElement).style.backgroundColor = 'transparent';
+              }
+            }}
+          >
+            <span className="material-symbols-outlined mr-2 lg:mr-3 text-lg lg:text-xl">pending_actions</span>
+            <span className={`${sidebarOpen ? 'block' : 'hidden'}`}>Pending Payments</span>
+            {sidebarOpen && stats.pendingPayments > 0 && (
+              <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium" style={{backgroundColor: 'var(--warning)', color: 'white'}}>
+                {stats.pendingPayments}
               </span>
             )}
           </button>
@@ -221,7 +254,7 @@ type Website = {
   description: string;
   priceCents: number;
   status: "pending" | "approved" | "rejected";
-  available: boolean; // Add available field
+  available: boolean;
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
@@ -233,8 +266,8 @@ type Website = {
   OrganicTraffic?: number;
   DR?: number;
   RD?: string;
-  category?: string | string[]; // Add category field
-  primaryCountry?: string; // Add primaryCountry field
+  category?: string | string[];
+  primaryCountry?: string;
 };
 
 type Purchase = {
@@ -246,23 +279,26 @@ type Purchase = {
   updatedAt?: string;
 };
 
-type TabType = "marketplace" | "purchases" | "adRequests" | "contentRequests" | "analytics";
+type TabType = "marketplace" | "purchases" | "pendingPayments" | "adRequests" | "contentRequests" | "analytics";
 
 export default function ConsumerDashboard() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [pendingPayments, setPendingPayments] = useState<Purchase[]>([]); // New state
   const [adRequests, setAdRequests] = useState<any[]>([]);
   const [contentRequests, setContentRequests] = useState<any[]>([]);
   const [messages, setMessages] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState({ 
     websites: true, 
     purchases: true, 
+    pendingPayments: true, // New loading state
     adRequests: true, 
     contentRequests: true 
   });
   const [error, setError] = useState({ 
     websites: "", 
     purchases: "", 
+    pendingPayments: "", // New error state
     adRequests: "", 
     contentRequests: "" 
   });
@@ -273,6 +309,7 @@ export default function ConsumerDashboard() {
   const [stats, setStats] = useState({
     total: 0,
     purchases: 0,
+    pendingPayments: 0, // New stat
     adRequests: 0,
     contentRequests: 0
   });
@@ -283,12 +320,13 @@ export default function ConsumerDashboard() {
     // Check URL parameters for initial tab
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    if (tabParam && ['marketplace', 'purchases', 'adRequests', 'contentRequests', 'analytics'].includes(tabParam)) {
+    if (tabParam && ['marketplace', 'purchases', 'pendingPayments', 'adRequests', 'contentRequests', 'analytics'].includes(tabParam)) {
       setActiveTab(tabParam as TabType);
     }
     
     refreshWebsites();
     refreshPurchases();
+    refreshPendingPayments(); // New function call
     fetchAdRequests();
     fetchContentRequests();
   }, []);
@@ -314,13 +352,20 @@ export default function ConsumerDashboard() {
 
   // Calculate stats whenever data changes
   useEffect(() => {
+    // prefer server-provided pendingPayments count, fallback to counting purchases
+    const pendingCount =
+      Array.isArray(pendingPayments) && pendingPayments.length > 0
+        ? pendingPayments.length
+        : purchases.filter((p) => p?.status === "pendingPayment").length;
+
     setStats({
       total: websites.length,
       purchases: purchases.length,
+      pendingPayments: pendingCount, // New stat
       adRequests: adRequests.length,
       contentRequests: contentRequests.length
     });
-  }, [websites, purchases, adRequests, contentRequests]);
+  }, [websites, purchases, pendingPayments, adRequests, contentRequests]);
 
   async function refreshWebsites() {
     setLoading((prev) => ({ ...prev, websites: true }));
@@ -336,7 +381,7 @@ export default function ConsumerDashboard() {
       const data = await res.json();
       const rawWebsites = Array.isArray(data) ? data : data.websites || [];
       const websitesData: Website[] = rawWebsites.map((w: any) => ({
-        ...w, // <-- This brings in ALL fields from the API, including new ones!
+        ...w,
         _id: w._id ?? w.id,
         id: w.id ?? w._id,
         priceCents: typeof w.priceCents === 'number' && !Number.isNaN(w.priceCents)
@@ -351,7 +396,7 @@ export default function ConsumerDashboard() {
         updatedAt: w.updatedAt || new Date().toISOString(),
       }));
       const approvedWebsites = websitesData.filter(
-        (w: Website) => w.status === "approved" && w.available !== false // Only show available websites
+        (w: Website) => w.status === "approved" && w.available !== false
       );
 
       setWebsites(approvedWebsites);
@@ -388,6 +433,33 @@ export default function ConsumerDashboard() {
       }));
     } finally {
       setLoading((prev) => ({ ...prev, purchases: false }));
+    }
+  }
+
+  // New function to fetch pending payments
+  async function refreshPendingPayments() {
+    setLoading((prev) => ({ ...prev, pendingPayments: true }));
+    setError((prev) => ({ ...prev, pendingPayments: "" }));
+
+    try {
+      // use camelCase "pendingPayment" to match backend status value
+      const res = await fetch("/api/purchases?status=pendingPayment");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      const pendingPaymentsData = Array.isArray(data) ? data : data.purchases || [];
+      setPendingPayments(pendingPaymentsData);
+    } catch (err) {
+      console.error("Failed to fetch pending payments:", err);
+      setError((prev) => ({
+        ...prev,
+        pendingPayments: err instanceof Error ? err.message : "Failed to load pending payments"
+      }));
+    } finally {
+      setLoading((prev) => ({ ...prev, pendingPayments: false }));
     }
   }
 
@@ -460,6 +532,7 @@ export default function ConsumerDashboard() {
       }
 
       refreshPurchases();
+      refreshPendingPayments(); // Also refresh pending payments
     } catch (err) {
       console.error("Failed to purchase:", err);
       alert("Failed to complete purchase. Please try again.");
@@ -494,6 +567,7 @@ export default function ConsumerDashboard() {
             <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold" style={{color: 'var(--secondary-primary)'}}>
               {activeTab === "marketplace" && "Marketplace"}
               {activeTab === "purchases" && "My Purchases"}
+              {activeTab === "pendingPayments" && "Pending Payments"} {/* New title */}
               {activeTab === "adRequests" && "Ad Requests"}
               {activeTab === "contentRequests" && "Content Requests"}
               {activeTab === "analytics" && "Analytics Dashboard"}
@@ -501,13 +575,18 @@ export default function ConsumerDashboard() {
             <p className="mt-1 sm:mt-2 text-sm sm:text-base lg:text-lg" style={{color: 'var(--secondary-lighter)'}}>
               {activeTab === "marketplace" && "Browse and purchase digital assets"}
               {activeTab === "purchases" && "Manage your purchased websites"}
+              {activeTab === "pendingPayments" && "Complete payment for your pending purchases"} {/* New description */}
               {activeTab === "adRequests" && "Track and manage ad placements"}
               {activeTab === "contentRequests" && "Request content for your websites"}
               {activeTab === "analytics" && "Monitor your advertising performance"}
             </p>
           </div>
           <button 
-            onClick={activeTab === "marketplace" ? refreshWebsites : activeTab === "purchases" ? refreshPurchases : activeTab === "adRequests" ? fetchAdRequests : fetchContentRequests}
+            onClick={activeTab === "marketplace" ? refreshWebsites : 
+                     activeTab === "purchases" ? refreshPurchases : 
+                     activeTab === "pendingPayments" ? refreshPendingPayments : // New refresh handler
+                     activeTab === "adRequests" ? fetchAdRequests : 
+                     fetchContentRequests}
             className="flex items-center px-3 sm:px-4 lg:px-5 py-2.5 rounded-lg shadow-sm transition duration-200 text-sm sm:text-base whitespace-nowrap"
             style={{
               backgroundColor: 'var(--base-primary)',
@@ -549,6 +628,16 @@ export default function ConsumerDashboard() {
             refreshPurchases={refreshPurchases}
             messages={messages}
             setMessages={setMessages}
+          />
+        )}
+
+        {/* Pending Payments Section */}
+        {activeTab === "pendingPayments" && (
+          <PendingPaymentsSection
+            pendingPayments={pendingPayments}
+            loading={loading.pendingPayments}
+            error={error.pendingPayments}
+            refreshPendingPayments={refreshPendingPayments}
           />
         )}
 

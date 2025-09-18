@@ -11,10 +11,12 @@ type RouteParams = {
   };
 };
 
-export async function GET(req: Request, { params }: RouteParams) {
+export async function GET(req: Request, context: { params: any }) {
   await dbConnect();
 
-  const id = params.id; // ✅ no "await"
+  // Next may provide `params` as a thenable — await it before using properties
+  const params = await context.params;
+  const id = params.id;
 
   console.log("GET request for website with ID:", id);
 
