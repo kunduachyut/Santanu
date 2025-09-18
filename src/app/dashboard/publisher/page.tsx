@@ -79,6 +79,12 @@ export default function PublisherDashboard() {
     approved: 0,
     rejected: 0
   });
+  // Add state for success message
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // Add state for delete confirmation popup
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [siteToDelete, setSiteToDelete] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     refresh();
@@ -171,37 +177,59 @@ export default function PublisherDashboard() {
 
   async function removeSite(id: string) {
     if (!id || id === 'undefined' || id === 'null') {
-      alert('Cannot delete: Invalid website ID');
+      setDeleteError('Cannot delete: Invalid website ID');
       return;
     }
 
     const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     if (!isValidObjectId) {
-      alert('Cannot delete: Invalid website ID format');
+      setDeleteError('Cannot delete: Invalid website ID format');
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this website?")) return;
-    setDeleteLoading(id);
+    // Instead of using confirm(), show custom popup
+    setSiteToDelete(id);
+    setShowDeleteConfirm(true);
+  }
+
+  // Function to confirm deletion after popup
+  async function confirmDelete() {
+    if (!siteToDelete) return;
+    
+    setShowDeleteConfirm(false);
+    setDeleteLoading(siteToDelete);
+    setDeleteError(null);
+    
     try {
-      const res = await fetch(`/api/websites/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/websites/${siteToDelete}`, { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
-        setMySites((prevSites) => prevSites.filter((site: any) => site._id !== id));
-        alert("Website deleted successfully!");
+        setMySites((prevSites) => prevSites.filter((site: any) => site._id !== siteToDelete));
+        // Replace alert with success message
+        setSuccessMessage("Website deleted successfully!");
+        // Clear the success message after 3 seconds
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
-        if (res.status === 401) alert("Please log in to delete websites");
-        else if (res.status === 403) alert("You don't have permission to delete this website");
+        if (res.status === 401) setDeleteError("Please log in to delete websites");
+        else if (res.status === 403) setDeleteError("You don't have permission to delete this website");
         else if (res.status === 404) {
-          alert("Website not found");
-          setMySites((prevSites) => prevSites.filter((site: any) => site._id !== id));
-        } else alert("Failed to delete website: " + (data.error || "Unknown error"));
+          setDeleteError("Website not found");
+          setMySites((prevSites) => prevSites.filter((site: any) => site._id !== siteToDelete));
+        } else setDeleteError("Failed to delete website: " + (data.error || "Unknown error"));
       }
     } catch (error) {
-      alert("Network error occurred. Please check your connection and try again.");
+      setDeleteError("Network error occurred. Please check your connection and try again.");
     } finally {
       setDeleteLoading(null);
+      setSiteToDelete(null);
     }
+  }
+
+  // Function to cancel deletion
+  function cancelDelete() {
+    setShowDeleteConfirm(false);
+    setSiteToDelete(null);
+    setDeleteError(null);
   }
 
   function resetForm() {
@@ -330,7 +358,10 @@ export default function PublisherDashboard() {
       }
 
       if (res.ok) {
-        alert(editingWebsite ? 'Website updated successfully!' : 'Website submitted for approval!');
+        // Replace alert with success message
+        setSuccessMessage(editingWebsite ? 'Website updated successfully!' : 'Website submitted for approval!');
+        // Clear the success message after 3 seconds
+        setTimeout(() => setSuccessMessage(null), 3000);
         resetForm();
         setActiveTab('websites');
         refresh();
@@ -388,6 +419,58 @@ export default function PublisherDashboard() {
       
       <main className="flex-1 overflow-x-hidden">
         <div className="p-6">
+          {/* Success Message Popup */}
+          {successMessage && (
+            <div className="fixed top-4 right-4 z-50">
+              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                <strong className="font-bold">Success! </strong>
+                <span className="block sm:inline">{successMessage}</span>
+              </div>
+            </div>
+          )}
+          
+          {/* Delete Confirmation Popup */}
+          {showDeleteConfirm && (
+            <div 
+              className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              style={{ backgroundColor: "rgba(13, 17, 23, 0.3)" }}
+            >
+              <div className="bg-white p-6 rounded-lg w-full max-w-md">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-red-600">Confirm Delete</h3>
+                  <button
+                    onClick={cancelDelete}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <div className="mb-4">
+                  <p className="text-gray-600">Are you sure you want to delete this website? This action cannot be undone.</p>
+                </div>
+                {deleteError && (
+                  <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+                    {deleteError}
+                  </div>
+                )}
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={cancelDelete}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="mb-8">
             <h1 className="text-2xl lg:text-3xl font-bold" style={{color: 'var(--secondary-primary)'}}>
               {activeTab === "dashboard" && "Publisher Dashboard"}

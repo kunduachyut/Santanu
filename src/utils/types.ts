@@ -15,6 +15,20 @@ export const WebsiteCreateSchema = z.object({
   category: z.string().min(1), // Keep as string since we'll handle comma-separated values
   tags: z.array(z.string()).optional().default([]),
   image: z.string().url().optional(),
+  // SEO Metrics
+  DA: z.number().optional(),
+  PA: z.number().optional(),
+  Spam: z.number().optional(),
+  OrganicTraffic: z.number().optional(),
+  DR: z.number().optional(),
+  RD: z.string().url().optional(),
+  // New SEO Metrics
+  trafficValue: z.number().optional(),
+  locationTraffic: z.number().optional(),
+  greyNicheAccepted: z.boolean().optional(),
+  specialNotes: z.string().optional(),
+  primaryCountry: z.string().optional(),
+  primeTrafficCountries: z.string().optional(), // Will be converted to array on server
 });
 
 
