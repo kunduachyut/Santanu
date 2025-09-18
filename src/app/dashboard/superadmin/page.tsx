@@ -589,6 +589,18 @@ setPurchaseStats(stats);
       refresh();
       setShowRejectModal(false);
       setRejectionReason("");
+      
+      // Show success message when website is approved
+      if (status === "approved") {
+        setSuccessMessage("Website approved successfully");
+        setShowSuccessMessage(true);
+        
+        // Hide success message after 1 seconds
+        setTimeout(() => {
+          setShowSuccessMessage(false);
+          setSuccessMessage("");
+        }, 1000);
+      }
     } else {
       const err = await res.json();
       console.error("Failed to update status:", err);
@@ -805,7 +817,7 @@ setPurchaseStats(stats);
 
         {/* Rejection Modal */}
         {showRejectModal && selectedWebsite && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: "rgba(13, 17, 23, 0.3)" }}>
             <div className="bg-white p-4 lg:p-5 rounded-xl w-full max-w-sm lg:max-w-md shadow-lg border border-gray-200">
               <h3 className="text-base lg:text-lg font-semibold mb-3 flex items-center gap-2">
                 <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

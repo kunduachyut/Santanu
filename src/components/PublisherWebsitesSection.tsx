@@ -48,7 +48,7 @@ export default function PublisherWebsitesSection({
   statusFilter: "all" | "pending" | "approved" | "rejected";
   setStatusFilter: (filter: "all" | "pending" | "approved" | "rejected") => void;
   editWebsite: (website: Website) => void;
-  removeSite: (id: string) => void;
+  removeSite: (id: string) => void; // This will now trigger the popup
   deleteLoading: string | null;
   getStatusBadge: (status: string, rejectionReason?: string) => React.ReactElement;
   formatPrice: (cents?: number) => string;
@@ -546,14 +546,16 @@ export default function PublisherWebsitesSection({
                   <button
                     onClick={() => {
                       if (!site._id) {
-                        alert('Cannot delete: Site ID is missing');
+                        // We'll handle this error in the removeSite function now
+                        removeSite('');
                         return;
                       }
                       const siteId = String(site._id);
                       if (siteId && siteId !== 'undefined') {
                         removeSite(siteId);
                       } else {
-                        alert('Cannot delete: Site ID is invalid');
+                        // We'll handle this error in the removeSite function now
+                        removeSite('');
                       }
                     }}
                     disabled={deleteLoading === site._id}

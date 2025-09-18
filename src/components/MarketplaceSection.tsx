@@ -448,7 +448,6 @@ export default function MarketplaceSection({
     { id: 'dr', label: 'DR', visible: true, span: 1 },
     { id: 'traffic', label: 'Traffic', visible: true, span: 1 },
     { id: 'trafficValue', label: 'Traffic Value', visible: true, span: 1 },
-    { id: 'topLocation', label: 'Top Location', visible: true, span: 1 },
     { id: 'locationTraffic', label: 'Location Traffic', visible: true, span: 1 },
     { id: 'primeTrafficCountries', label: 'Prime Traffic Countries', visible: true, span: 2 },
     { id: 'rd', label: 'RD', visible: true, span: 1 },
@@ -585,7 +584,7 @@ export default function MarketplaceSection({
             title={showWishlistOnly ? "Show all websites" : "Show wishlist only"}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={showWishlistOnly ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4 4 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </button>
           
@@ -964,53 +963,48 @@ export default function MarketplaceSection({
                       </div>
                     ),
                     'domain': (
-                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Domain Name
+                      <div key={col.id} style={{ gridColumn: `span ${col.span}` }}>
+                        <div className="text-sm font-medium text-gray-900">Domain Name</div>
                       </div>
                     ),
                     'category': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Category
+                        <div className="text-sm font-medium text-gray-900">Category</div>
                       </div>
                     ),
                     'price': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Price
+                        <div className="text-sm font-medium text-gray-900">Price</div>
                       </div>
                     ),
                     'da': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        DA
+                        <div className="text-sm font-medium text-gray-900">DA</div>
                       </div>
                     ),
                     'spam': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Spam
+                        <div className="text-sm font-medium text-gray-900">Spam</div>
                       </div>
                     ),
                     'dr': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        DR
+                        <div className="text-sm font-medium text-gray-900">DR</div>
                       </div>
                     ),
                     'traffic': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Traffic
+                        <div className="text-sm font-medium text-gray-900">Traffic</div>
                       </div>
                     ),
                     'trafficValue': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Traffic Value
-                      </div>
-                    ),
-                    'topLocation': (
-                      <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Top Location
+                        <div className="text-sm font-medium text-gray-900">Traffic Value</div>
                       </div>
                     ),
                     'locationTraffic': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Location Traffic
+                        <div className="text-sm font-medium text-gray-900">Location Traffic</div>
                       </div>
                     ),
                     'primeTrafficCountries': (
@@ -1020,22 +1014,22 @@ export default function MarketplaceSection({
                     ),
                     'rd': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        RD
+                        <div className="text-sm font-medium text-gray-900">RD</div>
                       </div>
                     ),
                     'greyNiche': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Grey Niche
+                        <div className="text-sm font-medium text-gray-900">Grey Niche</div>
                       </div>
                     ),
                     'specialNotes': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Special Notes
+                        <div className="text-sm font-medium text-gray-900">Special Notes</div>
                       </div>
                     ),
                     'actions': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                        Actions
+                        <div className="text-sm font-medium text-gray-900">Actions</div>
                       </div>
                     )
                   };
@@ -1096,6 +1090,21 @@ export default function MarketplaceSection({
                                 </div>
                                 <div className="ml-4 flex items-center">
                                   <div className="text-sm font-medium text-gray-900">{w.title}</div>
+                                  {/* Description Icon */}
+                                  {w.description && (
+                                    <div className="relative group ml-2">
+                                      <div className="text-gray-400 hover:text-gray-600 cursor-help">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                      </div>
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 z-10 max-w-xs">
+                                        <div className="max-h-20 overflow-y-auto">
+                                          {w.description}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                   {/* Wishlist Heart Icon */}
                                   <button 
                                     onClick={(e) => {
@@ -1113,7 +1122,7 @@ export default function MarketplaceSection({
                                     disabled={wishlistLoading}
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill={isInWishlist ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4 4 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                     </svg>
                                   </button>
                                   <button 
@@ -1138,7 +1147,7 @@ export default function MarketplaceSection({
                                 <div className="relative group">
                                   <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold cursor-help">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-4-4M14 4h6m0 0v6m0-6L10 14" />
                                     </svg>
                                   </div>
                                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
@@ -1178,22 +1187,6 @@ export default function MarketplaceSection({
                           'trafficValue': (
                             <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
                               <div className="text-sm font-medium text-gray-900">{w.trafficValue || 0}</div>
-                            </div>
-                          ),
-                          'topLocation': (
-                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
-                              {w.primaryCountry ? (
-                                <div className="relative group">
-                                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 font-bold cursor-help">
-                                    {getCountryFlag(w.primaryCountry)}
-                                  </div>
-                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
-                                    {w.primaryCountry}
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-sm font-medium text-gray-400">-</span>
-                              )}
                             </div>
                           ),
                           'locationTraffic': (

@@ -1287,7 +1287,10 @@ export default function CartPage() {
 
       {/* Checkout Confirmation Popup */}
       {showCheckoutConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: "rgba(13, 17, 23, 0.3)" }}
+        >
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-gray-800">Confirm Checkout</h3>
@@ -1323,7 +1326,10 @@ export default function CartPage() {
 
       {/* Success Message Popup */}
       {showSuccessMessage && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: "rgba(13, 17, 23, 0.3)" }}
+        >
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-green-600">Success!</h3>
@@ -1353,7 +1359,10 @@ export default function CartPage() {
 
       {/* Error Message Popup */}
       {showErrorMessage && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: "rgba(13, 17, 23, 0.3)" }}
+        >
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-red-600">Error</h3>
