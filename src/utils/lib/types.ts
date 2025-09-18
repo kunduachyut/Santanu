@@ -10,5 +10,17 @@ export interface Website {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  // SEO Metrics
+  DA?: number;
+  PA?: number;
+  Spam?: number;
+  OrganicTraffic?: number;
+  DR?: number;
+  RD?: string;
+  // New SEO Metrics
+  trafficValue?: number;
+  locationTraffic?: number;
+  greyNicheAccepted?: boolean;
+  specialNotes?: string;
   // ... other fields
 }

@@ -223,7 +223,7 @@ export async function POST(req: Request) {
 
   try {
     const json = await req.json();
-    const { title, url, description, priceCents, category, tags, DA, PA, Spam, OrganicTraffic, DR, RD, primaryCountry, primeTrafficCountries } = json;
+    const { title, url, description, priceCents, category, tags, DA, PA, Spam, OrganicTraffic, DR, RD, primaryCountry, primeTrafficCountries, trafficValue, locationTraffic, greyNicheAccepted, specialNotes } = json;
 
     if (!title || !url || !description || priceCents === undefined) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -323,6 +323,10 @@ export async function POST(req: Request) {
         OrganicTraffic: OrganicTraffic ? Number(OrganicTraffic) : undefined,
         DR: DR ? Number(DR) : undefined,
         RD: RD || undefined,
+        trafficValue: trafficValue ? Number(trafficValue) : undefined,
+        locationTraffic: locationTraffic ? Number(locationTraffic) : undefined,
+        greyNicheAccepted: greyNicheAccepted ? Boolean(greyNicheAccepted) : undefined,
+        specialNotes: specialNotes || undefined,
         userId: userId,
         image: "/default-website-image.png",
         status: "pending", // Will be changed to priceConflict
@@ -373,6 +377,10 @@ export async function POST(req: Request) {
       OrganicTraffic: OrganicTraffic ? Number(OrganicTraffic) : undefined,
       DR: DR ? Number(DR) : undefined,
       RD: RD || undefined,
+      trafficValue: trafficValue ? Number(trafficValue) : undefined,
+      locationTraffic: locationTraffic ? Number(locationTraffic) : undefined,
+      greyNicheAccepted: greyNicheAccepted ? Boolean(greyNicheAccepted) : undefined,
+      specialNotes: specialNotes || undefined,
       userId: userId,
       image: "/default-website-image.png",
       status: "pending",
