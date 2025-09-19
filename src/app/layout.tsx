@@ -5,7 +5,8 @@ import {
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "../app/context/CartContext";
-import Header from "@/components/Header";
+import ToasterWrapper from "../components/ToasterWrapper";
+import FloatingAuthPanel from "../components/FloatingAuthPanel";
 
 // Load fonts
 const geistSans = Geist({
@@ -49,13 +50,12 @@ export default function RootLayout({
         >
           <CartProvider>
             <div className="w-full min-h-screen flex flex-col">
-            {/* Header */}
-            <Header />
-
             {/* Main content */}
             <main className="w-full">{children}</main>
             </div>
+            <FloatingAuthPanel />
           </CartProvider>
+          <ToasterWrapper />
         </body>
       </html>
     </ClerkProvider>
