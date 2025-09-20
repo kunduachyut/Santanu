@@ -472,7 +472,6 @@ type Website = {
   category?: string | string[];
   primaryCountry?: string;
   primeTrafficCountries?: string[];
-  // New fields
   trafficValue?: number;
   locationTraffic?: number;
   greyNicheAccepted?: boolean;

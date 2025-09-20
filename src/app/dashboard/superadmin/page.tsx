@@ -10,6 +10,17 @@ import SuperAdminContentRequestsSection from "@/components/SuperAdminContentRequ
 import SuperAdminUserContentSection from "@/components/SuperAdminUserContentSection";
 import SuperAdminPriceConflictsSection from "@/components/SuperAdminPriceConflictsSection";
 import SuperAdminUserRequestsSection from "@/components/SuperAdminUserRequestsSection";
+import SuperAdminRolesSection from "@/components/SuperAdminRolesSection";
+
+// add Tab type to align with sidebar
+type Tab =
+  | "websites"
+  | "userContent"
+  | "purchases"
+  | "contentRequests"
+  | "priceConflicts"
+  | "userRequests"
+  | "roles";
 
 // Type definitions
 type Website = {
@@ -108,7 +119,44 @@ type UserAccessRequest = {
 
 type FilterType = "all" | "pending" | "approved" | "rejected";
 
-export default function SuperAdminDashboard() {
+export default function SuperAdminDashboardPage() {
+  const [activeTab, setActiveTab] = useState<Tab>("websites");
+
+  const [currentUserRole, setCurrentUserRole] = useState<"websites" | "requests" | null>(null);
+  const [isSuper, setIsSuper] = useState(false);
+  const [allowedTabs, setAllowedTabs] = useState<Tab[]>(["websites","userContent","purchases","contentRequests","priceConflicts","userRequests","roles"]);
+
+  useEffect(() => {
+    // fetch current role for logged-in user
+    async function loadRole() {
+      try {
+        const res = await fetch("/api/admin-roles/current");
+        const json = await res.json();
+        // { role: 'websites' | 'requests' | null, isSuper: boolean }
+        setCurrentUserRole(json.role ?? null);
+        setIsSuper(Boolean(json.isSuper));
+        if (json.isSuper) {
+          setAllowedTabs(["websites","userContent","purchases","contentRequests","priceConflicts","userRequests","roles"]);
+        } else if (json.role === "websites") {
+          setAllowedTabs(["websites"]);
+          setActiveTab((prev) => (prev === "websites" ? prev : "websites"));
+        } else if (json.role === "requests") {
+          setAllowedTabs(["purchases","contentRequests"]);
+          setActiveTab((prev) => (["purchases","contentRequests"].includes(prev) ? prev : "purchases"));
+        } else {
+          // no role -> block or show only websites by default (adjust as needed)
+          setAllowedTabs([]);
+          setActiveTab("websites");
+        }
+      } catch (err) {
+        console.error("Failed to load admin role", err);
+        // fallback: super admin view
+        setAllowedTabs(["websites","userContent","purchases","contentRequests","priceConflicts","userRequests","roles"]);
+      }
+    }
+    loadRole();
+  }, []);
+
   const [selectedWebsites, setSelectedWebsites] = useState<string[]>([]);
   const [selectedPurchases, setSelectedPurchases] = useState<string[]>([]);
   const [isAllWebsitesSelected, setIsAllWebsitesSelected] = useState(false);
@@ -142,9 +190,6 @@ export default function SuperAdminDashboard() {
     rejected: 0,
     total: 0
   });
-  const [activeTab, setActiveTab] = useState<
-    "websites" | "purchases" | "contentRequests" | "userContent" | "priceConflicts" | "userRequests"
-  >("websites");
   const [priceConflicts, setPriceConflicts] = useState<PriceConflict[]>([]);
   const [priceConflictsLoading, setPriceConflictsLoading] = useState(true);
   const [selectedPurchase, setSelectedPurchase] = useState<PurchaseRequest | null>(null);
@@ -684,7 +729,6 @@ setPurchaseStats(stats);
       <SuperAdminSidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onCollapseChange={setIsSidebarCollapsed}
       />
 
       {/* Dynamic margin based on sidebar state */}
@@ -704,6 +748,7 @@ setPurchaseStats(stats);
               {activeTab === "userContent" && "User Uploads"}
               {activeTab === "priceConflicts" && "Price Conflicts"}
               {activeTab === "userRequests" && "User Access Requests"}
+              {activeTab === "roles" && "User Roles Management"} {/* <-- added */}
             </h1>
             <p className="mt-1 sm:mt-2 text-sm sm:text-base lg:text-lg" style={{ color: 'var(--secondary-lighter)' }}>
               {activeTab === "priceConflicts"
@@ -741,7 +786,7 @@ setPurchaseStats(stats);
         )}
 
         {/* Content based on active tab */}
-        {activeTab === "priceConflicts" && (
+        {allowedTabs.includes("priceConflicts") && activeTab === "priceConflicts" && (
           <SuperAdminPriceConflictsSection
             priceConflicts={priceConflicts}
             priceConflictsLoading={priceConflictsLoading}
@@ -750,7 +795,7 @@ setPurchaseStats(stats);
           />
         )}
 
-        {activeTab === "userContent" && (
+        {allowedTabs.includes("userContent") && activeTab === "userContent" && (
           <SuperAdminUserContentSection
             userContent={userContent}
             userContentLoading={userContentLoading}
@@ -758,7 +803,7 @@ setPurchaseStats(stats);
           />
         )}
 
-        {activeTab === "contentRequests" && (
+        {allowedTabs.includes("contentRequests") && activeTab === "contentRequests" && (
           <SuperAdminContentRequestsSection
             requests={requests}
             contentLoading={contentLoading}
@@ -766,7 +811,7 @@ setPurchaseStats(stats);
           />
         )}
 
-        {activeTab === "purchases" && (
+        {allowedTabs.includes("purchases") && activeTab === "purchases" && (
           <SuperAdminPurchasesSection
             purchaseRequests={purchaseRequests}
             filteredPurchaseRequests={filteredPurchaseRequests}
@@ -791,7 +836,7 @@ setPurchaseStats(stats);
           />
         )}
 
-        {activeTab === "websites" && (
+        {allowedTabs.includes("websites") && activeTab === "websites" && (
           <SuperAdminWebsitesSection
             websites={websites}
             loading={loading}
@@ -809,7 +854,7 @@ setPurchaseStats(stats);
           />
         )}
 
-        {activeTab === "userRequests" && (
+        {allowedTabs.includes("userRequests") && activeTab === "userRequests" && (
           <SuperAdminUserRequestsSection
             userRequests={filteredUserRequests}
             userRequestsLoading={userRequestsLoading}
@@ -823,6 +868,10 @@ setPurchaseStats(stats);
             updateRequestStatus={updateRequestStatus}
             formatDate={formatDate}
           />
+        )}
+
+        {allowedTabs.includes("roles") && activeTab === "roles" && (
+          <SuperAdminRolesSection />
         )}
 
         {/* Rejection Modal */}
