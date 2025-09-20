@@ -1,15 +1,20 @@
 "use client";
 
-import React from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as SonnerToaster } from "@/components/ui/sonner";
+import React, { useRef, useEffect } from "react";
+import ToasterComponent from "@/components/ui/sonner-toast";
 
 const ToasterWrapper = () => {
+  const toasterRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Make the toasterRef globally accessible
+    if (typeof window !== 'undefined') {
+      (window as any).toasterRef = toasterRef;
+    }
+  }, []);
+
   return (
-    <>
-      <Toaster />
-      <SonnerToaster />
-    </>
+    <ToasterComponent ref={toasterRef} />
   );
 };
 

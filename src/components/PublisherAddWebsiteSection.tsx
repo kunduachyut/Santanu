@@ -478,14 +478,15 @@ export default function PublisherAddWebsiteSection({
                 RD Link *
               </label>
               <input
-                type="url"
+                type="number"
                 id="RD"
                 name="RD"
                 value={formData.RD}
                 onChange={handleFormChange}
                 required
+                min="0"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
-                placeholder="https://"
+                placeholder="0"
               />
             </div>
           </div>

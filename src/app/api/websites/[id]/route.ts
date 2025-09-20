@@ -63,10 +63,12 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     // --- Super Admin actions ---
     if (body.action === "approve") {
       website.status = "approved";
+      website.available = true; // Explicitly set available to true when approving
       website.rejectionReason = undefined;
       website.approvedAt = new Date();
     } else if (body.action === "reject") {
       website.status = "rejected";
+      website.available = false; // Explicitly set available to false when rejecting
       website.rejectionReason = body.reason || "No reason provided";
       website.rejectedAt = new Date();
     } else {

@@ -22,39 +22,63 @@ export async function GET(req: NextRequest) {
     // Check if user is super admin (you might want to implement proper role checking)
     const url = new URL(req.url);
     const isSuperAdmin = url.searchParams.get('role') === 'superadmin';
+    const statusFilter = url.searchParams.get('status');
     
-    let userPurchases;
+    let query: any = {};
+    
     if (isSuperAdmin) {
       // If super admin, return all purchases with populated website data
-      userPurchases = await Purchase.find()
-        .populate('websiteId')
-        .sort({ createdAt: -1 })
-        .exec();
+      if (statusFilter) {
+        query.status = statusFilter;
+      }
     } else {
       // Otherwise filter for current user
-      userPurchases = await Purchase.find({ buyerId: userId })
-        .populate('websiteId')
-        .sort({ createdAt: -1 })
-        .exec();
+      query.buyerId = userId;
+      if (statusFilter) {
+        query.status = statusFilter;
+      }
     }
     
+    const userPurchases = await Purchase.find(query)
+      .populate('websiteId')
+      .sort({ createdAt: -1 })
+      .exec();
+    
     // Transform the data to match the expected format
-    const formattedPurchases = userPurchases.map(purchase => ({
-      id: purchase._id.toString(),
-      _id: purchase._id.toString(),
-      websiteId: purchase.websiteId?._id?.toString() || purchase.websiteId?.toString(),
-      websiteTitle: purchase.websiteId?.title || 'Unknown Website',
-      priceCents: purchase.amountCents,
-      totalCents: purchase.amountCents,
-      amountCents: purchase.amountCents,
-      customerId: purchase.buyerId,
-      customerEmail: '', // We'll populate this below
-      status: purchase.status,
-      contentType: purchase.contentSelection, // Use stored content selection
-      createdAt: purchase.createdAt.toISOString(),
-      updatedAt: purchase.updatedAt?.toISOString(),
-      contentIds: purchase.contentIds?.map(id => id.toString()) || [] // Add contentIds
-    }));
+    const formattedPurchases = userPurchases.map(purchase => {
+      // Handle both populated and non-populated websiteId
+      let websiteId = '';
+      let websiteTitle = 'Unknown Website';
+      
+      // Check if websiteId is populated (IWebsite) or just an ObjectId
+      if (purchase.websiteId) {
+        if (typeof purchase.websiteId === 'object' && 'title' in purchase.websiteId) {
+          // It's a populated IWebsite object
+          websiteId = (purchase.websiteId as any)._id?.toString() || purchase.websiteId.toString();
+          websiteTitle = (purchase.websiteId as any).title || 'Unknown Website';
+        } else {
+          // It's just an ObjectId
+          websiteId = purchase.websiteId.toString();
+        }
+      }
+      
+      return {
+        id: purchase._id.toString(),
+        _id: purchase._id.toString(),
+        websiteId: websiteId,
+        websiteTitle: websiteTitle,
+        priceCents: purchase.amountCents,
+        totalCents: purchase.amountCents,
+        amountCents: purchase.amountCents,
+        customerId: purchase.buyerId,
+        customerEmail: '', // We'll populate this below
+        status: purchase.status,
+        contentType: purchase.contentSelection, // Use stored content selection
+        createdAt: purchase.createdAt.toISOString(),
+        updatedAt: purchase.updatedAt?.toISOString(),
+        contentIds: purchase.contentIds?.map(id => id.toString()) || [] // Add contentIds
+      };
+    });
     
     // Populate customer email information
     for (const purchase of formattedPurchases) {

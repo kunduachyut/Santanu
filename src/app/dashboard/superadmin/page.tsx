@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import SuperAdminSidebar from "@/components/SuperAdminSidebar";
+import { SuperAdminSidebar } from "@/components/ui/superadmin-sidebar";
 import SuperAdminWebsitesSection from "@/components/SuperAdminWebsitesSection";
 import SuperAdminPurchasesSection from "@/components/SuperAdminPurchasesSection";
 import SuperAdminContentRequestsSection from "@/components/SuperAdminContentRequestsSection";
@@ -167,6 +167,8 @@ const [confirmationAction, setConfirmationAction] = useState<{
   // Add state for success messages
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  // Add state for sidebar collapsed status
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
   useEffect(() => {
     refresh();
@@ -682,9 +684,17 @@ setPurchaseStats(stats);
       <SuperAdminSidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        onCollapseChange={setIsSidebarCollapsed}
       />
 
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 xl:p-10 overflow-y-auto overflow-x-hidden min-w-0 max-w-none w-full">
+      {/* Dynamic margin based on sidebar state */}
+      <main 
+        className="flex-1 p-4 sm:p-6 lg:p-8 xl:p-10 overflow-y-auto overflow-x-hidden min-w-0 max-w-none w-full transition-all duration-200 ease-in-out"
+        style={{ 
+          marginLeft: isSidebarCollapsed ? '3.05rem' : '15rem',
+          transition: 'margin-left 0.2s ease-in-out'
+        }}
+      >
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 lg:mb-8 w-full">
           <div>
             <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold" style={{ color: 'var(--secondary-primary)' }}>

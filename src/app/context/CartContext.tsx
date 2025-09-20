@@ -38,17 +38,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [cart, isLoaded]);
 
-
-
   const addToCart = (item: CartItem) => {
     setCart(prev => {
       const existingItem = prev.find(p => p._id === item._id);
       
       if (existingItem) {
-        // If item already exists, don't add it again
+        // If item already exists, show a message and don't add it again
+        if (typeof window !== 'undefined' && (window as any).toasterRef?.current) {
+          (window as any).toasterRef.current.show({
+            title: "Already in cart",
+            message: `${item.title} is already in your cart`,
+            variant: "warning",
+            position: "top-right",
+            duration: 3000,
+          });
+        }
         return prev;
       } else {
-        // If item doesn't exist, add it
+        // If item doesn't exist, add it and show success toast
+        if (typeof window !== 'undefined' && (window as any).toasterRef?.current) {
+          (window as any).toasterRef.current.show({
+            title: "Added to cart",
+            message: `${item.title} added to cart`,
+            variant: "success",
+            position: "top-right",
+            duration: 3000,
+          });
+        }
         return [...prev, item];
       }
     });

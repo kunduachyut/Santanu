@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import PublisherSidebar from "@/components/PublisherSidebar";
+import { useEffect, useState, useRef } from "react";
+import { PublisherSidebar } from "@/components/ui/publisher-sidebar";
 import PublisherDashboardSection from "@/components/PublisherDashboardSection";
-import PublisherWebsitesSection from "@/components/PublisherWebsitesSection";
 import PublisherAddWebsiteSection from "@/components/PublisherAddWebsiteSection";
 import PublisherComingSoonSection from "@/components/PublisherComingSoonSection";
+import { WebsiteManagementTable } from "@/components/ui/website-management-table";
+import { WebsiteSearchBar } from "@/components/ui/website-search-bar";
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 // Define the categories as requested with mapping to backend enum values
 const CATEGORIES = [
@@ -46,6 +49,7 @@ const CATEGORIES = [
 ];
 
 export default function PublisherDashboard() {
+  const { toast: showToast } = useToast();
   const [mySites, setMySites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
@@ -85,6 +89,17 @@ export default function PublisherDashboard() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [siteToDelete, setSiteToDelete] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Add state for sidebar collapsed status
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  // Add state for filtered websites
+  const [filteredWebsites, setFilteredWebsites] = useState<any[]>([]);
+  // Add state for filter button visibility
+  // const [showFilterButton, setShowFilterButton] = useState(false);
+  // Add state for filter values
+  // const [filterValues, setFilterValues] = useState({
+  //   status: [] as string[],
+  //   availability: null as boolean | null
+  // });
 
   useEffect(() => {
     refresh();
@@ -120,6 +135,61 @@ export default function PublisherDashboard() {
       resetForm();
     }
   }, [activeTab]);
+
+  // Initialize filtered websites with all websites
+  useEffect(() => {
+    setFilteredWebsites(mySites);
+  }, [mySites]);
+
+  // Handle search results
+  const handleSearch = (filteredSites: any[]) => {
+    setFilteredWebsites(filteredSites);
+  };
+
+  // Handle filter changes
+  // const handleFilterChange = (filters: { status?: string[]; availability?: boolean | null }) => {
+  //   console.log('Received filter change:', filters);
+  //   console.log('Status filter:', filters.status);
+  //   console.log('Availability filter:', filters.availability);
+    
+  //   // Simplified filter logic
+  //   let result = [...mySites];
+    
+  //   // Apply status filter
+  //   if (filters.status && filters.status.length > 0) {
+  //     result = result.filter(website => filters.status!.includes(website.status));
+  //   }
+    
+  //   // Apply availability filter
+  //   if (filters.availability !== undefined && filters.availability !== null) {
+  //     result = result.filter(website => website.available === filters.availability);
+  //   }
+    
+  //   console.log('Filtered result count:', result.length);
+  //   setFilteredWebsites(result);
+    
+  //   // Also update the filter values state
+  //   setFilterValues({
+  //     status: filters.status || [],
+  //     availability: filters.availability !== undefined ? filters.availability : null
+  //   });
+  // };
+
+  // Apply filters to websites
+  // useEffect(() => {
+  //   console.log('=== FILTER EFFECT TRIGGERED ===');
+  //   console.log('My sites:', mySites.length);
+  //   console.log('Filter values:', filterValues);
+    
+  //   // This useEffect is now just for debugging and initializing filteredWebsites
+  //   // The actual filtering is done in handleFilterChange
+  //   if (filterValues.status.length === 0 && filterValues.availability === null) {
+  //     console.log('No filters applied, showing all sites');
+  //     setFilteredWebsites(mySites);
+  //   }
+    
+  //   console.log('=== FILTER EFFECT COMPLETED ===');
+  // }, [filterValues, mySites]);
 
   function refresh() {
     setLoading(true);
@@ -162,6 +232,21 @@ export default function PublisherDashboard() {
                       ? Math.round(s.price * 100)
                       : 0,
                 available: s.available !== undefined ? s.available : true,
+                // Include all SEO metrics
+                DA: s.DA,
+                PA: s.PA,
+                Spam: s.Spam,
+                OrganicTraffic: s.OrganicTraffic,
+                DR: s.DR,
+                RD: s.RD,
+                trafficValue: s.trafficValue,
+                locationTraffic: s.locationTraffic,
+                greyNicheAccepted: s.greyNicheAccepted,
+                specialNotes: s.specialNotes,
+                primaryCountry: s.primaryCountry,
+                tags: s.tags,
+                category: s.category,
+                primeTrafficCountries: s.primeTrafficCountries, // Add this field
               };
             })
             .filter(Boolean)
@@ -302,7 +387,7 @@ export default function PublisherDashboard() {
       Spam: website.Spam?.toString() || '',
       OrganicTraffic: website.OrganicTraffic?.toString() || '',
       DR: website.DR?.toString() || '',
-      RD: website.RD || '',
+      RD: website.RD?.toString() || '',
       tags: website.tags || '',
       primaryCountry: website.primaryCountry || '', // Add primaryCountry field
       trafficValue: website.trafficValue?.toString() || '',        // <-- Add this
@@ -337,7 +422,8 @@ export default function PublisherDashboard() {
         PA: formData.PA ? parseInt(formData.PA) : undefined,
         Spam: formData.Spam ? parseInt(formData.Spam) : undefined,
         OrganicTraffic: formData.OrganicTraffic ? parseInt(formData.OrganicTraffic) : undefined,
-        DR: formData.DR ? parseInt(formData.DR) : undefined
+        DR: formData.DR ? parseInt(formData.DR) : undefined,
+        RD: formData.RD ? parseInt(formData.RD) : undefined
       };
 
       let res;
@@ -413,11 +499,67 @@ export default function PublisherDashboard() {
     );
   }
 
+  // Add function to handle availability change
+  async function handleAvailabilityChange(id: string, available: boolean) {
+    try {
+      const res = await fetch(`/api/websites/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ available })
+      });
+
+      if (res.ok) {
+        // Update the local state
+        setMySites(prevSites => 
+          prevSites.map(site => 
+            site._id === id ? { ...site, available } : site
+          )
+        );
+        
+        // Show toast notification with different colors based on availability
+        // Match the style of the "Buy Now" button toast
+        if (typeof window !== 'undefined' && (window as any).toasterRef?.current) {
+          (window as any).toasterRef.current.show({
+            title: "Availability Updated",
+            message: `Website is now ${available ? 'available' : 'unavailable'} for purchase.`,
+            variant: available ? "success" : "error",
+            position: "top-right",
+            duration: 3000,
+          });
+        } else {
+          // Fallback to the default toast if toasterRef is not available
+          showToast({
+            title: "Availability Updated",
+            description: `Website is now ${available ? 'available' : 'unavailable'} for purchase.`,
+            variant: available ? "success" : "destructive",
+          });
+        }
+      } else {
+        alert('Failed to update website availability');
+      }
+    } catch (error) {
+      alert('Network error. Please try again.');
+    }
+  }
+
   return (
     <div className="flex w-full min-h-screen" style={{backgroundColor: 'var(--base-primary)'}}>
-      <PublisherSidebar activeTab={activeTab} setActiveTab={setActiveTab} stats={stats} />
+      <Toaster />
+      <PublisherSidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        stats={stats} 
+        onCollapseChange={setIsSidebarCollapsed} // Pass the collapse change handler
+      />
       
-      <main className="flex-1 overflow-x-hidden">
+      {/* Dynamic margin based on sidebar state */}
+      <main 
+        className="flex-1 overflow-x-hidden transition-all duration-200 ease-in-out"
+        style={{ 
+          marginLeft: isSidebarCollapsed ? '3.05rem' : '15rem',
+          transition: 'margin-left 0.2s ease-in-out'
+        }}
+      >
         <div className="p-6">
           {/* Success Message Popup */}
           {successMessage && (
@@ -498,17 +640,21 @@ export default function PublisherDashboard() {
 
           {/* Websites Tab */}
           {activeTab === "websites" && (
-            <PublisherWebsitesSection
-              mySites={mySites}
-              refresh={refresh}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              editWebsite={editWebsite}
-              removeSite={removeSite}
-              deleteLoading={deleteLoading}
-              getStatusBadge={getStatusBadge}
-              formatPrice={formatPrice}
-            />
+            <div className="space-y-.5">
+              <div className="flex justify-center">
+                <div className="w-150">
+                  <WebsiteSearchBar websites={mySites} onSearch={handleSearch} />
+                </div>
+              </div>
+              <WebsiteManagementTable
+                key={filteredWebsites.length}
+                websites={filteredWebsites}
+                onEditWebsite={editWebsite}
+                onDeleteWebsite={removeSite}
+                onRefresh={refresh}
+                onAvailabilityChange={handleAvailabilityChange}
+              />
+            </div>
           )}
 
           {/* Add Website Tab */}

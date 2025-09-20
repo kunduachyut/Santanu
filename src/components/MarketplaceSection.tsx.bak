@@ -1229,6 +1229,118 @@ export default function MarketplaceSection({
                         <div className="text-sm font-medium text-gray-900">RD</div>
                       </div>
                     ),
+                  };
+
+                  return columnComponents[col.id];
+                })}
+              </div>
+
+              {/* Table Body */}
+              <div className="grid gap-4 px-6 py-3 bg-white border-b border-gray-200 text-center text-sm text-gray-500">
+                {filteredWebsites.map((w, index) => {
+                  const id = w._id || w.id || `${w.title}-${w.url}`;
+                  const isHighlighted = highlightedRows[id] || highlightedRow === id;
+
+                  return (
+                    <div
+                      key={id}
+                      className={`grid gap-4 ${isHighlighted ? 'bg-gray-100' : ''}`}
+                      style={{ gridTemplateColumns: `repeat(${columns.filter(col => col.visible).reduce((sum, col) => sum + col.span, 0)}, minmax(0, 1fr))` }}
+                    >
+                      {columns.filter(col => col.visible).map((col, index) => {
+                        const columnComponents: Record<string, React.ReactNode> = {
+                          'checkbox': (
+                            <div key={col.id} className="flex items-center justify-center">
+                              <input 
+                                type="checkbox" 
+                                checked={selectedItems[id]}
+                                onChange={(e) => {
+                                  const isChecked = e.target.checked;
+                                  setSelectedItems(prev => ({
+                                    ...prev,
+                                    [id]: isChecked,
+                                  }));
+                                  setSelectAll(Object.values(selectedItems).every(Boolean));
+                                }}
+                                className="h-3 w-3 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                              />
+                            </div>
+                          ),
+                          'domain': (
+                            <div key={col.id} style={{ gridColumn: `span ${col.span}` }}>
+                              <a href={w.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
+                                {w.title}
+                              </a>
+                            </div>
+                          ),
+                          'category': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {Array.isArray(w.category) ? w.category.join(', ') : w.category}
+                            </div>
+                          ),
+                          'price': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              ${w.priceCents / 100}
+                            </div>
+                          ),
+                          'da': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.DA || 'N/A'}
+                            </div>
+                          ),
+                          'spam': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.Spam || 'N/A'}
+                            </div>
+                          ),
+                          'dr': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.DR || 'N/A'}
+                            </div>
+                          ),
+                          'traffic': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.OrganicTraffic || 'N/A'}
+                            </div>
+                          ),
+                          'trafficValue': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.trafficValue || 'N/A'}
+                            </div>
+                          ),
+                          'locationTraffic': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.locationTraffic || 'N/A'}
+                            </div>
+                          ),
+                          'primeTrafficCountries': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.primeTrafficCountries?.map(country => (
+                                <span key={country} className="inline-block px-2 py-1 bg-gray-200 text-gray-800 rounded mr-1">
+                                  {getCountryFlagEmoji(country)}
+                                </span>
+                              ))}
+                            </div>
+                          ),
+                          'rd': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.RD || 'N/A'}
+                            </div>
+                          ),
+                          'greyNiche': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.greyNicheAccepted ? 'Accepted' : 'Not Accepted'}
+                            </div>
+                          ),
+                          'specialNotes': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                              {w.specialNotes || 'N/A'}
+                            </div>
+                          ),
+                          'actions': (
+                            <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
+                      </div>
+                    ),
                     'greyNiche': (
                       <div key={col.id} className="flex items-center justify-center" style={{ gridColumn: `span ${col.span}` }}>
                         <div className="text-sm font-medium text-gray-900">Grey Niche</div>
@@ -1250,6 +1362,7 @@ export default function MarketplaceSection({
                 })}
               </div>
               
+              {/* Table Body */}
               <div className="divide-y divide-gray-200">
                 {filteredWebsites.map((w) => {
                   const stableId = w._id || w.id || `${w.title}-${w.url}`;
